@@ -543,7 +543,7 @@ def validate_schedule(schedule, teams, levels):
                     False,
                     f"Team {team+1} plays {play_counts[level][team][1]} times in slot 1 in level {level}",
                 )
-            if play_counts[level][team][4] > 6:
+            if play_counts[level][team][4] > 4:
                 return (
                     False,
                     f"Team {team+1} plays {play_counts[level][team][4]} times in slot 4 in level {level}",
@@ -609,20 +609,21 @@ def find_schedule_attempt():
 
     full_schedule = first_half_schedule + second_half_schedule
 
-    print("Phase 1: Balancing global slot distribution...")
+    # print("Phase 1: Balancing global slot distribution...")
     final_schedule = balance_playing_slots(full_schedule)
 
-    print("Phase 2: Local moves to improve referee balance (swapping games)...")
+    # print("Phase 2: Local moves to improve referee balance (swapping games)...")
     final_schedule = move_ref_games_schedule(final_schedule)
 
     # Validate the schedule
     is_valid, message = validate_schedule(final_schedule, teams, levels)
+    print(message)
     if is_valid:
         return final_schedule
     return None
 
 
-def find_schedule(max_attempts=1000, num_cores=16):
+def find_schedule(max_attempts=10000, num_cores=16):
     """
     Try to find a valid schedule using parallel processing.
     Uses num_cores processes, making max_attempts total tries.
