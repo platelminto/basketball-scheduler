@@ -3,6 +3,9 @@ from itertools import product, permutations
 import math
 import copy
 from multiprocessing import Pool
+import json
+import os
+import time
 
 ###########################
 # Parameters & Round-Robin
@@ -253,96 +256,59 @@ def weighted_play_imbalance_metric(schedule):
 
 
 def balance_playing_slots(schedule, max_iter=10000, initial_temp=1.0, cooling_rate=0.01):
-    """
-    Combined simulated annealing move operator with a richer move set.
-    
-    In each iteration, we randomly choose among four moves:
-      - Block Move: Reassign a contiguous block of weeks with new random permutations.
-      - Swap Move: For a randomly chosen level, swap its entire assignment between two weeks.
-      - Rotation Move: For a randomly chosen level in one week, rotate its distribution tuple.
-      - Individual-Level Reassignment: For one level in one week, reassign a new random distribution.
-      
-    For each affected week (and its mirror) the round-robin pairing is fixed and a valid
-    referee assignment is recomputed (using dummy ref counts so that only eligibility is enforced).
-    
-    After the candidate move, we check that the set of distributions across levels in each affected week
-    equals set(distributions_list). The move is accepted based on the weighted play imbalance metric.
-    """
     new_schedule = copy.deepcopy(schedule)
     current_cost = weighted_play_imbalance_metric(new_schedule)
     temp = initial_temp
-    first_half = first_half_weeks  # number of weeks in first half
+    first_half = first_half_weeks
 
     def week_distribution_ok(week):
         dists = set(week[level][0] for level in week)
         return dists == set(distributions_list)
 
+    def update_mirror_week(sched, mirror_w):
+        # Instead of copying the first-half distribution, choose a fresh permutation
+        new_perm = random.choice(list(permutations(distributions_list)))
+        for i, level in enumerate(levels):
+            pairing = sched[mirror_w][level][1]
+            new_dist = new_perm[i]
+            new_ref = get_ref_assignment(new_dist, pairing, {t: 0 for t in teams})
+            if new_ref is None:
+                return False
+            sched[mirror_w][level] = (new_dist, pairing, new_ref)
+        return True
+
     for it in range(max_iter):
         candidate_schedule = copy.deepcopy(new_schedule)
-        affected_weeks = set()
-        move_type_rand = random.random()
+        affected_first = set()
+        affected_mirror = set()
         
-        # We'll assign equal probability to each move type.
-        if move_type_rand < 0.25:
-            # Swap Move: Pick one level and two distinct weeks in first half, then swap that level's assignment.
-            level = random.choice(levels)
-            week1, week2 = random.sample(range(first_half), 2)
-            candidate_schedule[week1][level], candidate_schedule[week2][level] = (
-                candidate_schedule[week2][level],
-                candidate_schedule[week1][level],
-            )
-            affected_weeks.update([week1, week2, week1 + first_half, week2 + first_half])
-        elif move_type_rand < 0.5:
-            # Block Move: Change a block of weeks.
-            possible_block_sizes = [bs for bs in [2, 3, 5] if bs <= first_half]
-            block_size = random.choice(possible_block_sizes)
-            start_w = random.randrange(0, first_half - block_size + 1)
-            for w in range(start_w, start_w + block_size):
-                candidate_perm = random.choice(list(permutations(distributions_list)))
-                for level in levels:
-                    pairing = candidate_schedule[w][level][1]  # fixed pairing
-                    new_dist = candidate_perm[levels.index(level)]
-                    candidate_ref = get_ref_assignment(new_dist, pairing, {t: 0 for t in teams})
-                    if candidate_ref is None:
-                        candidate_schedule = None
-                        break
-                    candidate_schedule[w][level] = (new_dist, pairing, candidate_ref)
-                    affected_weeks.add(w)
-                    mirror_w = w + first_half
-                    if mirror_w < len(candidate_schedule):
-                        candidate_schedule[mirror_w][level] = (new_dist, pairing, candidate_ref)
-                        affected_weeks.add(mirror_w)
-                if candidate_schedule is None:
-                    break
-            if candidate_schedule is None:
-                continue
-        elif move_type_rand < 1:
-            # Rotation Move: For one level in one week, rotate its distribution.
-            level = random.choice(levels)
-            w = random.choice(range(first_half))
-            distribution, pairing, ref_assignment = candidate_schedule[w][level]
-            # Choose a rotation: there are 3 possible non-trivial rotations of a 3-tuple.
-            # For example, if distribution = (a,b,c), possible rotations: (b,c,a) or (c,a,b).
-            rot = random.choice([1, 2])
-            new_distribution = distribution[rot:] + distribution[:rot]
-            candidate_ref = get_ref_assignment(new_distribution, pairing, {t: 0 for t in teams})
-            if candidate_ref is None:
-                continue
-            candidate_schedule[w][level] = (new_distribution, pairing, candidate_ref)
-            mirror_w = w + first_half
-            if mirror_w < len(candidate_schedule):
-                candidate_schedule[mirror_w][level] = (new_distribution, pairing, candidate_ref)
-            affected_weeks.update([w, mirror_w])
+        # Swap Move: swap a level’s assignment between two first-half weeks.
+        level = random.choice(levels)
+        week1, week2 = random.sample(range(first_half), 2)
+        candidate_schedule[week1][level], candidate_schedule[week2][level] = (
+            candidate_schedule[week2][level],
+            candidate_schedule[week1][level],
+        )
+        affected_first.update([week1, week2])
+        affected_mirror.update([week1 + first_half, week2 + first_half])
         
-        # Check that every affected week maintains the correct overall slot distribution.
+        # Check affected weeks for overall distribution correctness.
         valid_move = True
-        for w in affected_weeks:
+        for w in affected_first.union(affected_mirror):
             if w < len(candidate_schedule) and not week_distribution_ok(candidate_schedule[w]):
                 valid_move = False
                 break
         if not valid_move:
             continue
-        
+
+        # Update each affected mirror week independently.
+        for w in affected_mirror:
+            if not update_mirror_week(candidate_schedule, w):
+                valid_move = False
+                break
+        if not valid_move:
+            continue
+
         candidate_cost = weighted_play_imbalance_metric(candidate_schedule)
         delta = candidate_cost - current_cost
         if delta < 0 or random.random() < math.exp(-delta / temp):
@@ -394,15 +360,6 @@ def compute_overall_ref_counts(schedule):
 
 
 def move_ref_games_schedule(schedule, max_iterations=1000):
-    """
-    Attempt to improve referee balance by swapping the pairings between two games within
-    a level (and recomputing referee assignments) in a given week, without altering the fixed
-    slot distribution. Any change is mirrored to the corresponding second-half week.
-
-    Before accepting a candidate move, we check that the set of slot distributions for that week
-    (and its mirror) remains exactly equal to set(distributions_list). This ensures that the global
-    slot distribution (e.g. Slot1:1, Slot2:3, Slot3:2, Slot4:3) is preserved.
-    """
     new_schedule = copy.deepcopy(schedule)
 
     def imbalance(level, overall_counts):
@@ -411,8 +368,6 @@ def move_ref_games_schedule(schedule, max_iterations=1000):
         return sum(abs(x - mean) for x in vals)
 
     def week_distribution_ok(week):
-        # For a given week (a dict mapping level->(distribution, pairing, ref_assignment)),
-        # check that the set of distributions equals the required set.
         dists = set(week[level][0] for level in week)
         return dists == set(distributions_list)
 
@@ -425,7 +380,6 @@ def move_ref_games_schedule(schedule, max_iterations=1000):
         improved = False
         overall = compute_overall_ref_counts(new_schedule)
         for w in range(first_half_weeks):
-            # Check that the week and its mirror currently have the right distributions.
             if not week_distribution_ok(new_schedule[w]):
                 print(f"Week {w+1} distribution check failed before move!")
                 continue
@@ -441,23 +395,16 @@ def move_ref_games_schedule(schedule, max_iterations=1000):
                 distribution, pairing, ref_assignment = new_schedule[w][level]
                 best_assignment = (distribution, pairing, ref_assignment)
                 best_balance = current_balance[level]
-                # Try swapping pairings between two games (indices 0,1), (0,2), or (1,2).
                 for i, j in [(0, 1), (0, 2), (1, 2)]:
                     new_pairing = pairing.copy()
                     new_pairing[i], new_pairing[j] = new_pairing[j], new_pairing[i]
-                    # The distribution remains unchanged.
                     new_ref_assignment = get_ref_assignment(
                         distribution, new_pairing, overall[level]
                     )
                     if new_ref_assignment is None:
                         continue
                     candidate = (distribution, new_pairing, new_ref_assignment)
-                    # Ensure the distribution portion is identical.
-                    if candidate[0] != distribution:
-                        continue  # must not change distribution
-                    # Also, verify that this candidate move does not change the week's overall distributions.
-                    # (Since we haven't changed distribution for any level in this week, this should be OK.)
-                    # Now estimate new overall ref counts for this level if we accept the move.
+                    # The distribution remains unchanged.
                     temp_counts = overall[level].copy()
                     for t in ref_assignment:
                         temp_counts[t] -= 1
@@ -470,24 +417,40 @@ def move_ref_games_schedule(schedule, max_iterations=1000):
                     if new_balance < best_balance:
                         best_balance = new_balance
                         best_assignment = candidate
-                # If an improved assignment was found, tentatively update the week.
                 if best_assignment != (distribution, pairing, ref_assignment):
-                    # Temporarily update week w for this level.
                     original = new_schedule[w][level]
                     new_schedule[w][level] = best_assignment
-                    # Mirror the change in the corresponding second-half week.
+                    # In the mirror week, keep its distribution but update the pairing.
                     if mirror_w < len(new_schedule):
-                        original_mirror = new_schedule[mirror_w][level]
-                        new_schedule[mirror_w][level] = best_assignment
-                    # Check that both week and mirror still have the required distributions.
+                        mirror_distribution = new_schedule[mirror_w][level][0]
+                        new_ref = get_ref_assignment(
+                            mirror_distribution,
+                            best_assignment[1],
+                            {t: 0 for t in teams},
+                        )
+                        if new_ref is None:
+                            new_schedule[w][level] = original
+                            continue
+                        new_schedule[mirror_w][level] = (
+                            mirror_distribution,
+                            best_assignment[1],
+                            new_ref,
+                        )
                     if not week_distribution_ok(new_schedule[w]) or (
                         mirror_w < len(new_schedule)
                         and not week_distribution_ok(new_schedule[mirror_w])
                     ):
-                        # Revert the change.
                         new_schedule[w][level] = original
                         if mirror_w < len(new_schedule):
-                            new_schedule[mirror_w][level] = original_mirror
+                            new_schedule[mirror_w][level] = (
+                                new_schedule[mirror_w][level][0],
+                                pairing,
+                                get_ref_assignment(
+                                    new_schedule[mirror_w][level][0],
+                                    pairing,
+                                    {t: 0 for t in teams},
+                                ),
+                            )
                     else:
                         overall = compute_overall_ref_counts(new_schedule)
                         current_balance[level] = imbalance(level, overall)
@@ -552,44 +515,40 @@ def validate_schedule(schedule, teams, levels):
     return True, "Schedule is valid"
 
 
-def print_schedule(schedule):
+def print_schedule(schedule_data):
     """
-    Print schedule week by week, slot by slot.
-    Teams are displayed as A1-A6, B1-B6, C1-C6.
+    Print the formatted schedule in a readable format.
+
+    Args:
+        schedule_data: The formatted schedule data (list of weeks with slot information)
     """
-
-    def team_name(team, level):
-        return f"{level}{team + 1}"
-
     print("\n=== FULL SCHEDULE ===")
-    for week_num, week in enumerate(schedule, 1):
+
+    # Iterate through each week
+    for week in schedule_data:
+        week_num = week["week"]
         print(f"\nWEEK {week_num}")
         print("-" * 50)
 
-        # Collect all games for each slot
-        slot_games = {1: [], 2: [], 3: [], 4: []}
-        for level in levels:
-            distribution, pairing, ref_assignment = week[level]
-            for game_idx, (slot, pair, ref) in enumerate(
-                zip(distribution, pairing, ref_assignment)
-            ):
-                team1, team2 = pair
-                slot_games[slot].append(
-                    {
-                        "level": level,
-                        "teams": (team_name(team1, level), team_name(team2, level)),
-                        "ref": team_name(ref, level),
-                    }
-                )
+        # Iterate through each slot (1-4)
+        for slot_num in range(1, 5):
+            slot_key = str(slot_num)
 
-        # Print games slot by slot
-        for slot in range(1, 5):
-            if slot_games[slot]:
-                print(f"\nSlot {slot}:")
-                for game in slot_games[slot]:
-                    print(
-                        f"  {game['level']}: {game['teams'][0]} vs {game['teams'][1]} (Ref: {game['ref']})"
-                    )
+            # Skip slots with no games
+            if slot_key not in week["slots"] or not week["slots"][slot_key]:
+                continue
+
+            print(f"\nSlot {slot_num}:")
+
+            # Print each game in this slot
+            for game in week["slots"][slot_key]:
+                level = game["level"]
+                team1, team2 = game["teams"]
+                referee = game["ref"]
+
+                print(f"  {level}: {team1} vs {team2} (Ref: {referee})")
+
+    print("\n" + "=" * 50)
 
 
 def find_schedule_attempt():
@@ -623,22 +582,168 @@ def find_schedule_attempt():
     return None
 
 
-def find_schedule(max_attempts=10000, num_cores=16):
+def find_schedule(filename="saved_schedule.json", max_attempts=10000, num_cores=None):
     """
-    Try to find a valid schedule using parallel processing.
-    Uses num_cores processes, making max_attempts total tries.
+    Find a schedule by first trying to load from a file, then generating a new one if needed.
+    Uses parallel processing for generation.
+
+    Args:
+        filename (str): Path to the saved schedule file
+        max_attempts (int): Maximum number of attempts to find a valid schedule
+        num_cores (int): Number of cores to use for parallel processing. Defaults to all available.
+
+    Returns:
+        dict: The formatted schedule data
     """
+    import time
+    import os
+    from multiprocessing import Pool, cpu_count
+
+    # First try to load a saved schedule
+    schedule_data = load_schedule_from_file(filename)
+
+    # If schedule exists in file, return it
+    if schedule_data is not None:
+        print(f"Schedule loaded from {filename}")
+        return schedule_data
+
+    # Otherwise, generate a new schedule using multiprocessing
+    print(f"No schedule found in {filename}. Generating new schedule...")
+    start_time = time.time()
+
+    if num_cores is None:
+        num_cores = cpu_count()
+
     print(f"Searching for valid schedule using {num_cores} cores...")
     attempts_per_batch = num_cores
+
+    raw_schedule = None
+
     for attempt in range(0, max_attempts, attempts_per_batch):
         with Pool(num_cores) as pool:
             schedules = pool.starmap(find_schedule_attempt, [()] * attempts_per_batch)
             for schedule in schedules:
                 if schedule is not None:
-                    return schedule
+                    raw_schedule = schedule
+                    break
 
-    print(f"\nNo valid schedule found after {max_attempts} attempts")
-    return None
+        if raw_schedule is not None:
+            break
+
+        # Print progress every few batches
+        if (attempt // attempts_per_batch) % 10 == 0:
+            print(f"Attempted {attempt + attempts_per_batch} schedules...")
+
+    if raw_schedule is None:
+        print(f"\nNo valid schedule found after {max_attempts} attempts")
+        return None
+
+    # Format and save the successful schedule
+    end_time = time.time()
+    print(f"Schedule found in {end_time - start_time:.2f} seconds")
+
+    # Convert to the standardized JSON format
+    schedule_data = convert_to_formatted_schedule(raw_schedule)
+
+    # Save the newly generated schedule
+    save_schedule_to_file(schedule_data, filename)
+    print(f"Schedule saved to {filename}")
+
+    return schedule_data
+
+
+def convert_to_formatted_schedule(schedule):
+    """Convert internal schedule format to the standardized JSON format"""
+    # Create a dictionary of team names by level
+    team_names_by_level = {
+        "A": [f"HighTeam{i+1}" for i in range(6)],
+        "B": [f"MidTeam{i+1}" for i in range(6)],
+        "C": [f"LowTeam{i+1}" for i in range(6)],
+    }
+
+    def team_name(team_idx, level):
+        if level in team_names_by_level and 0 <= team_idx < len(
+            team_names_by_level[level]
+        ):
+            return team_names_by_level[level][team_idx]
+        return f"{level}{team_idx + 1}"  # Fallback
+
+    # Restructure the schedule for better readability
+    formatted_schedule = []
+
+    for week_num, week in enumerate(schedule, 1):
+        week_data = {"week": week_num, "slots": {}}
+
+        # Organize games by slot
+        for slot in range(1, 5):
+            week_data["slots"][str(slot)] = []
+
+        # Populate slots with games
+        for level in levels:
+            distribution, pairing, ref_assignment = week[level]
+            for game_idx, (slot, pair, ref) in enumerate(
+                zip(distribution, pairing, ref_assignment)
+            ):
+                team1_idx, team2_idx = pair
+                game = {
+                    "level": level,
+                    "teams": [
+                        team_name(team1_idx, level),
+                        team_name(team2_idx, level),
+                    ],
+                    "ref": team_name(ref, level),
+                }
+                week_data["slots"][str(slot)].append(game)
+
+        formatted_schedule.append(week_data)
+
+    return formatted_schedule
+
+
+# Update the load function to ensure it returns the same format
+def load_schedule_from_file(filename="saved_schedule.json"):
+    """Load a schedule from a JSON file if it exists"""
+    if not os.path.exists(filename):
+        print(f"No saved schedule found at {filename}")
+        return None
+
+    try:
+        with open(filename, "r") as f:
+            formatted_schedule = json.load(f)
+
+        print(f"Schedule loaded from {filename}")
+        return formatted_schedule  # Return directly in the new format
+    except Exception as e:
+        print(f"Error loading schedule: {e}")
+        return None
+
+
+# Modified save function to also store team information
+def save_schedule_to_file(schedule, filename="saved_schedule.json"):
+    """Save a schedule to a JSON file with descriptive team names and level/team information"""
+    try:
+        # Create a dictionary of team names by level
+        team_names_by_level = {
+            "A": [f"HighTeam{i+1}" for i in range(6)],
+            "B": [f"MidTeam{i+1}" for i in range(6)],
+            "C": [f"LowTeam{i+1}" for i in range(6)],
+        }
+
+        with open(filename, "w") as f:
+            json.dump(schedule, f, indent=2)
+
+        # Save team information in a separate file
+        team_info = {"levels": levels, "teams_by_level": team_names_by_level}
+
+        with open(f"{os.path.splitext(filename)[0]}_teams.json", "w") as f:
+            json.dump(team_info, f, indent=2)
+
+        print(f"Schedule saved to {filename}")
+        print(f"Team information saved to {os.path.splitext(filename)[0]}_teams.json")
+        return True
+    except Exception as e:
+        print(f"Error saving schedule: {e}")
+        return False
 
 
 if __name__ == "__main__":
@@ -650,9 +755,24 @@ if __name__ == "__main__":
     )
     from stats import print_statistics
 
-    final_schedule = find_schedule()
+    filename = "/home/platelminto/Documents/dev/usbf-schedule/saved_schedule.json"
 
-    if final_schedule is not None:
+    # First try to load a saved schedule
+    final_schedule = load_schedule_from_file(filename)
+
+    # If no valid schedule found in file, generate a new one
+    if final_schedule is None:
+        print("Generating new schedule...")
+        start_time = time.time()
+        final_schedule = find_schedule()
+        end_time = time.time()
+
+        if final_schedule:
+            print(f"Schedule found in {end_time - start_time:.2f} seconds")
+            # Save the newly generated schedule
+            save_schedule_to_file(final_schedule, filename)
+
+    if final_schedule:
         print_schedule(final_schedule)
         print("\nRunning tests on final schedule:")
         pt = pairing_tests(final_schedule, levels, teams)
@@ -666,4 +786,4 @@ if __name__ == "__main__":
         print(f"  Global slot distribution: {gst}")
         print_statistics(final_schedule, teams, levels)
     else:
-        print("No valid schedule generated.")
+        print("Failed to generate a valid schedule.")
