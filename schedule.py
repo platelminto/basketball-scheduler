@@ -121,25 +121,42 @@ def generate_level_slot_assignments(level, num_games):
     Each candidate is a tuple of length num_games with values in {1,...,config["num_slots"]}.
     
     Local constraints:
-      - For each slot s, the number of games assigned to s is <= (teams-1)//2.
+      - For each slot s, the number of games assigned to s is <= teams//3.
       - There must be at least 2 distinct slots used.
       - The set of slots used must be contiguous (e.g. {2,3} is okay; {1,3} is not).
     """
     assignments = []
     num_slots = config["num_slots"]
-    max_local = (config["teams_per_level"][level] - 1) // 2  # e.g., for 6 teams, max 2 games per slot.
+    num_teams = config["teams_per_level"][level]
+    max_local = num_teams // 3  # Each game needs 2 teams playing + 1 team refereeing
+
     for candidate in product(range(1, num_slots + 1), repeat=num_games):
-        # Check local capacity constraint for each slot.
-        if any(candidate.count(s) > max_local for s in range(1, num_slots + 1)):
+        # Count all slots at once instead of using any() with multiple count() calls
+        slot_counts = {}
+        for s in candidate:
+            slot_counts[s] = slot_counts.get(s, 0) + 1
+        
+        # Check if we have at least 2 distinct slots before sorting
+        if len(slot_counts) < 2:
             continue
-        # Require at least 2 distinct slots (to allow adjacent-slot referee assignment).
-        slots_used = sorted(set(candidate))
-        if len(slots_used) < 2:
+            
+        # Check if any slot exceeds max_local without using any()
+        exceeds_max = False
+        for count in slot_counts.values():
+            if count > max_local:
+                exceeds_max = True
+                break
+        if exceeds_max:
             continue
-        # Check that the used slots are contiguous.
-        if slots_used[-1] - slots_used[0] != len(slots_used) - 1:
-            continue
-        assignments.append(candidate)
+            
+        # Check contiguity - find min and max slot
+        min_slot = min(slot_counts.keys())
+        max_slot = max(slot_counts.keys())
+        
+        # For contiguous slots, every slot between min and max must be used
+        if max_slot - min_slot + 1 == len(slot_counts):
+            assignments.append(candidate)
+            
     return assignments
 
 #############################################
@@ -678,8 +695,8 @@ def find_schedule_attempt():
 def find_schedule(
     use_saved_schedule=True,
     filename="saved_schedule.json",
-    max_attempts=10000,
-    num_cores=14,
+    max_attempts=15,
+    num_cores=1,
 ):
     """
     Find a schedule by first trying to load from a file, then generating a new one if needed.
