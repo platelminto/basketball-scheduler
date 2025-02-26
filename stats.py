@@ -25,24 +25,82 @@ def compute_games_per_slot(schedule, levels):
     return counts
 
 
-def compute_team_play_counts(schedule, teams, levels):
+def create_teams_dict(teams, levels, config=None):
+    """
+    Create a standardized teams dictionary based on the type of input.
+    Makes the function work with either team indices or team names.
+    """
+    # Use global config if not provided
+    if config is None:
+        from schedule import config
+
+    teams_dict = {}
+
+    # Handle different input types
+    if isinstance(teams, dict):
+        # Teams is already a dict mapping levels to teams
+        teams_dict = teams
+    elif isinstance(teams, int):
+        # Teams is a number - create numbered teams for each level
+        teams_dict = {level: list(range(teams)) for level in levels}
+    else:
+        # Teams is a list - split evenly across levels
+        teams_per_level = len(teams) // len(levels)
+        for i, level in enumerate(levels):
+            start = i * teams_per_level
+            end = start + teams_per_level
+            teams_dict[level] = teams[start:end]
+
+    # Create a mapping between team names and indices
+    name_to_index = {}
+    index_to_name = {}
+
+    for level in levels:
+        team_count = config["teams_per_level"][level]
+        name_to_index[level] = {}
+        index_to_name[level] = {}
+
+        # Create the mappings based on level
+        for idx in range(team_count):
+            if level == "A":
+                name = f"HighTeam{idx+1}"
+            elif level == "B":
+                name = f"MidTeam{idx+1}"
+            elif level == "C":
+                name = f"LowTeam{idx+1}"
+            else:
+                name = f"{level}Team{idx+1}"
+
+            name_to_index[level][name] = idx
+            index_to_name[level][idx] = name
+
+    return {
+        "by_index": teams_dict,
+        "name_to_index": name_to_index,
+        "index_to_name": index_to_name,
+    }
+
+
+def compute_team_play_counts(schedule, teams, levels, config=None):
     """
     Compute how many times each team plays in each slot.
-
-    Args:
-        schedule: The formatted schedule data
-        teams: List of team names or a number of teams or dict of teams by level
-        levels: List of competition levels
-
-    Returns:
-        dict: Dictionary mapping levels to teams to slots to counts
+    Works with both team indices and team names.
     """
-    # Create teams_dict based on the type of teams parameter
-    teams_dict = create_teams_dict(teams, levels)
+    # Use global config if not provided
+    if config is None:
+        from schedule import config
 
-    # Initialize counts
+    # Create teams dictionary with mappings
+    teams_data = create_teams_dict(teams, levels, config)
+    teams_dict = teams_data["by_index"]
+    name_to_index = teams_data["name_to_index"]
+
+    # Initialize counts - use configurable number of slots
     counts = {
-        level: {t: {s: 0 for s in range(1, 5)} for t in teams_dict[level]}
+        level: {
+            t: {s: 0 for s in range(1, config["num_slots"] + 1)}
+            for t in teams_dict[level]
+        }
         for level in levels
     }
 
@@ -53,33 +111,36 @@ def compute_team_play_counts(schedule, teams, levels):
             for game in games:
                 level = game["level"]
                 if level in levels:
-                    team1, team2 = game["teams"]
-                    if team1 in teams_dict[level]:
-                        counts[level][team1][slot] += 1
-                    if team2 in teams_dict[level]:
-                        counts[level][team2][slot] += 1
+                    for team_name in game["teams"]:
+                        # Convert team name to index for counting
+                        if team_name in name_to_index[level]:
+                            team_idx = name_to_index[level][team_name]
+                            if team_idx in teams_dict[level]:
+                                counts[level][team_idx][slot] += 1
 
     return counts
 
 
-def compute_team_ref_counts(schedule, teams, levels):
+def compute_team_ref_counts(schedule, teams, levels, config=None):
     """
     Compute how many times each team referees in each slot.
-
-    Args:
-        schedule: The formatted schedule data
-        teams: List of team names or a number of teams or dict of teams by level
-        levels: List of competition levels
-
-    Returns:
-        dict: Dictionary mapping levels to teams to slots to counts
+    Works with both team indices and team names.
     """
-    # Create teams_dict based on the type of teams parameter
-    teams_dict = create_teams_dict(teams, levels)
+    # Use global config if not provided
+    if config is None:
+        from schedule import config
 
-    # Initialize counts
+    # Create teams dictionary with mappings
+    teams_data = create_teams_dict(teams, levels, config)
+    teams_dict = teams_data["by_index"]
+    name_to_index = teams_data["name_to_index"]
+
+    # Initialize counts - use configurable number of slots
     counts = {
-        level: {t: {s: 0 for s in range(1, 5)} for t in teams_dict[level]}
+        level: {
+            t: {s: 0 for s in range(1, config["num_slots"] + 1)}
+            for t in teams_dict[level]
+        }
         for level in levels
     }
 
@@ -90,135 +151,109 @@ def compute_team_ref_counts(schedule, teams, levels):
             for game in games:
                 level = game["level"]
                 if level in levels:
-                    referee = game["ref"]
-                    if referee in teams_dict[level]:
-                        counts[level][referee][slot] += 1
+                    ref_name = game["ref"]
+                    if ref_name in name_to_index[level]:
+                        ref_idx = name_to_index[level][ref_name]
+                        if ref_idx in teams_dict[level]:
+                            counts[level][ref_idx][slot] += 1
 
     return counts
 
 
-def compute_overall_ref_counts(schedule, teams, levels):
+def compute_overall_ref_counts(schedule, teams, levels, config=None):
     """
-    Compute the total number of times each team referees.
-
-    Args:
-        schedule: The formatted schedule data
-        teams: List of team names or a number of teams or dict of teams by level
-        levels: List of competition levels
-
-    Returns:
-        dict: Dictionary mapping levels to teams to counts
+    Compute total times each team referees across all slots.
+    Works with both team indices and team names.
     """
-    # Create teams_dict based on the type of teams parameter
-    teams_dict = create_teams_dict(teams, levels)
+    # Use global config if not provided
+    if config is None:
+        from schedule import config
 
-    # Initialize counts
+    # Create teams dictionary with mappings
+    teams_data = create_teams_dict(teams, levels, config)
+    teams_dict = teams_data["by_index"]
+    name_to_index = teams_data["name_to_index"]
+
     counts = {level: {t: 0 for t in teams_dict[level]} for level in levels}
 
-    # Count total referee assignments
     for week in schedule:
-        for slot_key, games in week["slots"].items():
+        for _, games in week["slots"].items():
             for game in games:
                 level = game["level"]
                 if level in levels:
-                    referee = game["ref"]
-                    if referee in teams_dict[level]:
-                        counts[level][referee] += 1
+                    ref_name = game["ref"]
+                    if ref_name in name_to_index[level]:
+                        ref_idx = name_to_index[level][ref_name]
+                        if ref_idx in teams_dict[level]:
+                            counts[level][ref_idx] += 1
 
     return counts
 
 
-def create_teams_dict(teams, levels):
-    """
-    Create a dictionary of teams by level based on the input format.
-
-    Args:
-        teams: Can be:
-               - int: number of teams per level
-               - dict: already formatted as {level: [team names]}
-               - list: list of team names to be extracted from the schedule
-        levels: List of competition levels
-
-    Returns:
-        dict: Dictionary mapping levels to lists of team names
-    """
-    # If teams is an integer, create team names
-    if isinstance(teams, int):
-        teams_dict = {}
-        for level in levels:
-            if level == "A":
-                teams_dict[level] = [f"HighTeam{i+1}" for i in range(teams)]
-            elif level == "B":
-                teams_dict[level] = [f"MidTeam{i+1}" for i in range(teams)]
-            elif level == "C":
-                teams_dict[level] = [f"LowTeam{i+1}" for i in range(teams)]
-            else:
-                teams_dict[level] = [f"{level}Team{i+1}" for i in range(teams)]
-        return teams_dict
-
-    # If teams is already a dictionary with the right structure, use it directly
-    if isinstance(teams, dict) and all(level in teams for level in levels):
-        return teams
-
-    # If teams is a list or we need to extract team names from the schedule
-    # For now, we'll just create default names
-    teams_dict = {}
-    for level in levels:
-        if level == "A":
-            teams_dict[level] = [f"HighTeam{i+1}" for i in range(6)]
-        elif level == "B":
-            teams_dict[level] = [f"MidTeam{i+1}" for i in range(6)]
-        elif level == "C":
-            teams_dict[level] = [f"LowTeam{i+1}" for i in range(6)]
-        else:
-            teams_dict[level] = [f"{level}Team{i+1}" for i in range(6)]
-
-    return teams_dict
-
-
-def print_statistics(schedule, teams, levels):
+def print_statistics(schedule, teams, levels, config=None):
     """
     Print various statistics for the schedule.
-
-    Args:
-        schedule: The formatted schedule data
-        teams: Number of teams per level, dict of team names, or list of teams
-        levels: List of competition levels
+    Works with both team indices and team names.
+    Compact view with all teams together.
     """
+    # Use global config if not provided
+    if config is None:
+        from schedule import config
+
     print("\n=== STATISTICS ===")
 
-    overall_ref = compute_overall_ref_counts(schedule, teams, levels)
+    # Create teams dictionary with mappings
+    teams_data = create_teams_dict(teams, levels, config)
+    index_to_name = teams_data["index_to_name"]
+
+    overall_ref = compute_overall_ref_counts(schedule, teams, levels, config)
     games_slot = compute_games_per_slot(schedule, levels)
-    play_counts = compute_team_play_counts(schedule, teams, levels)
-    team_ref = compute_team_ref_counts(schedule, teams, levels)
+    play_counts = compute_team_play_counts(schedule, teams, levels, config)
+    team_ref = compute_team_ref_counts(schedule, teams, levels, config)
 
-    print("\nGames per Level by Slot:")
-    for level in games_slot:
-        print(f"Level {level}:")
-        for s in sorted(games_slot[level]):
-            print(f"  Slot {s}: {games_slot[level][s]} games")
+    # Print games per slot with breakdown by level
+    print("\nGames per Slot:")
+    for slot in range(1, config["num_slots"] + 1):
+        print(f"  Slot {slot}:")
+        for level in levels:
+            level_games = games_slot[level][slot] if slot in games_slot[level] else 0
+            print(f"    Level {level}: {level_games} games")
+        # Total for this slot
+        total_games = sum(
+            games_slot[level][slot] if slot in games_slot[level] else 0
+            for level in levels
+        )
+        print(f"    Total: {total_games} games")
 
-    print("\nTeam Play Counts (number of times a team plays in each slot):")
-    for level in play_counts:
-        print(f"Level {level}:")
-        for team in sorted(play_counts[level].keys()):
-            counts = play_counts[level][team]
-            counts_str = ", ".join(f"Slot {s}: {counts[s]}" for s in sorted(counts))
-            print(f"  {team}: {counts_str}")
+    # Print combined play counts for all teams in all levels in one section
+    print("\nTeam Play Counts:")
+    for i, level in enumerate(levels):
+        # Print a dividing line before each level (except the first)
+        if i > 0:
+            print("  " + "-" * 40)  # 40-character dividing line
 
-    print("\nTeam Referee Counts (number of times a team referees, by slot):")
-    for level in team_ref:
-        print(f"Level {level}:")
-        for team in sorted(team_ref[level].keys()):
-            counts = team_ref[level][team]
-            total = sum(counts.values())
-            counts_str = ", ".join(f"Slot {s}: {counts[s]}" for s in sorted(counts))
-            print(f"  {team}: {total} times ( {counts_str} )")
+        # Print level header
+        print(f"  Level {level}:")
 
-    print("\nBalance Statistics (Referee counts per team):")
-    for level in overall_ref:
-        vals = list(overall_ref[level].values())
-        mean = sum(vals) / len(vals)
-        variance = sum((x - mean) ** 2 for x in vals) / len(vals)
-        stddev = math.sqrt(variance)
-        print(f"Level {level}: Mean = {mean:.2f}, StdDev = {stddev:.2f}")
+        for team_idx in sorted(play_counts[level].keys()):
+            team_name = index_to_name[level][team_idx]
+
+            # Create a compact representation of slot play counts
+            slot_counts = []
+            for slot in range(1, config["num_slots"] + 1):
+                plays = play_counts[level][team_idx][slot]
+                refs = team_ref[level][team_idx][slot]
+                slot_counts.append(f"Slot {slot}: {plays} (refs {refs})")
+
+            # Join all slot counts with commas
+            slot_str = ", ".join(slot_counts)
+            print(f"    {team_name}: {slot_str}")  # Note: added indentation
+
+    # Print referee totals as a separate section at the bottom
+    print("\nReferee Totals:")
+    for level in levels:
+        print(f"  Level {level}:")
+        for team_idx in sorted(overall_ref[level].keys()):
+            team_name = index_to_name[level][team_idx]
+            count = overall_ref[level][team_idx]
+            print(f"    {team_name}: {count} times")

@@ -2,14 +2,26 @@ import json
 import os
 
 
-def convert_to_formatted_schedule(schedule, levels):
+def convert_to_formatted_schedule(schedule, levels, config=None):
     """Convert internal schedule format to the standardized JSON format"""
+    # Use global config if not provided
+    if config is None:
+        from schedule import config
+
     # Create a dictionary of team names by level
-    team_names_by_level = {
-        "A": [f"HighTeam{i+1}" for i in range(6)],
-        "B": [f"MidTeam{i+1}" for i in range(6)],
-        "C": [f"LowTeam{i+1}" for i in range(6)],
-    }
+    team_names_by_level = {}
+    for level in levels:
+        team_count = config["teams_per_level"][level]
+        if level == "A":
+            team_names_by_level[level] = [f"HighTeam{i+1}" for i in range(team_count)]
+        elif level == "B":
+            team_names_by_level[level] = [f"MidTeam{i+1}" for i in range(team_count)]
+        elif level == "C":
+            team_names_by_level[level] = [f"LowTeam{i+1}" for i in range(team_count)]
+        else:
+            team_names_by_level[level] = [
+                f"{level}Team{i+1}" for i in range(team_count)
+            ]
 
     def team_name(team_idx, level):
         if level in team_names_by_level and 0 <= team_idx < len(
@@ -24,8 +36,8 @@ def convert_to_formatted_schedule(schedule, levels):
     for week_num, week in enumerate(schedule, 1):
         week_data = {"week": week_num, "slots": {}}
 
-        # Organize games by slot
-        for slot in range(1, 5):
+        # Organize games by slot - use the configured number of slots
+        for slot in range(1, config["num_slots"] + 1):
             week_data["slots"][str(slot)] = []
 
         # Populate slots with games

@@ -14,23 +14,71 @@ from utils import (
 )
 
 ###########################
-# Parameters & Round-Robin
+# Configuration Parameters
 ###########################
 
-teams = list(range(6))  # Teams 0..5 (displayed as 1..6)
-levels = ["A", "B", "C"]
-first_half_weeks = 5  # Weeks 1–5; second half will mirror these for weeks 6–10
-total_weeks = 10
+# Define the scheduling configuration
+config = {
+    # League structure
+    "levels": ["A", "B", "C"],  # Names of the levels/divisions
+    "teams_per_level": {  # Number of teams in each level
+        "A": 6,
+        "B": 6,
+        "C": 6,
+    },
+    # Schedule structure
+    "first_half_weeks": 5,  # Weeks in first half; second half will mirror these
+    "total_weeks": 10,  # Total number of weeks in the season
+    # Slots configuration
+    "num_slots": 4,  # Number of time slots (1-indexed)
+    "courts_per_slot": [
+        1,
+        3,
+        2,
+        3,
+    ],  # Number of courts available in each slot (1-indexed)
+    # Distributions for levels
+    "distributions_list": [
+        (1, 2, 2),  # low-slot distribution
+        (2, 3, 4),  # middle distribution
+        (3, 4, 4),  # high-slot distribution
+    ],
+    # Constraints for play balance
+    "slot_limits": {
+        1: 2,  # Teams can play at most 2 games in slot 1
+        2: 6,  # Teams can play at most 6 games in slots 2 and 3
+        3: 6,
+        4: 4,  # Teams can play at most 4 games in slot 4
+    },
+    # Constraints for referee balance
+    "min_referee_count": 3,  # Minimum times a team must referee in a season per level
+    "max_referee_count": 6,  # Maximum times a team can referee in a season per level
+    # Optimization priorities
+    "priority_slots": [1, 4],  # Slots where balance is more important
+    "priority_multiplier": 100,  # Extra weight for priority slots in balance calculations
+}
+
+# Derived parameters
+levels = config["levels"]
+first_half_weeks = config["first_half_weeks"]
+total_weeks = config["total_weeks"]
+distributions_list = config["distributions_list"]
+
+# Get all teams as a list of integers for each level
+teams = {}
+all_teams = []
+for level in levels:
+    teams[level] = list(range(config["teams_per_level"][level]))
+    all_teams.extend(teams[level])
+
+###########################
+# Parameters & Round-Robin
+###########################
 
 # The three available slot distributions.
 # (When one level gets (1,2,2), another (2,3,4) and the third (3,4,4),
 # the overall weekly capacities are met:
 #  Slot 1: 1 game, Slot 2: 3 games, Slot 3: 2 games, Slot 4: 3 games.)
-distributions_list = [
-    (1, 2, 2),  # low-slot distribution
-    (2, 3, 4),  # middle distribution
-    (3, 4, 4),  # high-slot distribution
-]
 
 
 def generate_round_robin_pairings(n):
@@ -55,7 +103,9 @@ def generate_round_robin_pairings(n):
 # Generate fixed round-robin pairings for each level.
 rr_pairings = {}
 for level in levels:
-    rr_pairings[level] = generate_round_robin_pairings(6)  # 5 rounds for 6 teams
+    rr_pairings[level] = generate_round_robin_pairings(
+        config["teams_per_level"][level]
+    )  # 5 rounds for 6 teams
 
 ##########################################
 # Candidate Referee Assignment Functions
@@ -76,7 +126,7 @@ def candidate_referees_for_game(distribution, pairing, game_index):
             team_to_game[t] = i
     candidates = []
     slot = distribution[game_index]
-    for t in range(6):
+    for t in range(config["teams_per_level"][level]):
         if t in pairing[game_index]:
             continue
         j = team_to_game[t]
@@ -125,7 +175,7 @@ def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
     Each week assignment is a dict mapping level to (distribution, pairing, ref_assignment).
     """
     if initial_ref_counts is None:
-        ref_counts = {level: {t: 0 for t in teams} for level in levels}
+        ref_counts = {level: {t: 0 for t in teams[level]} for level in levels}
     else:
         ref_counts = {level: dict(initial_ref_counts[level]) for level in levels}
     schedule = [None] * weeks
@@ -225,36 +275,30 @@ def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
 
 def weighted_play_imbalance_metric(schedule):
     """
-    Compute a weighted global imbalance metric based solely on hard limits.
-    For each level and team for each slot:
-      - Slot 1 has a hard limit of 2.
-      - Slot 4 has a hard limit of 4.
-      - Slots 2 and 3 have a hard limit of 6.
-    If the actual count exceeds the limit, add:
-         violation_penalty * (count - limit)^2.
-    For slots 1 and 4, multiply the penalty by an extra multiplier.
+    Compute a weighted global imbalance metric based on configured limits.
+    For each level and team for each slot, if the actual count exceeds the limit,
+    add: violation_penalty * (count - limit)^2.
+    For priority slots, multiply the penalty by an extra multiplier.
     Lower values indicate better balance.
     """
     play_counts = compute_team_play_counts(schedule)  # level -> {team -> {slot: count}}
     total = 0.0
     violation_penalty = 1e7  # Penalty factor for exceeding the limit
-    extra_multiplier = 100  # Extra multiplier for slots 1 and 4
 
     for level in levels:
-        for t in teams:
-            for s in [1, 2, 3, 4]:
+        for t in teams[level]:
+            for s in range(1, config["num_slots"] + 1):
                 count = play_counts[level][t][s]
-                # Set limits per slot.
-                if s == 1:
-                    limit = 2
-                elif s == 4:
-                    limit = 4
-                else:  # slots 2 and 3
-                    limit = 6
+                # Get limit from config
+                limit = config["slot_limits"].get(s, float("inf"))
+
                 if count > limit:
-                    if s in [1, 4]:
+                    # Apply extra multiplier for priority slots
+                    if s in config["priority_slots"]:
                         total += (
-                            violation_penalty * extra_multiplier * (count - limit) ** 2
+                            violation_penalty
+                            * config["priority_multiplier"]
+                            * (count - limit) ** 2
                         )
                     else:
                         total += violation_penalty * (count - limit) ** 2
@@ -273,11 +317,6 @@ def balance_playing_slots(
     temp = initial_temp
     first_half = first_half_weeks
 
-    def week_distribution_ok(week):
-        """Check that each level has a different distribution from distributions_list"""
-        dists = set(week[level][0] for level in week)
-        return dists == set(distributions_list)
-
     for it in range(max_iter):
         # Instead of deep copying the entire schedule, we'll just track and modify the specific changed elements
         week = random.randrange(len(new_schedule))
@@ -288,8 +327,8 @@ def balance_playing_slots(
         dist2, pairing2, ref2 = new_schedule[week][level2]
 
         # Compute new referee assignments
-        new_ref1 = get_ref_assignment(dist2, pairing1, {t: 0 for t in teams})
-        new_ref2 = get_ref_assignment(dist1, pairing2, {t: 0 for t in teams})
+        new_ref1 = get_ref_assignment(dist2, pairing1, {t: 0 for t in teams[level1]})
+        new_ref2 = get_ref_assignment(dist1, pairing2, {t: 0 for t in teams[level2]})
 
         # Only proceed if valid referee assignments exist
         if not (new_ref1 and new_ref2):
@@ -300,9 +339,6 @@ def balance_playing_slots(
         temp_week = dict(new_schedule[week])
         temp_week[level1] = (dist2, pairing1, new_ref1)
         temp_week[level2] = (dist1, pairing2, new_ref2)
-
-        if not week_distribution_ok(temp_week):
-            continue
 
         # Apply changes to a temporary schedule for evaluation
         candidate_schedule = [
@@ -335,12 +371,15 @@ def compute_team_play_counts(schedule):
     Each game in a week (for a level) contributes 1 appearance in its slot for each team playing.
     """
     counts = {
-        level: {t: {s: 0 for s in [1, 2, 3, 4]} for t in teams} for level in levels
+        level: {
+            t: {s: 0 for s in range(1, config["num_slots"] + 1)} for t in teams[level]
+        }
+        for level in levels
     }
     for week in schedule:
         for level in week:
             distribution, pairing, _ = week[level]
-            for i in range(3):
+            for i in range(len(pairing)):
                 slot = distribution[i]
                 t1, t2 = pairing[i]
                 counts[level][t1][slot] += 1
@@ -354,7 +393,7 @@ def compute_team_play_counts(schedule):
 
 
 def compute_overall_ref_counts(schedule):
-    counts = {level: {t: 0 for t in teams} for level in levels}
+    counts = {level: {t: 0 for t in teams[level]} for level in levels}
     for week in schedule:
         for level in week:
             _, _, ref_assignment = week[level]
@@ -368,7 +407,7 @@ def compute_overall_ref_counts(schedule):
 #####################################
 
 
-def move_ref_games_schedule(schedule, max_iterations=100):
+def move_ref_games_schedule(schedule, max_iterations=150):
     """
     Improve referee balance using a more aggressive optimization approach
     that still preserves the round-robin property and mirror relationships.
@@ -378,7 +417,7 @@ def move_ref_games_schedule(schedule, max_iterations=100):
 
     def total_ref_imbalance(ref_counts):
         """Calculate referee imbalance with higher penalties for outliers"""
-        teams_list = list(range(6))
+        teams_list = list(range(config["teams_per_level"][level]))
         values = [ref_counts.get(t, 0) for t in teams_list]
         mean = sum(values) / len(values)
         # Use squared differences to penalize outliers more heavily
@@ -508,7 +547,7 @@ def move_ref_games_schedule(schedule, max_iterations=100):
                         mirror_dist = new_schedule[mirror_w][level][0]
                         # Use the same pairing as week w to maintain mirror relationship
                         mirror_ref = get_ref_assignment(
-                            mirror_dist, pairing, {t: 0 for t in teams}
+                            mirror_dist, pairing, {t: 0 for t in teams[level]}
                         )
 
                         if mirror_ref is not None:
@@ -565,51 +604,55 @@ def move_ref_games_schedule(schedule, max_iterations=100):
 
 def validate_schedule(schedule, teams, levels):
     """
-    Validate that:
-    1. No team referees more than 6 times in any level
-    2. No team plays more than 2 times in slot 1 in any level
-    3. No team plays more than 5 times in slot 4 in any level
+    Validate schedule against configured limits:
+    1. Teams must referee between min_referee_count and max_referee_count times in any level
+    2. Teams must play within the configured slot limits
     Returns (bool, str) - (is_valid, error_message)
     """
     # Check referee counts
-    ref_counts = {level: {t: 0 for t in teams} for level in levels}
+    ref_counts = {level: {t: 0 for t in teams[level]} for level in levels}
     for week in schedule:
         for level in week:
             _, _, ref_assignment = week[level]
             for r in ref_assignment:
                 ref_counts[level][r] += 1
 
+    min_ref = config["min_referee_count"]
+    max_ref = config["max_referee_count"]
+
     for level in levels:
-        for team in teams:
-            if ref_counts[level][team] > 6:
+        for team in teams[level]:
+            if ref_counts[level][team] > max_ref or ref_counts[level][team] < min_ref:
                 return (
                     False,
-                    f"Team {team+1} referees {ref_counts[level][team]} times in level {level}",
+                    f"Team {team+1} referees {ref_counts[level][team]} times in level {level} "
+                    f"(should be between {min_ref} and {max_ref})",
                 )
 
-    # Check slot 1 and slot 4 play counts
-    play_counts = {level: {t: {1: 0, 4: 0} for t in teams} for level in levels}
+    # Check slot limits
+    play_counts = {
+        level: {
+            t: {s: 0 for s in range(1, config["num_slots"] + 1)} for t in teams[level]
+        }
+        for level in levels
+    }
     for week in schedule:
         for level in week:
             distribution, pairing, _ = week[level]
             for i, slot in enumerate(distribution):
-                if slot in [1, 4]:
-                    t1, t2 = pairing[i]
-                    play_counts[level][t1][slot] += 1
-                    play_counts[level][t2][slot] += 1
+                t1, t2 = pairing[i]
+                play_counts[level][t1][slot] += 1
+                play_counts[level][t2][slot] += 1
 
     for level in levels:
-        for team in teams:
-            if play_counts[level][team][1] > 2:
-                return (
-                    False,
-                    f"Team {team+1} plays {play_counts[level][team][1]} times in slot 1 in level {level}",
-                )
-            if play_counts[level][team][4] > 4:
-                return (
-                    False,
-                    f"Team {team+1} plays {play_counts[level][team][4]} times in slot 4 in level {level}",
-                )
+        for team in teams[level]:
+            for slot, limit in config["slot_limits"].items():
+                if play_counts[level][team][slot] > limit:
+                    return (
+                        False,
+                        f"Team {team+1} plays {play_counts[level][team][slot]} times in slot {slot} "
+                        f"in level {level} (max is {limit})",
+                    )
 
     return True, "Schedule is valid"
 
@@ -748,7 +791,8 @@ if __name__ == "__main__":
         gst = global_slot_distribution_test(final_schedule)
         mpt = mirror_pairing_test(final_schedule)
 
-        print_statistics(final_schedule, teams, levels)
+        # Pass the config to print_statistics
+        print_statistics(final_schedule, teams, levels, config)
 
         print("\nTest Results:")
         print(f"  Pairings correct: {pt}")
