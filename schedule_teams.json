@@ -1,0 +1,33 @@
+{
+  "levels": [
+    "A",
+    "B",
+    "C"
+  ],
+  "teams_by_level": {
+    "A": [
+      "HighTeam1",
+      "HighTeam2",
+      "HighTeam3",
+      "HighTeam4",
+      "HighTeam5",
+      "HighTeam6"
+    ],
+    "B": [
+      "MidTeam1",
+      "MidTeam2",
+      "MidTeam3",
+      "MidTeam4",
+      "MidTeam5",
+      "MidTeam6"
+    ],
+    "C": [
+      "LowTeam1",
+      "LowTeam2",
+      "LowTeam3",
+      "LowTeam4",
+      "LowTeam5",
+      "LowTeam6"
+    ]
+  }
+}

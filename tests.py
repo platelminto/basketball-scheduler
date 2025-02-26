@@ -44,14 +44,13 @@ def pairing_tests(schedule, levels, teams):
     return passed
 
 
-def global_slot_distribution_test(schedule):
+def global_slot_distribution_test(schedule, expected):
     """
     Tests that each slot has the correct number of games across all levels.
 
     Args:
         schedule: The formatted schedule data
     """
-    expected = {1: 1, 2: 3, 3: 2, 4: 3}
     all_ok = True
 
     for week in schedule:

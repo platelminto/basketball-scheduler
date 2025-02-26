@@ -12,6 +12,8 @@ from utils import (
     save_schedule_to_file,
     print_schedule,
 )
+import itertools
+from datetime import datetime
 
 ###########################
 # Configuration Parameters
@@ -31,12 +33,12 @@ config = {
     "total_weeks": 10,  # Total number of weeks in the season
     # Slots configuration
     "num_slots": 4,  # Number of time slots (1-indexed)
-    "courts_per_slot": [
-        1,
-        3,
-        2,
-        3,
-    ],  # Number of courts available in each slot (1-indexed)
+    "courts_per_slot": {
+        1: 1,
+        2: 3,
+        3: 2,
+        4: 3,
+    },  # Number of courts available in each slot (1-indexed)
     # Distributions for levels
     # "distributions_list": [
     #     (1, 2, 2),  # low-slot distribution
@@ -44,6 +46,7 @@ config = {
     #     (3, 4, 4),  # high-slot distribution
     # ],
     # Constraints for play balance
+    # These are the maximum number of games a team can play in a slot for the whole season.
     "slot_limits": {
         1: 2,  # Teams can play at most 2 games in slot 1
         2: 6,  # Teams can play at most 6 games in slots 2 and 3
@@ -51,7 +54,7 @@ config = {
         4: 4,  # Teams can play at most 4 games in slot 4
     },
     # Constraints for referee balance
-    "min_referee_count": 3,  # Minimum times a team must referee in a season per level
+    "min_referee_count": 4,  # Minimum times a team must referee in a season per level
     "max_referee_count": 6,  # Maximum times a team can referee in a season per level
     # Optimization priorities
     "priority_slots": [1, 4],  # Slots where balance is more important
@@ -303,10 +306,9 @@ def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
                 # Check global capacity: for each slot, usage + candidate_count <= courts available.
                 feasible = True
                 for s in range(1, config["num_slots"] + 1):
-                    if (
-                        current_usage[s] + candidate_count.get(s, 0)
-                        > config["courts_per_slot"][s - 1]
-                    ):
+                    if current_usage[s] + candidate_count.get(s, 0) > config[
+                        "courts_per_slot"
+                    ].get(s, 0):
                         feasible = False
                         break
                 if not feasible:
@@ -385,10 +387,9 @@ def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
                 # Check that global capacity is not exceeded.
                 feasible = True
                 for s in range(1, config["num_slots"] + 1):
-                    if (
-                        current_usage[s] + candidate_count.get(s, 0)
-                        > config["courts_per_slot"][s - 1]
-                    ):
+                    if current_usage[s] + candidate_count.get(s, 0) > config[
+                        "courts_per_slot"
+                    ].get(s, 0):
                         feasible = False
                         break
                 if not feasible:
@@ -444,7 +445,7 @@ def weighted_play_imbalance_metric(schedule):
     """
     play_counts = compute_team_play_counts(schedule)  # level -> {team -> {slot: count}}
     total = 0.0
-    violation_penalty = 1e7  # Penalty factor for exceeding the limit
+    violation_penalty = 1e6  # Penalty factor for exceeding the limit
 
     for level in levels:
         for t in teams[level]:
@@ -522,12 +523,12 @@ def is_week_global_valid(week_assignment):
         for s in slot_assignment:
             usage[s] += 1
     for s in usage:
-        if usage[s] != config["courts_per_slot"][s - 1]:
+        if usage[s] != config["courts_per_slot"].get(s, 0):
             return False
     return True
 
 
-def composite_objective_no_global(schedule, weight_play=1.0, weight_ref=1.0):
+def composite_objective(schedule, weight_play=1.0, weight_ref=1.0):
     """
     Compute the composite objective from play imbalance and referee imbalance only.
     (Global slot distribution is now enforced as a hard constraint.)
@@ -540,15 +541,40 @@ def composite_objective_no_global(schedule, weight_play=1.0, weight_ref=1.0):
     return weight_play * play_cost + weight_ref * ref_cost
 
 
-def balance_schedule(schedule, max_iterations=300, weight_play=1.0, weight_ref=10.0):
+# Update balance_schedule to accept the new parameters
+def balance_schedule(
+    schedule,
+    max_iterations=300,
+    weight_play=0.1,
+    weight_ref=10.0,
+    cooling_rate=0.9,
+    initial_temp=5.0,
+    candidate_prob=1.0,
+    swap_prob=0.0,
+):
     """
     Merged local search that improves play and referee balance while enforcing a hard
     global slot distribution constraint. Any move that causes a week's slot usage to deviate
     from config["courts_per_slot"] is rejected.
+
+    Parameters:
+        schedule: The input schedule to balance
+        max_iterations: Maximum number of iterations
+        weight_play: Weight for play balance objective
+        weight_ref: Weight for referee balance objective
+        cooling_rate: Rate at which temperature decreases (0.9-0.99)
+        initial_temp: Starting temperature for simulated annealing
+        candidate_prob: Probability of choosing candidate move (0-1)
+        swap_prob: Probability of choosing swap move (0-1)
     """
+    # Normalize probabilities
+    total_prob = candidate_prob + swap_prob
+    candidate_prob /= total_prob
+    swap_prob /= total_prob
+
     # Create initial copy - we still need one to avoid modifying the input
     new_schedule = copy.deepcopy(schedule)
-    current_obj = composite_objective_no_global(new_schedule, weight_play, weight_ref)
+    current_obj = composite_objective(new_schedule, weight_play, weight_ref)
 
     # Track statistics to guide the search
     rejected_count = 0
@@ -567,12 +593,14 @@ def balance_schedule(schedule, max_iterations=300, weight_play=1.0, weight_ref=1
                 if play_counts[level][team][slot] > limit:
                     problematic_teams[level].append((team, slot))
 
-    initial_temperature = 1.0
-    cooling_rate = 0.001
-    temperature = initial_temperature
+    temperature = initial_temp
 
     for iteration in range(max_iterations):
-        move_type = random.choice(["candidate", "swap"])
+        # Choose move type based on probabilities
+        if random.random() < candidate_prob:
+            move_type = "candidate"
+        else:
+            move_type = "swap"
 
         if move_type == "swap":
             # Swap move: choose two different weeks and one level; swap their assignments (and mirror weeks)
@@ -615,7 +643,7 @@ def balance_schedule(schedule, max_iterations=300, weight_play=1.0, weight_ref=1
 
             # Evaluate if the constraint is satisfied
             if is_valid:
-                candidate_obj = composite_objective_no_global(
+                candidate_obj = composite_objective(
                     new_schedule, weight_play, weight_ref
                 )
                 delta = candidate_obj - current_obj
@@ -694,7 +722,7 @@ def balance_schedule(schedule, max_iterations=300, weight_play=1.0, weight_ref=1
             )
 
             if is_valid:
-                candidate_obj = composite_objective_no_global(
+                candidate_obj = composite_objective(
                     new_schedule, weight_play, weight_ref
                 )
                 delta = candidate_obj - current_obj
@@ -828,6 +856,8 @@ def find_schedule(
     Returns:
         dict: The formatted schedule data
     """
+    # Validate configuration before proceeding
+    validate_config(config)
 
     if use_saved_schedule:
         # First try to load a saved schedule
@@ -900,6 +930,60 @@ def find_schedule(
     return schedule_data, total_attempts
 
 
+def validate_config(config):
+    """
+    Validate the configuration parameters before running the scheduling algorithm.
+    Raises ValueError with detailed message if any constraint is violated.
+    """
+    # Calculate total teams and games per level
+    total_teams = sum(config["teams_per_level"].values())
+    total_games_per_round = total_teams // 2
+    
+    # 1. Check that sum of courts per slot equals total games per round
+    courts_sum = sum(config["courts_per_slot"].values())
+    if courts_sum != total_games_per_round:
+        raise ValueError(
+            f"Sum of courts per slot ({courts_sum}) must equal total games per round "
+            f"(sum of teams per level / 2 = {total_games_per_round})"
+        )
+    
+    # 2. Check that entries in courts_per_slot match num_slots
+    if set(config["courts_per_slot"].keys()) != set(range(1, config["num_slots"] + 1)):
+        raise ValueError(
+            f"Keys in courts_per_slot must exactly match slots 1 through {config['num_slots']}"
+        )
+    
+    # 3. Check that slot limits totals are sufficient
+    games_per_team = (config["total_weeks"] * (total_teams - 1)) // total_teams
+    slot_limits_sum = sum(config["slot_limits"].values())
+    min_required = int(games_per_team * 1.5)
+    if slot_limits_sum < min_required:
+        raise ValueError(
+            f"Sum of slot limits ({slot_limits_sum}) should be at least 1.5x the "
+            f"number of games each team plays ({games_per_team}), which is {min_required}"
+        )
+    
+    # 4. Check that priority slots count is reasonable
+    if len(config["priority_slots"]) > 2:
+        raise ValueError(
+            f"Number of priority slots ({len(config['priority_slots'])}) should be 2 or fewer"
+        )
+    
+    # 5. Ensure total_weeks is exactly double first_half_weeks
+    if config["total_weeks"] != config["first_half_weeks"] * 2:
+        raise ValueError(
+            f"Total weeks ({config['total_weeks']}) should be exactly double the first half weeks "
+            f"({config['first_half_weeks']})"
+        )
+    
+    # Additional check: all priority slots should exist in the configuration
+    for slot in config["priority_slots"]:
+        if slot not in range(1, config["num_slots"] + 1):
+            raise ValueError(f"Priority slot {slot} is outside the valid range (1-{config['num_slots']})")
+    
+    return True
+
+
 if __name__ == "__main__":
     from tests import (
         pairing_tests,
@@ -911,6 +995,13 @@ if __name__ == "__main__":
     from stats import print_statistics
 
     filename = "/home/platelminto/Documents/dev/usbf-schedule/saved_schedule.json"
+
+    # Validate configuration before running
+    try:
+        validate_config(config)
+    except ValueError as e:
+        print(f"Configuration error: {e}")
+        exit(1)
 
     print("Generating new schedule...")
     start_time = time.time()
@@ -926,8 +1017,10 @@ if __name__ == "__main__":
         pt = pairing_tests(final_schedule, levels, teams)
         rpt = referee_player_test(final_schedule)
         ast = adjacent_slot_test(final_schedule)
-        gst = global_slot_distribution_test(final_schedule)
-        mpt = mirror_pairing_test(final_schedule)
+        gst = global_slot_distribution_test(final_schedule, config["courts_per_slot"])
+        mpt = mirror_pairing_test(
+            final_schedule, first_half_weeks=config["first_half_weeks"]
+        )
 
         # Pass the config to print_statistics
         print_statistics(final_schedule, teams, levels, config)

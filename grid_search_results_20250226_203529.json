@@ -1,0 +1,162 @@
+[
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 0,
+    "attempts": 350,
+    "success": true,
+    "duration": 1.2452678680419922
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 1,
+    "attempts": 504,
+    "success": true,
+    "duration": 1.8239367008209229
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 2,
+    "attempts": 2002,
+    "success": false,
+    "duration": 7.1724159717559814
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 3,
+    "attempts": 2002,
+    "success": false,
+    "duration": 7.225688219070435
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 4,
+    "attempts": 1764,
+    "success": true,
+    "duration": 6.389326810836792
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 5,
+    "attempts": 2002,
+    "success": false,
+    "duration": 7.216658115386963
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 6,
+    "attempts": 238,
+    "success": true,
+    "duration": 0.8936665058135986
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 7,
+    "attempts": 1232,
+    "success": true,
+    "duration": 4.396662950515747
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 8,
+    "attempts": 322,
+    "success": true,
+    "duration": 1.1123182773590088
+  },
+  {
+    "params": {
+      "candidate_prob": 0.5,
+      "swap_prob": 0.5,
+      "cooling_rate": 0.95,
+      "initial_temp": 10.0,
+      "weight_play": 1.0,
+      "weight_ref": 10.0,
+      "violation_penalty": 10000000.0,
+      "priority_multiplier": 100
+    },
+    "trial": 9,
+    "attempts": 168,
+    "success": true,
+    "duration": 0.6124391555786133
+  }
+]
