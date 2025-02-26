@@ -282,56 +282,25 @@ def balance_playing_slots(
         candidate_schedule = copy.deepcopy(new_schedule)
         affected_weeks = set()
 
-        # Choose a move type (1: swap level distributions, 2: reorder slots within distribution)
-        move_type = random.choice([1, 2])
+        week = random.randrange(len(candidate_schedule))
+        level1, level2 = random.sample(levels, 2)
 
-        if move_type == 1:
-            # MOVE TYPE 1: Swap slot distributions between levels in a week
-            week = random.randrange(len(candidate_schedule))
-            level1, level2 = random.sample(levels, 2)
+        # Get original information
+        dist1, pairing1, ref1 = candidate_schedule[week][level1]
+        dist2, pairing2, ref2 = candidate_schedule[week][level2]
 
-            # Get original information
-            dist1, pairing1, ref1 = candidate_schedule[week][level1]
-            dist2, pairing2, ref2 = candidate_schedule[week][level2]
+        # Swap distributions but keep pairings fixed
+        # Recalculate referee assignments for new distributions
+        new_ref1 = get_ref_assignment(dist2, pairing1, {t: 0 for t in teams})
+        new_ref2 = get_ref_assignment(dist1, pairing2, {t: 0 for t in teams})
 
-            # Swap distributions but keep pairings fixed
-            # Recalculate referee assignments for new distributions
-            new_ref1 = get_ref_assignment(dist2, pairing1, {t: 0 for t in teams})
-            new_ref2 = get_ref_assignment(dist1, pairing2, {t: 0 for t in teams})
-
-            # Only proceed if valid referee assignments exist
-            if new_ref1 and new_ref2:
-                candidate_schedule[week][level1] = (dist2, pairing1, new_ref1)
-                candidate_schedule[week][level2] = (dist1, pairing2, new_ref2)
-                affected_weeks.add(week)
-            else:
-                continue
-
+        # Only proceed if valid referee assignments exist
+        if new_ref1 and new_ref2:
+            candidate_schedule[week][level1] = (dist2, pairing1, new_ref1)
+            candidate_schedule[week][level2] = (dist1, pairing2, new_ref2)
+            affected_weeks.add(week)
         else:
-            # MOVE TYPE 2: Reorder slots within a distribution for a level
-            week = random.randrange(len(candidate_schedule))
-            level = random.choice(levels)
-
-            # Get original information
-            orig_dist, pairing, _ = candidate_schedule[week][level]
-
-            # Create a new ordering of the same distribution
-            # We're not changing which distribution, just reordering the same slot values
-            slots = list(orig_dist)
-            random.shuffle(slots)
-            new_dist = tuple(slots)
-
-            # Only proceed if distribution actually changed
-            if new_dist == orig_dist:
-                continue
-
-            # Get new referee assignment for this distribution order
-            new_ref = get_ref_assignment(new_dist, pairing, {t: 0 for t in teams})
-            if new_ref:
-                candidate_schedule[week][level] = (new_dist, pairing, new_ref)
-                affected_weeks.add(week)
-            else:
-                continue
+            continue
 
         # For all affected weeks, verify distribution constraint
         valid_move = True
@@ -765,12 +734,14 @@ if __name__ == "__main__":
         ast = adjacent_slot_test(final_schedule)
         gst = global_slot_distribution_test(final_schedule)
         mpt = mirror_pairing_test(final_schedule)
+        
+        print_statistics(final_schedule, teams, levels)
+
         print("\nTest Results:")
         print(f"  Pairings correct: {pt}")
         print(f"  No referee plays in their game: {rpt}")
         print(f"  Adjacent-slot condition: {ast}")
         print(f"  Global slot distribution: {gst}")
         print(f"  Mirror pairings: {mpt}")
-        print_statistics(final_schedule, teams, levels)
     else:
         print("Failed to generate a valid schedule.")
