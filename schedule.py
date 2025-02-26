@@ -279,38 +279,36 @@ def balance_playing_slots(
         return dists == set(distributions_list)
 
     for it in range(max_iter):
-        candidate_schedule = copy.deepcopy(new_schedule)
-        affected_weeks = set()
-
-        week = random.randrange(len(candidate_schedule))
+        # Instead of deep copying the entire schedule, we'll just track and modify the specific changed elements
+        week = random.randrange(len(new_schedule))
         level1, level2 = random.sample(levels, 2)
 
         # Get original information
-        dist1, pairing1, ref1 = candidate_schedule[week][level1]
-        dist2, pairing2, ref2 = candidate_schedule[week][level2]
+        dist1, pairing1, ref1 = new_schedule[week][level1]
+        dist2, pairing2, ref2 = new_schedule[week][level2]
 
-        # Swap distributions but keep pairings fixed
-        # Recalculate referee assignments for new distributions
+        # Compute new referee assignments
         new_ref1 = get_ref_assignment(dist2, pairing1, {t: 0 for t in teams})
         new_ref2 = get_ref_assignment(dist1, pairing2, {t: 0 for t in teams})
 
         # Only proceed if valid referee assignments exist
-        if new_ref1 and new_ref2:
-            candidate_schedule[week][level1] = (dist2, pairing1, new_ref1)
-            candidate_schedule[week][level2] = (dist1, pairing2, new_ref2)
-            affected_weeks.add(week)
-        else:
+        if not (new_ref1 and new_ref2):
             continue
 
-        # For all affected weeks, verify distribution constraint
-        valid_move = True
-        for w in affected_weeks:
-            if not week_distribution_ok(candidate_schedule[w]):
-                valid_move = False
-                break
+        # Check if the swap would maintain valid distributions before modifying the schedule
+        # Create temporary assignment just to check validity
+        temp_week = dict(new_schedule[week])
+        temp_week[level1] = (dist2, pairing1, new_ref1)
+        temp_week[level2] = (dist1, pairing2, new_ref2)
 
-        if not valid_move:
+        if not week_distribution_ok(temp_week):
             continue
+
+        # Apply changes to a temporary schedule for evaluation
+        candidate_schedule = [
+            week_data if i != week else temp_week
+            for i, week_data in enumerate(new_schedule)
+        ]
 
         # Calculate cost of new schedule
         candidate_cost = weighted_play_imbalance_metric(candidate_schedule)
@@ -318,7 +316,9 @@ def balance_playing_slots(
 
         # Accept move based on simulated annealing criteria
         if delta < 0 or random.random() < math.exp(-delta / temp):
-            new_schedule = candidate_schedule
+            # Only if we accept the move, actually update the schedule
+            new_schedule[week][level1] = (dist2, pairing1, new_ref1)
+            new_schedule[week][level2] = (dist1, pairing2, new_ref2)
             current_cost = candidate_cost
 
         # Cool temperature
@@ -412,44 +412,57 @@ def move_ref_games_schedule(schedule, max_iterations=100):
                 continue
 
             for level in levels:
-                # Try swapping entire weeks (preserves round-robin)
-                temp_schedule = copy.deepcopy(new_schedule)
-                temp_schedule[w1][level], temp_schedule[w2][level] = (
-                    temp_schedule[w2][level],
-                    temp_schedule[w1][level],
-                )
+                # Instead of deep copying the entire schedule, only store the values that will change
+                orig_w1_data = new_schedule[w1][level]
+                orig_w2_data = new_schedule[w2][level]
 
-                # Update mirror weeks if needed - FIX: swap entire weeks to maintain mirror structure
+                # Temporarily swap
+                new_schedule[w1][level] = orig_w2_data
+                new_schedule[w2][level] = orig_w1_data
+
+                # Update mirror weeks if needed
                 mirror_w1, mirror_w2 = w1 + first_half_weeks, w2 + first_half_weeks
-                if mirror_w1 < len(temp_schedule) and mirror_w2 < len(temp_schedule):
-                    # Simply swap the entire mirror weeks to preserve the mirroring relationship
-                    temp_schedule[mirror_w1][level], temp_schedule[mirror_w2][level] = (
-                        temp_schedule[mirror_w2][level],
-                        temp_schedule[mirror_w1][level],
-                    )
+                orig_mirror1_data = None
+                orig_mirror2_data = None
+
+                if mirror_w1 < len(new_schedule) and mirror_w2 < len(new_schedule):
+                    # Save mirror week data
+                    orig_mirror1_data = new_schedule[mirror_w1][level]
+                    orig_mirror2_data = new_schedule[mirror_w2][level]
+
+                    # Swap mirror weeks
+                    new_schedule[mirror_w1][level] = orig_mirror2_data
+                    new_schedule[mirror_w2][level] = orig_mirror1_data
 
                 # Check if all weeks have valid distributions
                 valid = True
                 for w in [w1, w2, mirror_w1, mirror_w2]:
-                    if w < len(temp_schedule) and not week_distribution_ok(
-                        temp_schedule[w]
+                    if w < len(new_schedule) and not week_distribution_ok(
+                        new_schedule[w]
                     ):
                         valid = False
                         break
-                if not valid:
-                    continue
 
-                # Calculate new balance
-                new_overall = compute_overall_ref_counts(temp_schedule)
-                new_imbalance = total_ref_imbalance(new_overall[level])
+                # Calculate new balance only if the change is valid
+                if valid:
+                    new_overall = compute_overall_ref_counts(new_schedule)
+                    new_imbalance = total_ref_imbalance(new_overall[level])
 
-                # Accept if improved
-                if new_imbalance < current_imbalance[level]:
-                    new_schedule = temp_schedule
-                    overall = new_overall
-                    current_imbalance[level] = new_imbalance
-                    made_improvement = True
-                    break
+                    # Accept if improved
+                    if new_imbalance < current_imbalance[level]:
+                        overall = new_overall
+                        current_imbalance[level] = new_imbalance
+                        made_improvement = True
+                        break
+
+                # Revert changes if not accepted or not valid
+                if not (valid and new_imbalance < current_imbalance[level]):
+                    new_schedule[w1][level] = orig_w1_data
+                    new_schedule[w2][level] = orig_w2_data
+
+                    if orig_mirror1_data is not None:
+                        new_schedule[mirror_w1][level] = orig_mirror1_data
+                        new_schedule[mirror_w2][level] = orig_mirror2_data
 
             if made_improvement:
                 break
@@ -734,7 +747,7 @@ if __name__ == "__main__":
         ast = adjacent_slot_test(final_schedule)
         gst = global_slot_distribution_test(final_schedule)
         mpt = mirror_pairing_test(final_schedule)
-        
+
         print_statistics(final_schedule, teams, levels)
 
         print("\nTest Results:")
