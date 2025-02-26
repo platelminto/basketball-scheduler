@@ -3,3 +3,4 @@ tempCodeRunnerFile.py
 __pycache__/
 .vscode/
 db.sqlite3
+profile_output

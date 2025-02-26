@@ -264,69 +264,99 @@ def weighted_play_imbalance_metric(schedule):
 def balance_playing_slots(
     schedule, max_iter=10000, initial_temp=1.0, cooling_rate=0.01
 ):
+    """
+    Balance the playing slots while preserving the round-robin structure.
+    Only changes slot distributions and their ordering, never modifies pairings.
+    """
     new_schedule = copy.deepcopy(schedule)
     current_cost = weighted_play_imbalance_metric(new_schedule)
     temp = initial_temp
     first_half = first_half_weeks
 
     def week_distribution_ok(week):
+        """Check that each level has a different distribution from distributions_list"""
         dists = set(week[level][0] for level in week)
         return dists == set(distributions_list)
 
-    def update_mirror_week(sched, mirror_w):
-        # Instead of copying the first-half distribution, choose a fresh permutation
-        new_perm = random.choice(list(permutations(distributions_list)))
-        for i, level in enumerate(levels):
-            pairing = sched[mirror_w][level][1]
-            new_dist = new_perm[i]
-            new_ref = get_ref_assignment(new_dist, pairing, {t: 0 for t in teams})
-            if new_ref is None:
-                return False
-            sched[mirror_w][level] = (new_dist, pairing, new_ref)
-        return True
-
     for it in range(max_iter):
         candidate_schedule = copy.deepcopy(new_schedule)
-        affected_first = set()
-        affected_mirror = set()
+        affected_weeks = set()
 
-        # Swap Move: swap a level's assignment between two first-half weeks.
-        level = random.choice(levels)
-        week1, week2 = random.sample(range(first_half), 2)
-        candidate_schedule[week1][level], candidate_schedule[week2][level] = (
-            candidate_schedule[week2][level],
-            candidate_schedule[week1][level],
-        )
-        affected_first.update([week1, week2])
-        affected_mirror.update([week1 + first_half, week2 + first_half])
+        # Choose a move type (1: swap level distributions, 2: reorder slots within distribution)
+        move_type = random.choice([1, 2])
 
-        # Check affected weeks for overall distribution correctness.
+        if move_type == 1:
+            # MOVE TYPE 1: Swap slot distributions between levels in a week
+            week = random.randrange(len(candidate_schedule))
+            level1, level2 = random.sample(levels, 2)
+
+            # Get original information
+            dist1, pairing1, ref1 = candidate_schedule[week][level1]
+            dist2, pairing2, ref2 = candidate_schedule[week][level2]
+
+            # Swap distributions but keep pairings fixed
+            # Recalculate referee assignments for new distributions
+            new_ref1 = get_ref_assignment(dist2, pairing1, {t: 0 for t in teams})
+            new_ref2 = get_ref_assignment(dist1, pairing2, {t: 0 for t in teams})
+
+            # Only proceed if valid referee assignments exist
+            if new_ref1 and new_ref2:
+                candidate_schedule[week][level1] = (dist2, pairing1, new_ref1)
+                candidate_schedule[week][level2] = (dist1, pairing2, new_ref2)
+                affected_weeks.add(week)
+            else:
+                continue
+
+        else:
+            # MOVE TYPE 2: Reorder slots within a distribution for a level
+            week = random.randrange(len(candidate_schedule))
+            level = random.choice(levels)
+
+            # Get original information
+            orig_dist, pairing, _ = candidate_schedule[week][level]
+
+            # Create a new ordering of the same distribution
+            # We're not changing which distribution, just reordering the same slot values
+            slots = list(orig_dist)
+            random.shuffle(slots)
+            new_dist = tuple(slots)
+
+            # Only proceed if distribution actually changed
+            if new_dist == orig_dist:
+                continue
+
+            # Get new referee assignment for this distribution order
+            new_ref = get_ref_assignment(new_dist, pairing, {t: 0 for t in teams})
+            if new_ref:
+                candidate_schedule[week][level] = (new_dist, pairing, new_ref)
+                affected_weeks.add(week)
+            else:
+                continue
+
+        # For all affected weeks, verify distribution constraint
         valid_move = True
-        for w in affected_first.union(affected_mirror):
-            if w < len(candidate_schedule) and not week_distribution_ok(
-                candidate_schedule[w]
-            ):
+        for w in affected_weeks:
+            if not week_distribution_ok(candidate_schedule[w]):
                 valid_move = False
                 break
+
         if not valid_move:
             continue
 
-        # Update each affected mirror week independently.
-        for w in affected_mirror:
-            if not update_mirror_week(candidate_schedule, w):
-                valid_move = False
-                break
-        if not valid_move:
-            continue
-
+        # Calculate cost of new schedule
         candidate_cost = weighted_play_imbalance_metric(candidate_schedule)
         delta = candidate_cost - current_cost
+
+        # Accept move based on simulated annealing criteria
         if delta < 0 or random.random() < math.exp(-delta / temp):
             new_schedule = candidate_schedule
             current_cost = candidate_cost
+
+        # Cool temperature
         temp = initial_temp * math.exp(-cooling_rate * it)
         if temp < 1e-6:
             break
+
     return new_schedule
 
 
@@ -369,7 +399,7 @@ def compute_overall_ref_counts(schedule):
 #####################################
 
 
-def move_ref_games_schedule(schedule, max_iterations=200):
+def move_ref_games_schedule(schedule, max_iterations=100):
     """
     Improve referee balance using a more aggressive optimization approach
     that still preserves the round-robin property and mirror relationships.
