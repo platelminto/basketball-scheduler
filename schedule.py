@@ -402,41 +402,6 @@ def weighted_play_imbalance_metric(schedule):
     return total
 
 
-def balance_playing_slots(schedule, max_iter=10000, initial_temp=1.0, cooling_rate=0.01):
-    new_schedule = copy.deepcopy(schedule)
-    current_cost = weighted_play_imbalance_metric(new_schedule)
-    temp = initial_temp
-
-    for it in range(max_iter):
-        week = random.randrange(len(new_schedule))
-        level1, level2 = random.sample(levels, 2)
-
-        dist1, pairing1, ref1 = new_schedule[week][level1]
-        dist2, pairing2, ref2 = new_schedule[week][level2]
-
-        new_ref1 = get_ref_assignment(level1, dist2, pairing1, {t: 0 for t in teams[level1]})
-        new_ref2 = get_ref_assignment(level2, dist1, pairing2, {t: 0 for t in teams[level2]})
-        if not (new_ref1 and new_ref2):
-            continue
-
-        new_schedule[week][level1] = (dist2, pairing1, new_ref1)
-        new_schedule[week][level2] = (dist1, pairing2, new_ref2)
-        candidate_cost = weighted_play_imbalance_metric(new_schedule)
-        delta = candidate_cost - current_cost
-
-        if delta < 0 or random.random() < math.exp(-delta / temp):
-            current_cost = candidate_cost
-        else:
-            new_schedule[week][level1] = (dist1, pairing1, ref1)
-            new_schedule[week][level2] = (dist2, pairing2, ref2)
-
-        temp = initial_temp * math.exp(-cooling_rate * it)
-        if temp < 1e-6:
-            break
-
-    return new_schedule
-
-
 def compute_team_play_counts(schedule):
     """
     For each level, compute a dict: team -> {slot: count} of playing appearances.
@@ -515,11 +480,11 @@ def balance_schedule(schedule, max_iterations=300, weight_play=1.0, weight_ref=1
     global slot distribution constraint. Any move that causes a week's slot usage to deviate
     from config["courts_per_slot"] is rejected.
     """
+    # Create initial copy - we still need one to avoid modifying the input
     new_schedule = copy.deepcopy(schedule)
     current_obj = composite_objective_no_global(new_schedule, weight_play, weight_ref)
     
     for iteration in range(max_iterations):
-        candidate_schedule = copy.deepcopy(new_schedule)
         move_type = random.choice(["candidate", "swap"])
         
         if move_type == "swap":
@@ -527,62 +492,97 @@ def balance_schedule(schedule, max_iterations=300, weight_play=1.0, weight_ref=1
             w1, w2 = random.sample(range(config["first_half_weeks"]), 2)
             level = random.choice(levels)
             
-            # Swap the assignments in the first half.
-            orig_w1 = candidate_schedule[w1][level]
-            orig_w2 = candidate_schedule[w2][level]
-            candidate_schedule[w1][level] = orig_w2
-            candidate_schedule[w2][level] = orig_w1
+            # Save original assignments before swapping
+            orig_w1 = new_schedule[w1][level]
+            orig_w2 = new_schedule[w2][level]
             
-            # Swap the mirror weeks as well.
+            # Swap in-place
+            new_schedule[w1][level] = orig_w2
+            new_schedule[w2][level] = orig_w1
+            
+            # Handle mirror weeks
             mirror_w1 = w1 + config["first_half_weeks"]
             mirror_w2 = w2 + config["first_half_weeks"]
-            if mirror_w1 < len(candidate_schedule) and mirror_w2 < len(candidate_schedule):
-                orig_m1 = candidate_schedule[mirror_w1][level]
-                orig_m2 = candidate_schedule[mirror_w2][level]
-                candidate_schedule[mirror_w1][level] = orig_m2
-                candidate_schedule[mirror_w2][level] = orig_m1
+            orig_m1 = None
+            orig_m2 = None
             
-            # Enforce the hard global constraint: check affected weeks.
-            if not (is_week_global_valid(candidate_schedule[w1]) and 
-                    is_week_global_valid(candidate_schedule[w2]) and
-                    (mirror_w1 >= len(candidate_schedule) or is_week_global_valid(candidate_schedule[mirror_w1])) and 
-                    (mirror_w2 >= len(candidate_schedule) or is_week_global_valid(candidate_schedule[mirror_w2]))):
-                continue
+            if mirror_w1 < len(new_schedule) and mirror_w2 < len(new_schedule):
+                orig_m1 = new_schedule[mirror_w1][level]
+                orig_m2 = new_schedule[mirror_w2][level]
+                new_schedule[mirror_w1][level] = orig_m2
+                new_schedule[mirror_w2][level] = orig_m1
+            
+            # Check constraints
+            is_valid = (is_week_global_valid(new_schedule[w1]) and 
+                      is_week_global_valid(new_schedule[w2]) and
+                      (mirror_w1 >= len(new_schedule) or is_week_global_valid(new_schedule[mirror_w1])) and 
+                      (mirror_w2 >= len(new_schedule) or is_week_global_valid(new_schedule[mirror_w2])))
+            
+            # Evaluate if the constraint is satisfied
+            if is_valid:
+                candidate_obj = composite_objective_no_global(new_schedule, weight_play, weight_ref)
+                if candidate_obj < current_obj:
+                    current_obj = candidate_obj
+                    # Keep the change
+                    continue
+            
+            # Revert changes if invalid or not an improvement
+            new_schedule[w1][level] = orig_w1
+            new_schedule[w2][level] = orig_w2
+            if orig_m1 is not None and orig_m2 is not None:
+                new_schedule[mirror_w1][level] = orig_m1
+                new_schedule[mirror_w2][level] = orig_m2
         
         else:  # candidate move
-            # Candidate move: for a random week and level, try a new slot assignment.
+            # Try a new slot assignment for a random week and level
             w = random.randrange(config["first_half_weeks"])
             level = random.choice(levels)
-            current_assignment, pairing, _ = candidate_schedule[w][level]
+            current_assignment, pairing, current_ref = new_schedule[w][level]
+            
+            # Generate alternative assignments
             candidates = generate_level_slot_assignments(level, len(pairing))
             candidates = [a for a in candidates if a != current_assignment]
             if not candidates:
                 continue
+                
             new_assignment = random.choice(candidates)
             new_ref = get_ref_assignment(level, new_assignment, pairing, {t: 0 for t in teams[level]})
             if new_ref is None:
                 continue
-            candidate_schedule[w][level] = (new_assignment, pairing, new_ref)
+                
+            # Save original state and make change
+            original_week_assignment = new_schedule[w][level]
+            new_schedule[w][level] = (new_assignment, pairing, new_ref)
             
+            # Handle mirror week
             mirror_w = w + config["first_half_weeks"]
-            if mirror_w < len(candidate_schedule):
-                mirror_assignment, mirror_pairing, _ = candidate_schedule[mirror_w][level]
+            original_mirror_assignment = None
+            if mirror_w < len(new_schedule):
+                mirror_assignment, mirror_pairing, current_mirror_ref = new_schedule[mirror_w][level]
                 mirror_ref = get_ref_assignment(level, mirror_assignment, mirror_pairing, {t: 0 for t in teams[level]})
                 if mirror_ref is None:
+                    # Revert and skip
+                    new_schedule[w][level] = original_week_assignment
                     continue
-                candidate_schedule[mirror_w][level] = (mirror_assignment, mirror_pairing, mirror_ref)
+                    
+                original_mirror_assignment = new_schedule[mirror_w][level]
+                new_schedule[mirror_w][level] = (mirror_assignment, mirror_pairing, mirror_ref)
             
-            # Check that the modified week (and mirror) still have the exact global slot usage.
-            if not is_week_global_valid(candidate_schedule[w]) or \
-               (mirror_w < len(candidate_schedule) and not is_week_global_valid(candidate_schedule[mirror_w])):
-                continue
-        
-        candidate_obj = composite_objective_no_global(candidate_schedule, weight_play, weight_ref)
-        if candidate_obj < current_obj:
-            new_schedule = candidate_schedule
-            current_obj = candidate_obj
-            # Optionally, print progress: 
-            # print(f"Iteration {iteration}: improved objective to {current_obj:.2f}")
+            # Check global constraints
+            is_valid = is_week_global_valid(new_schedule[w]) and \
+                      (mirror_w >= len(new_schedule) or is_week_global_valid(new_schedule[mirror_w]))
+            
+            if is_valid:
+                candidate_obj = composite_objective_no_global(new_schedule, weight_play, weight_ref)
+                if candidate_obj < current_obj:
+                    current_obj = candidate_obj
+                    # Keep the change
+                    continue
+            
+            # Revert changes if invalid or not an improvement
+            new_schedule[w][level] = original_week_assignment
+            if original_mirror_assignment is not None:
+                new_schedule[mirror_w][level] = original_mirror_assignment
     
     return new_schedule
 
@@ -678,8 +678,8 @@ def find_schedule_attempt():
 def find_schedule(
     use_saved_schedule=True,
     filename="saved_schedule.json",
-    max_attempts=100,
-    num_cores=1,
+    max_attempts=10000,
+    num_cores=14,
 ):
     """
     Find a schedule by first trying to load from a file, then generating a new one if needed.
