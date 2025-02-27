@@ -29,7 +29,6 @@ config = {
         "C": 6,
     },
     # Schedule structure
-
     "courts_per_slot": {
         1: 1,
         2: 3,
@@ -60,8 +59,12 @@ config = {
 
 config.update(
     {
-        "first_half_weeks": max(config["teams_per_level"].values()) - 1,  # Weeks in first half; second half will mirror these
-        "total_weeks": 2 * (max(config["teams_per_level"].values()) - 1),  # Total number of weeks in the season
+        "first_half_weeks": max(config["teams_per_level"].values())
+        - 1,  # Weeks in first half; second half will mirror these
+        "total_weeks": 2
+        * (
+            max(config["teams_per_level"].values()) - 1
+        ),  # Total number of weeks in the season
         # Slots configuration
         "num_slots": len(config["courts_per_slot"]),  # Number of time slots (1-indexed)
     }
@@ -944,7 +947,7 @@ def validate_config(config):
     # Calculate total teams and games per level
     total_teams = sum(config["teams_per_level"].values())
     total_games_per_round = total_teams // 2
-    
+
     # 1. Check that sum of courts per slot equals total games per round
     courts_sum = sum(config["courts_per_slot"].values())
     if courts_sum != total_games_per_round:
@@ -952,13 +955,13 @@ def validate_config(config):
             f"Sum of courts per slot ({courts_sum}) must equal total games per round "
             f"(sum of teams per level / 2 = {total_games_per_round})"
         )
-    
+
     # 2. Check that entries in courts_per_slot match num_slots
     if set(config["courts_per_slot"].keys()) != set(range(1, config["num_slots"] + 1)):
         raise ValueError(
             f"Keys in courts_per_slot must exactly match slots 1 through {config['num_slots']}"
         )
-    
+
     # 3. Check that slot limits totals are sufficient
     games_per_team = (config["total_weeks"] * (total_teams - 1)) // total_teams
     slot_limits_sum = sum(config["slot_limits"].values())
@@ -968,31 +971,34 @@ def validate_config(config):
             f"Sum of slot limits ({slot_limits_sum}) should be at least 1.5x the "
             f"number of games each team plays ({games_per_team}), which is {min_required}"
         )
-    
+
     # 4. Check that priority slots count is reasonable
     if len(config["priority_slots"]) > 2:
         raise ValueError(
             f"Number of priority slots ({len(config['priority_slots'])}) should be 2 or fewer"
         )
-    
+
     # 5. Ensure total_weeks is exactly double first_half_weeks
     if config["total_weeks"] != config["first_half_weeks"] * 2:
         raise ValueError(
             f"Total weeks ({config['total_weeks']}) should be exactly double the first half weeks "
             f"({config['first_half_weeks']})"
         )
-    
+
     # Additional check: all priority slots should exist in the configuration
     for slot in config["priority_slots"]:
         if slot not in range(1, config["num_slots"] + 1):
-            raise ValueError(f"Priority slot {slot} is outside the valid range (1-{config['num_slots']})")
-    
+            raise ValueError(
+                f"Priority slot {slot} is outside the valid range (1-{config['num_slots']})"
+            )
+
     return True
 
 
 if __name__ == "__main__":
     from tests import (
         pairing_tests,
+        cycle_pairing_test,
         global_slot_distribution_test,
         referee_player_test,
         adjacent_slot_test,
@@ -1020,7 +1026,8 @@ if __name__ == "__main__":
     if final_schedule:
         print_schedule(final_schedule)
         print("\nRunning tests on final schedule:")
-        pt = pairing_tests(final_schedule, levels, teams)
+        pt = pairing_tests(final_schedule, levels, config["teams_per_level"])
+        cpt = cycle_pairing_test(final_schedule, levels, config["teams_per_level"])
         rpt = referee_player_test(final_schedule)
         ast = adjacent_slot_test(final_schedule)
         gst = global_slot_distribution_test(final_schedule, config["courts_per_slot"])
@@ -1033,6 +1040,7 @@ if __name__ == "__main__":
 
         print("\nTest Results:")
         print(f"  Pairings correct: {pt}")
+        print(f"  Cycle pairings: {cpt}")
         print(f"  No referee plays in their game: {rpt}")
         print(f"  Adjacent-slot condition: {ast}")
         print(f"  Global slot distribution: {gst}")
