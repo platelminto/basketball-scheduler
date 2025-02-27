@@ -440,70 +440,81 @@ def initialize_assignments(rr_pairings, mirror_mappings, total_weeks, max_attemp
     return None, None  # Failed to initialize
 
 
-def solve_game_schedule(rr_pairings, mirror_mappings, total_weeks):
+def solve_game_schedule(rr_pairings, mirror_mappings, total_weeks, expected, max_restarts=100):
     """
-    Backtracking solver for game slots.
-    Variables: For each mirror group (level, r) choose a candidate assignment 
-    (a tuple from generate_level_slot_assignments) so that for every week the 
-    aggregated slot counts equal config["courts_per_slot"].
+    Backtracking solver that assigns each mirror group (i.e. each level's round) a candidate
+    slot assignment (from generate_level_slot_assignments) so that, when aggregated, every week
+    exactly meets the expected global slot distribution.
+    
+    Args:
+      rr_pairings: dict mapping level -> list of rounds (base round-robin pairings)
+      mirror_mappings: dict mapping level -> dict mapping round index -> list of week indices
+      total_weeks: total number of weeks in the season
+      expected: dict mapping slot -> expected count per week (e.g. {1:3, 2:2, 3:3})
+      max_restarts: maximum number of random restarts before giving up
+      
+    Returns:
+      assignments: dict mapping (level, round_index) -> candidate slot assignment (tuple)
+                   or None if no assignment is found.
     """
-    # Order mirror groups arbitrarily.
-    mirror_keys = []
-    for level in levels:
+    import random
+    # Get all mirror groups as a list of keys.
+    all_keys = []
+    for level in rr_pairings:
         for r in mirror_mappings[level]:
-            mirror_keys.append((level, r))
-    mirror_keys.sort(key=lambda key: len(mirror_mappings[key[0]][key[1]]))  # smaller groups first
+            all_keys.append((level, r))
     
-    # week_totals[w][s]: current count in week w for slot s.
-    week_totals = {w: {s: 0 for s in range(1, config["num_slots"]+1)} for w in range(total_weeks)}
-    
-    assignments = {}  # (level, r) -> candidate (slot_assignment)
-
-    def backtrack(idx):
-        if idx == len(mirror_keys):
-            # All groups assigned. Check that each week meets target exactly.
+    def backtrack(i, assignments, week_totals, keys_order):
+        if i == len(keys_order):
+            # Check that every week meets the expected distribution.
             for w in range(total_weeks):
-                for s, target in config["courts_per_slot"].items():
-                    if week_totals[w][s] != target:
-                        return False
+                if week_totals[w] != expected:
+                    return False
             return True
-        level, r = mirror_keys[idx]
+        level, r = keys_order[i]
         pairing = rr_pairings[level][r]
         num_games = len(pairing)
         candidates = generate_level_slot_assignments(level, num_games)
+        random.shuffle(candidates)
         for cand in candidates:
+            # Compute candidate counts.
+            local_counts = {}
+            for s in cand:
+                local_counts[s] = local_counts.get(s, 0) + 1
             valid = True
-            # For each week this mirror group appears, add cand counts.
-            affected_weeks = mirror_mappings[level][r]
-            added = {w: {} for w in affected_weeks}
-            for w in affected_weeks:
-                for s in range(1, config["num_slots"]+1):
-                    added[w][s] = cand.count(s)
-                    if week_totals[w][s] + added[w][s] > config["courts_per_slot"][s]:
+            for w in mirror_mappings[level][r]:
+                for s, cnt in local_counts.items():
+                    if week_totals[w][s] + cnt > expected[s]:
                         valid = False
                         break
                 if not valid:
                     break
             if not valid:
                 continue
-            # Accept candidate and update totals.
+            # Apply candidate: update week_totals.
+            for w in mirror_mappings[level][r]:
+                for s, cnt in local_counts.items():
+                    week_totals[w][s] += cnt
             assignments[(level, r)] = cand
-            for w in affected_weeks:
-                for s in range(1, config["num_slots"]+1):
-                    week_totals[w][s] += added[w][s]
-            if backtrack(idx+1):
+            if backtrack(i+1, assignments, week_totals, keys_order):
                 return True
-            # Backtrack:
+            # Backtrack: undo changes.
+            for w in mirror_mappings[level][r]:
+                for s, cnt in local_counts.items():
+                    week_totals[w][s] -= cnt
             del assignments[(level, r)]
-            for w in affected_weeks:
-                for s in range(1, config["num_slots"]+1):
-                    week_totals[w][s] -= added[w][s]
         return False
 
-    if backtrack(0):
-        return assignments
-    else:
-        return None
+    for restart in range(max_restarts):
+        # Shuffle the order of mirror groups.
+        keys_order = all_keys[:]
+        random.shuffle(keys_order)
+        # Initialize week totals: for each week, for each slot in expected, count = 0.
+        week_totals = {w: {s: 0 for s in expected} for w in range(total_weeks)}
+        assignments = {}
+        if backtrack(0, assignments, week_totals, keys_order):
+            return assignments
+    return None
 
 def reconstruct_game_schedule(assignments, mirror_mappings, total_weeks):
     """
@@ -1037,7 +1048,7 @@ def validate_schedule(schedule, teams, levels):
 #############################################
 
 def find_schedule_attempt():
-    game_assignments = solve_game_schedule(rr_pairings, mirror_mappings, config["total_weeks"])
+    game_assignments = solve_game_schedule(rr_pairings, mirror_mappings, config["total_weeks"], expected=config["courts_per_slot"])
     if game_assignments is None:
         print("Failed to find a valid game schedule.")
         return None
