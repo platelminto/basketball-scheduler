@@ -29,10 +29,7 @@ config = {
         "C": 6,
     },
     # Schedule structure
-    "first_half_weeks": 5,  # Weeks in first half; second half will mirror these
-    "total_weeks": 10,  # Total number of weeks in the season
-    # Slots configuration
-    "num_slots": 4,  # Number of time slots (1-indexed)
+
     "courts_per_slot": {
         1: 1,
         2: 3,
@@ -60,6 +57,15 @@ config = {
     "priority_slots": [1, 4],  # Slots where balance is more important
     "priority_multiplier": 100,  # Extra weight for priority slots in balance calculations
 }
+
+config.update(
+    {
+        "first_half_weeks": max(config["teams_per_level"].values()) - 1,  # Weeks in first half; second half will mirror these
+        "total_weeks": 2 * (max(config["teams_per_level"].values()) - 1),  # Total number of weeks in the season
+        # Slots configuration
+        "num_slots": len(config["courts_per_slot"]),  # Number of time slots (1-indexed)
+    }
+)
 
 # Derived parameters
 levels = config["levels"]
