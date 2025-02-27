@@ -24,16 +24,16 @@ config = {
     # League structure
     "levels": ["A", "B", "C"],  # Names of the levels/divisions
     "teams_per_level": {  # Number of teams in each level
-        "A": 6,
+        "A": 4,
         "B": 6,
         "C": 6,
     },
     # Schedule structure
     "courts_per_slot": {
-        1: 1,
-        2: 3,
-        3: 2,
-        4: 3,
+        # 1: 1,
+        1: 3,
+        2: 2,
+        3: 3,
     },  # Number of courts available in each slot (1-indexed)
     # Distributions for levels
     # "distributions_list": [
@@ -44,36 +44,29 @@ config = {
     # Constraints for play balance
     # These are the maximum number of games a team can play in a slot for the whole season.
     "slot_limits": {
-        1: 2,  # Teams can play at most 2 games in slot 1
-        2: 6,  # Teams can play at most 6 games in slots 2 and 3
-        3: 6,
-        4: 4,  # Teams can play at most 4 games in slot 4
+        # 1: 2,  # Teams can play at most 2 games in slot 1
+        1: 6,  # Teams can play at most 6 games in slots 2 and 3
+        2: 6,
+        3: 6,  # Teams can play at most 4 games in slot 4
     },
     # Constraints for referee balance
-    "min_referee_count": 4,  # Minimum times a team must referee in a season per level
-    "max_referee_count": 6,  # Maximum times a team can referee in a season per level
+    "min_referee_count": 3,  # Minimum times a team must referee in a season per level
+    "max_referee_count": 7,  # Maximum times a team can referee in a season per level
     # Optimization priorities
-    "priority_slots": [1, 4],  # Slots where balance is more important
+    "priority_slots": [3],  # Slots where balance is more important
     "priority_multiplier": 100,  # Extra weight for priority slots in balance calculations
 }
 
-config.update(
-    {
-        "first_half_weeks": max(config["teams_per_level"].values())
-        - 1,  # Weeks in first half; second half will mirror these
-        "total_weeks": 2
-        * (
-            max(config["teams_per_level"].values()) - 1
-        ),  # Total number of weeks in the season
-        # Slots configuration
-        "num_slots": len(config["courts_per_slot"]),  # Number of time slots (1-indexed)
-    }
-)
+# Instead of storing first_half_weeks, define season length based on max teams.
+max_teams = max(config["teams_per_level"].values())
+config.update({
+    "total_weeks": 2 * (max_teams - 1),  # Season length defined by the level with most teams.
+    "num_slots": len(config["courts_per_slot"]),
+})
+
 
 # Derived parameters
 levels = config["levels"]
-first_half_weeks = config["first_half_weeks"]
-total_weeks = config["total_weeks"]
 
 # Get all teams as a list of integers for each level
 teams = {}
@@ -111,12 +104,39 @@ def generate_round_robin_pairings(n):
     return rounds
 
 
-# Generate fixed round-robin pairings for each level.
+#############################################
+# 1. Round-Robin Generation with Mirror Mapping
+#############################################
+
+def generate_mirrored_rr_schedule(n, total_weeks):
+    """
+    For n teams (even), generate a base round-robin (n-1 rounds) and a mirror mapping.
+    mirror_mapping[r] is the list of week indices that use round index r.
+    """
+    base = generate_round_robin_pairings(n)  # base cycle (length = n-1)
+    cycle_len = len(base)
+    num_full_cycles = total_weeks // cycle_len
+    remainder = total_weeks % cycle_len
+
+    mirror_mapping = {}
+    # For full cycles:
+    for r in range(cycle_len):
+        mirror_mapping[r] = [cycle * cycle_len + r for cycle in range(num_full_cycles)]
+    # For the extra (partial) cycle, add rounds 0..remainder-1:
+    for r in range(remainder):
+        mirror_mapping.setdefault(r, []).append(num_full_cycles * cycle_len + r)
+    return base, mirror_mapping
+
+# For each level, compute the base pairings and mirror groups.
 rr_pairings = {}
+mirror_mappings = {}
 for level in levels:
-    rr_pairings[level] = generate_round_robin_pairings(
-        config["teams_per_level"][level]
-    )  # 5 rounds for 6 teams
+    n = config["teams_per_level"][level]
+    base_pairings, mirror_mapping = generate_mirrored_rr_schedule(n, config["total_weeks"])
+    rr_pairings[level] = base_pairings
+    mirror_mappings[level] = mirror_mapping
+
+
 
 levels = config["levels"]
 # For each level, create teams as 0-indexed integers.
@@ -273,170 +293,477 @@ def get_ref_assignment(level, slot_assignment, pairing, current_ref_counts):
 #############################################
 
 
-def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
+#############################################
+# Unified Solver for Full Season Schedule
+#############################################
+
+#############################################
+# 2. Unified Solver With Mirror Requirements
+#############################################
+
+def reconstruct_schedule(assignments, mirror_mappings, total_weeks, levels):
     """
-    For each week, for each level assign a candidate slot assignment (and corresponding referee assignment)
-    that meets both local and global constraints.
-
-    Global constraints (per week):
-      - The sum of games assigned to a slot (across levels) does not exceed the courts available in that slot.
+    Reconstruct full schedule (list of weeks, each mapping level -> (slot_assignment, pairing, ref_assignment))
+    from the assignments per mirror group.
     """
-    if initial_ref_counts is None:
-        ref_counts = {level: {t: 0 for t in teams[level]} for level in levels}
-    else:
-        ref_counts = {level: dict(initial_ref_counts[level]) for level in levels}
-    schedule = [None] * weeks
+    full_schedule = [{} for _ in range(total_weeks)]
+    for level in levels:
+        for r, weeks_list in mirror_mappings[level].items():
+            if (level, r) in assignments:
+                for w in weeks_list:
+                    full_schedule[w][level] = assignments[(level, r)]
+    return full_schedule
 
-    def backtrack(week):
-        if week == weeks:
-            return True
-        # Global usage per slot for this week.
-        global_usage = {s: 0 for s in range(1, config["num_slots"] + 1)}
-        week_assignment = {}
-        # Copy referee counts to update as we assign each level.
-        new_ref_counts = {level: dict(ref_counts[level]) for level in levels}
+def compute_global_penalty(schedule, penalty_factor=1e9):
+    """
+    For each week and slot, add a penalty if the number of games in that slot
+    does not equal the expected number (config["courts_per_slot"]).
+    """
+    total_penalty = 0
+    for week in schedule:
+        usage = {s: 0 for s in range(1, config["num_slots"]+1)}
+        for level in week:
+            slot_assignment, _, _ = week[level]
+            for s in slot_assignment:
+                usage[s] += 1
+        for s, expected in config["courts_per_slot"].items():
+            if usage[s] != expected:
+                total_penalty += penalty_factor * abs(usage[s] - expected)
+    return total_penalty
 
-        def assign_level(i, current_usage):
-            if i == len(levels):
-                return True
-            level = levels[i]
-            pairing = rr_pairings[level][
-                week
-            ]  # Fixed round-robin pairing for this level.
-            num_games = len(pairing)
-            candidate_assignments = generate_level_slot_assignments(level, num_games)
-            random.shuffle(candidate_assignments)
-            for slot_assignment in candidate_assignments:
-                # Count how many games in each slot for this candidate.
-                candidate_count = {
-                    s: slot_assignment.count(s)
-                    for s in range(1, config["num_slots"] + 1)
-                }
-                # Check global capacity: for each slot, usage + candidate_count <= courts available.
-                feasible = True
-                for s in range(1, config["num_slots"] + 1):
-                    if current_usage[s] + candidate_count.get(s, 0) > config[
-                        "courts_per_slot"
-                    ].get(s, 0):
-                        feasible = False
-                        break
-                if not feasible:
-                    continue
-                # Try to get a referee assignment for this candidate.
-                ref_assignment = get_ref_assignment(
-                    level, slot_assignment, pairing, new_ref_counts[level]
-                )
-                if ref_assignment is None:
-                    continue
-                # Update current usage.
-                for s in range(1, config["num_slots"] + 1):
-                    current_usage[s] += candidate_count.get(s, 0)
-                week_assignment[level] = (slot_assignment, pairing, ref_assignment)
-                for t in ref_assignment:
-                    new_ref_counts[level][t] += 1
-                # Recurse to the next level.
-                if assign_level(i + 1, current_usage):
-                    return True
-                # Backtrack.
-                for s in range(1, config["num_slots"] + 1):
-                    current_usage[s] -= candidate_count.get(s, 0)
-                del week_assignment[level]
-                for t in ref_assignment:
-                    new_ref_counts[level][t] -= 1
-            return False
+def objective(schedule, weight_play=0.1, weight_ref=10.0):
+    """
+    Overall objective: composite objective plus global slot usage penalty.
+    """
+    return composite_objective(schedule, weight_play, weight_ref) + compute_global_penalty(schedule)
 
-        if not assign_level(0, global_usage):
-            return False
-        schedule[week] = week_assignment
+def initialize_assignments(rr_pairings, mirror_mappings, total_weeks, max_attempts=100):
+    """
+    Try to randomly assign each mirror group a candidate slot/referee assignment
+    until the reconstructed schedule satisfies the courts_per_slot constraint for every week.
+    """
+    for attempt in range(max_attempts):
+        assignments = {}
         for level in levels:
-            ref_counts[level] = new_ref_counts[level]
-        return backtrack(week + 1)
+            for r, weeks_list in mirror_mappings[level].items():
+                pairing = rr_pairings[level][r]
+                num_games = len(pairing)
+                candidates = generate_level_slot_assignments(level, num_games)
+                if not candidates:
+                    # No candidate: use a dummy fallback.
+                    assignments[(level, r)] = ((1,)*num_games, pairing, (0,)*num_games)
+                    continue
+                # Try a few times to get a valid referee assignment.
+                valid_found = False
+                for _ in range(20):
+                    slot_assignment = random.choice(candidates)
+                    ref_assignment = get_ref_assignment(level, slot_assignment, pairing, {t: 0 for t in teams[level]})
+                    if ref_assignment is not None:
+                        assignments[(level, r)] = (slot_assignment, pairing, ref_assignment)
+                        valid_found = True
+                        break
+                if not valid_found:
+                    assignments[(level, r)] = (candidates[0], pairing, (0,)*num_games)
+        schedule = reconstruct_schedule(assignments, mirror_mappings, total_weeks, levels)
+        if all(is_week_global_valid(week) for week in schedule):
+            # Found a valid initial schedule.
+            return assignments, schedule
+    return None, None  # Failed to initialize a valid schedule
+
+def generate_level_slot_assignments(level, num_games):
+    """
+    Generate candidate slot assignments for a level's round (num_games games).
+    Each candidate is a tuple of length num_games with values in {1,...,config["num_slots"]}.
+    
+    Local constraints:
+      - For each slot s, the number of games assigned to s is <= teams//3.
+      - For rounds with 3 or more games, require at least 2 distinct slots and contiguous usage.
+      - For rounds with fewer than 3 games, allow even a single slot.
+    """
+    assignments = []
+    num_slots = config["num_slots"]
+    num_teams = config["teams_per_level"][level]
+    max_local = num_teams // 3  # Each game needs 2 teams playing + 1 team refereeing
+
+    for candidate in product(range(1, num_slots + 1), repeat=num_games):
+        slot_counts = {}
+        for s in candidate:
+            slot_counts[s] = slot_counts.get(s, 0) + 1
+
+        # For rounds with 3 or more games, require at least 2 distinct slots.
+        if num_games >= 3 and len(slot_counts) < 2:
+            continue
+
+        # Check that no slot exceeds max_local.
+        if any(count > max_local for count in slot_counts.values()):
+            continue
+
+        # For rounds with 3 or more games, require contiguous slots.
+        if num_games >= 3:
+            min_slot = min(slot_counts.keys())
+            max_slot = max(slot_counts.keys())
+            if max_slot - min_slot + 1 != len(slot_counts):
+                continue
+
+        assignments.append(candidate)
+    return assignments
+
+
+def initialize_assignments(rr_pairings, mirror_mappings, total_weeks, max_attempts=100):
+    """
+    Try to randomly assign each mirror group a candidate slot/referee assignment
+    until the reconstructed schedule satisfies the courts_per_slot constraint for every week.
+    """
+    for attempt in range(max_attempts):
+        assignments = {}
+        for level in levels:
+            for r, weeks_list in mirror_mappings[level].items():
+                pairing = rr_pairings[level][r]
+                num_games = len(pairing)
+                candidates = generate_level_slot_assignments(level, num_games)
+                if not candidates:
+                    assignments[(level, r)] = ((1,)*num_games, pairing, (0,)*num_games)
+                    continue
+                valid_found = False
+                for _ in range(20):
+                    slot_assignment = random.choice(candidates)
+                    ref_assignment = get_ref_assignment(level, slot_assignment, pairing, {t: 0 for t in teams[level]})
+                    if ref_assignment is not None:
+                        assignments[(level, r)] = (slot_assignment, pairing, ref_assignment)
+                        valid_found = True
+                        break
+                if not valid_found:
+                    assignments[(level, r)] = (candidates[0], pairing, (0,)*num_games)
+        schedule = reconstruct_schedule(assignments, mirror_mappings, total_weeks, levels)
+        if all(is_week_global_valid(week) for week in schedule):
+            return assignments, schedule
+    return None, None  # Failed to initialize
+
+
+def solve_game_schedule(rr_pairings, mirror_mappings, total_weeks):
+    """
+    Backtracking solver for game slots.
+    Variables: For each mirror group (level, r) choose a candidate assignment 
+    (a tuple from generate_level_slot_assignments) so that for every week the 
+    aggregated slot counts equal config["courts_per_slot"].
+    """
+    # Order mirror groups arbitrarily.
+    mirror_keys = []
+    for level in levels:
+        for r in mirror_mappings[level]:
+            mirror_keys.append((level, r))
+    mirror_keys.sort(key=lambda key: len(mirror_mappings[key[0]][key[1]]))  # smaller groups first
+    
+    # week_totals[w][s]: current count in week w for slot s.
+    week_totals = {w: {s: 0 for s in range(1, config["num_slots"]+1)} for w in range(total_weeks)}
+    
+    assignments = {}  # (level, r) -> candidate (slot_assignment)
+
+    def backtrack(idx):
+        if idx == len(mirror_keys):
+            # All groups assigned. Check that each week meets target exactly.
+            for w in range(total_weeks):
+                for s, target in config["courts_per_slot"].items():
+                    if week_totals[w][s] != target:
+                        return False
+            return True
+        level, r = mirror_keys[idx]
+        pairing = rr_pairings[level][r]
+        num_games = len(pairing)
+        candidates = generate_level_slot_assignments(level, num_games)
+        for cand in candidates:
+            valid = True
+            # For each week this mirror group appears, add cand counts.
+            affected_weeks = mirror_mappings[level][r]
+            added = {w: {} for w in affected_weeks}
+            for w in affected_weeks:
+                for s in range(1, config["num_slots"]+1):
+                    added[w][s] = cand.count(s)
+                    if week_totals[w][s] + added[w][s] > config["courts_per_slot"][s]:
+                        valid = False
+                        break
+                if not valid:
+                    break
+            if not valid:
+                continue
+            # Accept candidate and update totals.
+            assignments[(level, r)] = cand
+            for w in affected_weeks:
+                for s in range(1, config["num_slots"]+1):
+                    week_totals[w][s] += added[w][s]
+            if backtrack(idx+1):
+                return True
+            # Backtrack:
+            del assignments[(level, r)]
+            for w in affected_weeks:
+                for s in range(1, config["num_slots"]+1):
+                    week_totals[w][s] -= added[w][s]
+        return False
 
     if backtrack(0):
-        return schedule, ref_counts
+        return assignments
     else:
-        return None, None
+        return None
 
-
-def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
+def reconstruct_game_schedule(assignments, mirror_mappings, total_weeks):
     """
-    Solve the second half of the schedule.
-
-    For each level and week (in the second half), we use the pairing from the
-    corresponding week in the first half (to preserve the mirror property).
-    We then assign slots (and corresponding referee assignments) using the same
-    direct game-by-game backtracking approach with global usage constraints.
+    Reconstruct full schedule (per week, per level) using the game slot assignments.
+    The referee assignment is left blank (None) for now.
     """
-    weeks = config["first_half_weeks"]
-    ref_counts = {level: dict(initial_ref_counts[level]) for level in levels}
-    schedule = [None] * weeks
+    schedule = [{} for _ in range(total_weeks)]
+    for level in levels:
+        for r, weeks in mirror_mappings[level].items():
+            cand = assignments[(level, r)]
+            pairing = rr_pairings[level][r]
+            for w in weeks:
+                # For now store (slot_assignment, pairing, None)
+                schedule[w][level] = (cand, pairing, None)
+    return schedule
 
-    def backtrack(week):
-        if week == weeks:
-            return True
-        global_usage = {s: 0 for s in range(1, config["num_slots"] + 1)}
-        week_assignment = {}
-        new_ref_counts = {level: dict(ref_counts[level]) for level in levels}
+############################################
+# Phase 2: Referee Assignment Optimization (SA)
+############################################
 
-        def assign_level(i, current_usage):
-            if i == len(levels):
-                return True
-            level = levels[i]
-            # Use the pairing from the first half schedule for this level and week.
-            pairing = first_half_schedule[week][level][1]
-            num_games = len(pairing)
-            candidate_assignments = generate_level_slot_assignments(level, num_games)
-            random.shuffle(candidate_assignments)
-            for slot_assignment in candidate_assignments:
-                # Count how many games in each slot this candidate assignment would add.
-                candidate_count = {
-                    s: slot_assignment.count(s)
-                    for s in range(1, config["num_slots"] + 1)
-                }
-                # Check that global capacity is not exceeded.
-                feasible = True
-                for s in range(1, config["num_slots"] + 1):
-                    if current_usage[s] + candidate_count.get(s, 0) > config[
-                        "courts_per_slot"
-                    ].get(s, 0):
-                        feasible = False
-                        break
-                if not feasible:
-                    continue
-                # Try to assign referees given this candidate slot assignment.
-                ref_assignment = get_ref_assignment(
-                    level, slot_assignment, pairing, new_ref_counts[level]
-                )
-                if ref_assignment is None:
-                    continue
-                # If successful, update current usage and referee counts.
-                for s in range(1, config["num_slots"] + 1):
-                    current_usage[s] += candidate_count.get(s, 0)
-                week_assignment[level] = (slot_assignment, pairing, ref_assignment)
-                for t in ref_assignment:
-                    new_ref_counts[level][t] += 1
-                # Proceed to the next level.
-                if assign_level(i + 1, current_usage):
-                    return True
-                # Backtrack.
-                for s in range(1, config["num_slots"] + 1):
-                    current_usage[s] -= candidate_count.get(s, 0)
-                del week_assignment[level]
-                for t in ref_assignment:
-                    new_ref_counts[level][t] -= 1
-            return False
+def initialize_referee_assignments(schedule):
+    new_schedule = copy.deepcopy(schedule)
+    for w in range(len(new_schedule)):
+        for level in new_schedule[w]:
+            slot_assignment, pairing, ref_assignment = new_schedule[w][level]
+            if ref_assignment is None:
+                # Fallback: assign a default referee for each game
+                ref_assignment = (0,) * len(pairing)
+            new_schedule[w][level] = (slot_assignment, pairing, ref_assignment)
+    return new_schedule
 
-        if not assign_level(0, global_usage):
-            return False
-        schedule[week] = week_assignment
+
+from itertools import product
+
+def repair_final_ref_assignments(schedule, max_repair_iterations=1000):
+    """
+    Iteratively attempt to repair mirror groups that have a None referee assignment.
+    For each mirror group with a None, try candidate moves (ref-only or combined) until a valid
+    assignment is found. Returns a repaired schedule or None if repair fails.
+    """
+    new_schedule = copy.deepcopy(schedule)
+    repair_iter = 0
+    fixed = True
+    while fixed and repair_iter < max_repair_iterations:
+        fixed = False
         for level in levels:
-            ref_counts[level] = new_ref_counts[level]
-        return backtrack(week + 1)
+            for r in mirror_mappings[level]:
+                week_list = mirror_mappings[level][r]
+                # Get the current assignment from the first week.
+                s_assign, pairing, ref_assignment = new_schedule[week_list[0]][level]
+                if ref_assignment is not None:
+                    continue  # already valid
+                # Try candidate moves for this mirror group:
+                candidate_moves = []
+                # Option 1: Ref-only moves (keep current slot assignment)
+                candidate_lists = []
+                for i in range(len(pairing)):
+                    cands = candidate_referees_for_game(level, s_assign, pairing, i)
+                    candidate_lists.append(cands)
+                if all(candidate_lists):
+                    for ref_candidate in product(*candidate_lists):
+                        if len(set(ref_candidate)) == len(ref_candidate):
+                            candidate_moves.append((s_assign, ref_candidate))
+                # Option 2: Combined moves (change slot and ref assignment)
+                for cand_slot in generate_level_slot_assignments(level, len(pairing)):
+                    if cand_slot == s_assign:
+                        continue
+                    new_ref = get_ref_assignment(level, cand_slot, pairing, {t: 0 for t in teams[level]})
+                    if new_ref is not None:
+                        candidate_moves.append((cand_slot, new_ref))
+                if candidate_moves:
+                    new_slot, new_ref = random.choice(candidate_moves)
+                    for w in week_list:
+                        s_assgn, pairing_val, _ = new_schedule[w][level]
+                        new_schedule[w][level] = (new_slot, pairing_val, new_ref)
+                    fixed = True  # We fixed at least one mirror group this pass.
+        repair_iter += 1
+    # Final check:
+    for week in new_schedule:
+        for level in week:
+            if week[level][2] is None:
+                return None
+    return new_schedule
 
-    if backtrack(0):
-        return schedule, ref_counts
+def sa_referee_assignment(schedule, max_iterations=5000, initial_temp=100.0, cooling_rate=0.99):
+    """
+    Referee Assignment SA with Adjustment and Repair:
+      - For a randomly chosen mirror group (identified by (level, r)), we try candidate moves
+        that either update just the referee assignment (keeping the slot assignment fixed) or update both.
+      - After applying the candidate move across all weeks in that mirror group, we rebuild the full schedule
+        and hard-check that every week satisfies the courts_per_slot constraint.
+      - At the end, if any mirror group still has no valid referee assignment, a repair routine is invoked.
+    """
+    current_schedule = copy.deepcopy(schedule)
+    current_obj = referee_objective(current_schedule)
+    temp = initial_temp
+
+    # Build list of mirror group keys (each key is a tuple (level, r))
+    mirror_keys = []
+    for level in levels:
+        for r in mirror_mappings[level]:
+            mirror_keys.append((level, r))
+    
+    def get_representative(key):
+        level, r = key
+        week0 = mirror_mappings[level][r][0]
+        return current_schedule[week0][level]  # (slot_assignment, pairing, ref_assignment)
+
+    for iteration in range(max_iterations):
+        # Select move type (here we use candidate moves and swaps; you can add repair moves if desired)
+        key = random.choice(mirror_keys)
+        level, r = key
+        pairing = rr_pairings[level][r]
+        num_games = len(pairing)
+        week_list = mirror_mappings[level][r]
+        rep_slot, _, current_ref_assignment = get_representative(key)
+
+        candidate_moves = []
+        # Option 1: Ref-only moves (keeping current slot assignment)
+        candidate_lists = []
+        for i in range(num_games):
+            cands = candidate_referees_for_game(level, rep_slot, pairing, i)
+            candidate_lists.append(cands)
+        if all(candidate_lists):
+            for ref_candidate in product(*candidate_lists):
+                if len(set(ref_candidate)) == len(ref_candidate) and ref_candidate != current_ref_assignment:
+                    candidate_moves.append((rep_slot, ref_candidate))
+        # Option 2: Combined moves (change slot and ref assignment)
+        for candidate_slot in generate_level_slot_assignments(level, num_games):
+            if candidate_slot == rep_slot:
+                continue
+            new_ref = get_ref_assignment(level, candidate_slot, pairing, {t: 0 for t in teams[level]})
+            if new_ref is not None:
+                candidate_moves.append((candidate_slot, new_ref))
+        if not candidate_moves:
+            continue
+        new_slot_assignment, new_ref_assignment = random.choice(candidate_moves)
+        new_schedule = copy.deepcopy(current_schedule)
+        for w in week_list:
+            s_assign, pairing_val, _ = new_schedule[w][level]
+            new_schedule[w][level] = (new_slot_assignment, pairing_val, new_ref_assignment)
+        # Hard-check: global slot distribution must be maintained.
+        if any(not is_week_global_valid(week) for week in new_schedule):
+            continue
+        new_obj = referee_objective(new_schedule)
+        delta = new_obj - current_obj
+        if delta < 0 or random.random() < math.exp(-delta / temp):
+            current_schedule = new_schedule
+            current_obj = new_obj
+        temp *= cooling_rate
+
+    # Final check: if any mirror group still has None, try a repair routine.
+    repaired = repair_final_ref_assignments(current_schedule)
+    if repaired is not None:
+        current_schedule = repaired
     else:
-        return None, None
+        raise ValueError("After SA and repair, a game ended up with no valid referee assignment.")
+    return current_schedule
+
+def referee_objective(schedule):
+    """
+    Compute a global imbalance objective for referee assignments.
+    Sums the variance of referee counts per level and adds huge penalties for any team
+    whose total assignments fall outside [min_referee_count, max_referee_count].
+    """
+    overall = compute_overall_ref_counts(schedule)
+    total = 0
+    for level in levels:
+        team_list = teams[level]
+        values = [overall[level][t] for t in team_list]
+        mean = sum(values) / len(values)
+        total += sum((x - mean) ** 2 for x in values)
+        for t in team_list:
+            if overall[level][t] < config["min_referee_count"]:
+                total += 1e6 * (config["min_referee_count"] - overall[level][t])
+            if overall[level][t] > config["max_referee_count"]:
+                total += 1e6 * (overall[level][t] - config["max_referee_count"])
+    return total
+
+
+
+# Example usage:
+# full_schedule, assignments = solve_full_schedule_with_mirror_sa(rr_pairings, mirror_mappings, config["total_weeks"])
+# is_valid, msg = validate_schedule(full_schedule, teams, levels)
+# print("Final schedule valid:", is_valid, msg)
+
+import copy
+
+import copy
+
+def fix_global_slot_distribution(schedule, expected):
+    """
+    Given a schedule (list of weeks, each a dict mapping level -> (slot_assignment, pairing, ref_assignment))
+    and an expected slot distribution (e.g. {1: 3, 2: 2, 3: 3}), try to repair weeks whose
+    distribution is off by adjusting one mirror group's candidate assignment.
+    
+    For each week with a mismatch, we iterate over levels (i.e. mirror groups) present in that week.
+    For a given mirror group, we enumerate alternative candidate slot assignments (via generate_level_slot_assignments)
+    and then for each candidate, we compute a new referee assignment via get_ref_assignment. If that candidate yields
+    a simulated week distribution equal to the expected one, we update the mirror group (across all weeks) with the new candidate.
+    
+    This repair move uses get_ref_assignment so that the adjacent referee condition remains satisfied.
+    """
+    fixed_schedule = copy.deepcopy(schedule)
+    num_weeks = len(fixed_schedule)
+    
+    for w_idx in range(num_weeks):
+        week = fixed_schedule[w_idx]
+        # Compute current distribution for this week.
+        dist = {}
+        for level in week:
+            slot_assignment, _, _ = week[level]
+            for s in slot_assignment:
+                dist[s] = dist.get(s, 0) + 1
+        
+        if dist == expected:
+            continue  # Week is fine.
+        
+        print(f"Week {w_idx+1} distribution is {dist}, expected {expected}. Attempting repair.")
+        repaired = False
+        
+        # Try to adjust one mirror group in this week.
+        for level in week:
+            # Look up which mirror group (r_key) in this level covers this week.
+            for r_key, weeks_list in mirror_mappings[level].items():
+                if w_idx in weeks_list:
+                    current_candidate, pairing, current_ref = fixed_schedule[w_idx][level]
+                    # Enumerate alternative candidate slot assignments.
+                    for cand in generate_level_slot_assignments(level, len(pairing)):
+                        if cand == current_candidate:
+                            continue
+                        # Get a new referee assignment for this candidate.
+                        new_ref = get_ref_assignment(level, cand, pairing, {t: 0 for t in teams[level]})
+                        if new_ref is None:
+                            continue
+                        # Simulate the change: subtract counts of current candidate and add counts of new candidate.
+                        simulated_dist = dist.copy()
+                        for s in current_candidate:
+                            simulated_dist[s] = simulated_dist.get(s, 0) - 1
+                        for s in cand:
+                            simulated_dist[s] = simulated_dist.get(s, 0) + 1
+                        # Check if the simulated distribution matches the expected distribution.
+                        if simulated_dist == expected:
+                            print(f"  Level {level} mirror group {r_key}: changing {current_candidate} to {cand} with ref {new_ref} fixes week {w_idx+1}.")
+                            # Update this mirror group in all weeks.
+                            for w in weeks_list:
+                                s_assign, pairing_val, _ = fixed_schedule[w][level]
+                                fixed_schedule[w][level] = (cand, pairing_val, new_ref)
+                            # Update our local distribution.
+                            dist = simulated_dist
+                            repaired = True
+                            break
+                    if repaired:
+                        break
+            if repaired:
+                break
+        if not repaired:
+            print(f"  Could not repair week {w_idx+1}. Distribution remains {dist}.")
+    return fixed_schedule
+
 
 
 ##############################################
@@ -508,9 +835,13 @@ def compute_overall_ref_counts(schedule):
     for week in schedule:
         for level in week:
             _, _, ref_assignment = week[level]
+            # If no referee assignment exists, skip this game (or use a fallback, e.g. (0,)*num_games)
+            if ref_assignment is None:
+                continue
             for r in ref_assignment:
                 counts[level][r] += 1
     return counts
+
 
 
 def total_ref_imbalance(level, ref_counts):
@@ -550,214 +881,91 @@ def composite_objective(schedule, weight_play=1.0, weight_ref=1.0):
     return weight_play * play_cost + weight_ref * ref_cost
 
 
-# Update balance_schedule to accept the new parameters
-def balance_schedule(
-    schedule,
-    max_iterations=300,
-    weight_play=0.1,
-    weight_ref=10.0,
-    cooling_rate=0.9,
-    initial_temp=5.0,
-    candidate_prob=1.0,
-    swap_prob=0.0,
-):
+def balance_schedule(schedule, mirror_mappings, max_iterations=300,
+                     weight_play=0.1, weight_ref=10.0, cooling_rate=0.9,
+                     initial_temp=5.0, candidate_prob=1.0, swap_prob=0.0):
     """
-    Merged local search that improves play and referee balance while enforcing a hard
-    global slot distribution constraint. Any move that causes a week's slot usage to deviate
-    from config["courts_per_slot"] is rejected.
-
-    Parameters:
-        schedule: The input schedule to balance
-        max_iterations: Maximum number of iterations
-        weight_play: Weight for play balance objective
-        weight_ref: Weight for referee balance objective
-        cooling_rate: Rate at which temperature decreases (0.9-0.99)
-        initial_temp: Starting temperature for simulated annealing
-        candidate_prob: Probability of choosing candidate move (0-1)
-        swap_prob: Probability of choosing swap move (0-1)
+    Local search on a full schedule with mirror requirements.
+    Candidate moves and swaps are applied per mirror group (i.e. a set of weeks sharing the same round).
     """
-    # Normalize probabilities
-    total_prob = candidate_prob + swap_prob
-    candidate_prob /= total_prob
-    swap_prob /= total_prob
-
-    # Create initial copy - we still need one to avoid modifying the input
     new_schedule = copy.deepcopy(schedule)
     current_obj = composite_objective(new_schedule, weight_play, weight_ref)
-
-    # Track statistics to guide the search
-    rejected_count = 0
-    accepted_count = 0
-
-    # Identify imbalanced teams/slots for targeted improvement
-    play_counts = compute_team_play_counts(new_schedule)
-    ref_counts = compute_overall_ref_counts(new_schedule)
-
-    # Pre-calculate problematic areas to target
-    problematic_teams = {}
-    for level in levels:
-        problematic_teams[level] = []
-        for team in teams[level]:
-            for slot, limit in config["slot_limits"].items():
-                if play_counts[level][team][slot] > limit:
-                    problematic_teams[level].append((team, slot))
-
     temperature = initial_temp
 
     for iteration in range(max_iterations):
-        # Choose move type based on probabilities
-        if random.random() < candidate_prob:
-            move_type = "candidate"
-        else:
-            move_type = "swap"
+        move_type = "candidate" if random.random() < candidate_prob else "swap"
 
-        if move_type == "swap":
-            # Swap move: choose two different weeks and one level; swap their assignments (and mirror weeks)
-            w1, w2 = random.sample(range(config["first_half_weeks"]), 2)
+        if move_type == "candidate":
+            # Choose a random level and mirror group.
             level = random.choice(levels)
-
-            # Save original assignments before swapping
-            orig_w1 = new_schedule[w1][level]
-            orig_w2 = new_schedule[w2][level]
-
-            # Swap in-place
-            new_schedule[w1][level] = orig_w2
-            new_schedule[w2][level] = orig_w1
-
-            # Handle mirror weeks
-            mirror_w1 = w1 + config["first_half_weeks"]
-            mirror_w2 = w2 + config["first_half_weeks"]
-            orig_m1 = None
-            orig_m2 = None
-
-            if mirror_w1 < len(new_schedule) and mirror_w2 < len(new_schedule):
-                orig_m1 = new_schedule[mirror_w1][level]
-                orig_m2 = new_schedule[mirror_w2][level]
-                new_schedule[mirror_w1][level] = orig_m2
-                new_schedule[mirror_w2][level] = orig_m1
-
-            # Check constraints
-            is_valid = (
-                is_week_global_valid(new_schedule[w1])
-                and is_week_global_valid(new_schedule[w2])
-                and (
-                    mirror_w1 >= len(new_schedule)
-                    or is_week_global_valid(new_schedule[mirror_w1])
-                )
-                and (
-                    mirror_w2 >= len(new_schedule)
-                    or is_week_global_valid(new_schedule[mirror_w2])
-                )
-            )
-
-            # Evaluate if the constraint is satisfied
-            if is_valid:
-                candidate_obj = composite_objective(
-                    new_schedule, weight_play, weight_ref
-                )
-                delta = candidate_obj - current_obj
-
-                # Always accept improvements
-                if delta < 0:
-                    current_obj = candidate_obj
-                    accepted_count += 1
-                    continue
-
-                # Sometimes accept worse moves based on temperature
-                if random.random() < math.exp(-delta / temperature):
-                    current_obj = candidate_obj
-                    accepted_count += 1
-                    continue
-
-            # Revert changes if invalid or not an improvement
-            new_schedule[w1][level] = orig_w1
-            new_schedule[w2][level] = orig_w2
-            if orig_m1 is not None and orig_m2 is not None:
-                new_schedule[mirror_w1][level] = orig_m1
-                new_schedule[mirror_w2][level] = orig_m2
-
-        else:  # candidate move
-            # Try a new slot assignment for a random week and level
-            w = random.randrange(config["first_half_weeks"])
-            level = random.choice(levels)
-            current_assignment, pairing, current_ref = new_schedule[w][level]
-
-            # Generate alternative assignments
-            candidates = generate_level_slot_assignments(level, len(pairing))
-            candidates = [a for a in candidates if a != current_assignment]
+            mirror_groups = list(mirror_mappings[level].keys())
+            if not mirror_groups:
+                continue
+            r = random.choice(mirror_groups)
+            weeks_group = mirror_mappings[level][r]
+            # Get current assignment from the first week in the group.
+            week0 = weeks_group[0]
+            current_assignment, pairing, current_ref = new_schedule[week0][level]
+            # Generate alternative slot assignments for this mirror group.
+            candidates = [a for a in generate_level_slot_assignments(level, len(pairing))
+                          if a != current_assignment]
             if not candidates:
                 continue
-
             new_assignment = random.choice(candidates)
-            new_ref = get_ref_assignment(
-                level, new_assignment, pairing, {t: 0 for t in teams[level]}
-            )
+            new_ref = get_ref_assignment(level, new_assignment, pairing, {t: 0 for t in teams[level]})
             if new_ref is None:
                 continue
 
-            # Save original state and make change
-            original_week_assignment = new_schedule[w][level]
-            new_schedule[w][level] = (new_assignment, pairing, new_ref)
+            # Backup current assignments and apply new one to all weeks in the group.
+            backup = {}
+            for w in weeks_group:
+                backup[w] = new_schedule[w][level]
+                new_schedule[w][level] = (new_assignment, pairing, new_ref)
 
-            # Handle mirror week
-            mirror_w = w + config["first_half_weeks"]
-            original_mirror_assignment = None
-            if mirror_w < len(new_schedule):
-                mirror_assignment, mirror_pairing, current_mirror_ref = new_schedule[
-                    mirror_w
-                ][level]
-                mirror_ref = get_ref_assignment(
-                    level,
-                    mirror_assignment,
-                    mirror_pairing,
-                    {t: 0 for t in teams[level]},
-                )
-                if mirror_ref is None:
-                    # Revert and skip
-                    new_schedule[w][level] = original_week_assignment
-                    continue
-
-                original_mirror_assignment = new_schedule[mirror_w][level]
-                new_schedule[mirror_w][level] = (
-                    mirror_assignment,
-                    mirror_pairing,
-                    mirror_ref,
-                )
-
-            # Check global constraints
-            is_valid = is_week_global_valid(new_schedule[w]) and (
-                mirror_w >= len(new_schedule)
-                or is_week_global_valid(new_schedule[mirror_w])
-            )
-
-            if is_valid:
-                candidate_obj = composite_objective(
-                    new_schedule, weight_play, weight_ref
-                )
+            # Validate each affected week.
+            if all(is_week_global_valid(new_schedule[w]) for w in weeks_group):
+                candidate_obj = composite_objective(new_schedule, weight_play, weight_ref)
                 delta = candidate_obj - current_obj
-
-                # Always accept improvements
-                if delta < 0:
+                if delta < 0 or random.random() < math.exp(-delta / temperature):
                     current_obj = candidate_obj
-                    accepted_count += 1
-                    continue
+                    continue  # Accept the move.
+            # Revert if move not accepted.
+            for w in weeks_group:
+                new_schedule[w][level] = backup[w]
 
-                # Sometimes accept worse moves based on temperature
-                if random.random() < math.exp(-delta / temperature):
+        else:  # swap move
+            # Swap two mirror groups in the same level.
+            level = random.choice(levels)
+            groups = list(mirror_mappings[level].keys())
+            if len(groups) < 2:
+                continue
+            r1, r2 = random.sample(groups, 2)
+            weeks1 = mirror_mappings[level][r1]
+            weeks2 = mirror_mappings[level][r2]
+            backup1 = {w: new_schedule[w][level] for w in weeks1}
+            backup2 = {w: new_schedule[w][level] for w in weeks2}
+            # Swap the assignments (all weeks in each group get the other's assignment).
+            for w in weeks1:
+                new_schedule[w][level] = backup2[weeks2[0]]
+            for w in weeks2:
+                new_schedule[w][level] = backup1[weeks1[0]]
+            if all(is_week_global_valid(new_schedule[w]) for w in weeks1 + weeks2):
+                candidate_obj = composite_objective(new_schedule, weight_play, weight_ref)
+                delta = candidate_obj - current_obj
+                if delta < 0 or random.random() < math.exp(-delta / temperature):
                     current_obj = candidate_obj
-                    accepted_count += 1
-                    continue
+                    continue  # Accept the swap.
+            # Revert swap if not accepted.
+            for w in weeks1:
+                new_schedule[w][level] = backup1[w]
+            for w in weeks2:
+                new_schedule[w][level] = backup2[w]
 
-            # Revert changes if invalid or not an improvement
-            new_schedule[w][level] = original_week_assignment
-            if original_mirror_assignment is not None:
-                new_schedule[mirror_w][level] = original_mirror_assignment
-
-        # Cool the temperature
         if iteration % 10 == 0:
             temperature *= cooling_rate
 
     return new_schedule
+
 
 
 #########################################
@@ -820,26 +1028,26 @@ def validate_schedule(schedule, teams, levels):
     return True, "Schedule is valid"
 
 
+#########################################
+# Updated find_schedule_attempt
+#########################################
+
+#############################################
+# 3. Update find_schedule_attempt to Use the New Solver
+#############################################
+
 def find_schedule_attempt():
-    """Single attempt to find a valid schedule"""
-    # Solve first half
-    first_half_schedule, first_half_ref_counts = solve_half_schedule(
-        rr_pairings, first_half_weeks
-    )
-    if first_half_schedule is None:
+    game_assignments = solve_game_schedule(rr_pairings, mirror_mappings, config["total_weeks"])
+    if game_assignments is None:
+        print("Failed to find a valid game schedule.")
         return None
-
-    second_half_schedule, second_half_ref_counts = solve_second_half(
-        rr_pairings, first_half_schedule, first_half_ref_counts
-    )
-    if second_half_schedule is None:
-        return None
-
-    full_schedule = first_half_schedule + second_half_schedule
-
-    final_schedule = balance_schedule(full_schedule)
-
-    # Validate the schedule
+    game_schedule = reconstruct_game_schedule(game_assignments, mirror_mappings, config["total_weeks"])
+    # Phase 2: Assign referees with SA.
+    full_schedule = sa_referee_assignment(game_schedule)
+    full_schedule = fix_global_slot_distribution(full_schedule, expected=config["courts_per_slot"])
+    return full_schedule
+    # (Optionally, run the balance_schedule local search on full_schedule.)
+    final_schedule = balance_schedule(full_schedule, mirror_mappings)
     is_valid, message = validate_schedule(final_schedule, teams, levels)
     print(message)
     if is_valid:
@@ -847,11 +1055,13 @@ def find_schedule_attempt():
     return None
 
 
+
+
 def find_schedule(
     use_saved_schedule=True,
     filename="saved_schedule.json",
     max_attempts=30000,
-    num_cores=14,
+    num_cores=1,
 ):
     """
     Find a schedule by first trying to load from a file, then generating a new one if needed.
@@ -978,13 +1188,6 @@ def validate_config(config):
             f"Number of priority slots ({len(config['priority_slots'])}) should be 2 or fewer"
         )
 
-    # 5. Ensure total_weeks is exactly double first_half_weeks
-    if config["total_weeks"] != config["first_half_weeks"] * 2:
-        raise ValueError(
-            f"Total weeks ({config['total_weeks']}) should be exactly double the first half weeks "
-            f"({config['first_half_weeks']})"
-        )
-
     # Additional check: all priority slots should exist in the configuration
     for slot in config["priority_slots"]:
         if slot not in range(1, config["num_slots"] + 1):
@@ -1032,7 +1235,7 @@ if __name__ == "__main__":
         ast = adjacent_slot_test(final_schedule)
         gst = global_slot_distribution_test(final_schedule, config["courts_per_slot"])
         mpt = mirror_pairing_test(
-            final_schedule, first_half_weeks=config["first_half_weeks"]
+            final_schedule, levels, config["teams_per_level"]
         )
 
         # Pass the config to print_statistics

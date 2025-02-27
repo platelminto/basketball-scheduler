@@ -69,25 +69,44 @@ def pairing_tests(schedule, levels, teams_per_level):
     return passed
 
 
-def global_slot_distribution_test(schedule, expected):
+def global_slot_distribution_test(schedule, expected=None):
     """
     Tests that each slot has the correct number of games across all levels.
 
     Args:
         schedule: The formatted schedule data
+        expected: Optional dict mapping slot numbers to expected game counts
+                  If not provided, will be calculated from the first week
+
+    Returns:
+        bool: True if all weeks follow the expected slot distribution
     """
     all_ok = True
 
+    # If expected distribution not provided, calculate from first week
+    if expected is None and schedule:
+        expected = {}
+        first_week = schedule[0]
+        for slot_key in first_week["slots"]:
+            slot_num = int(slot_key)
+            expected[slot_num] = len(first_week["slots"][slot_key])
+
+    # Check each week's distribution
     for week in schedule:
         week_num = week["week"]
-        week_counts = {s: 0 for s in [1, 2, 3, 4]}
+
+        # Get all slots from this week
+        all_slots = set(int(slot_key) for slot_key in week["slots"].keys())
+
+        # Create count dictionary for this week
+        week_counts = {slot_num: 0 for slot_num in all_slots}
 
         # Count games in each slot
-        for slot_num in range(1, 5):
-            slot_key = str(slot_num)
-            if slot_key in week["slots"]:
-                week_counts[slot_num] = len(week["slots"][slot_key])
+        for slot_key in week["slots"]:
+            slot_num = int(slot_key)
+            week_counts[slot_num] = len(week["slots"][slot_key])
 
+        # Compare with expected
         if week_counts != expected:
             print(
                 f"Week {week_num}: Global slot distribution incorrect: {week_counts} (expected {expected})"
@@ -194,19 +213,28 @@ def adjacent_slot_test(schedule):
     return passed
 
 
-def mirror_pairing_test(schedule, first_half_weeks=5):
+def mirror_pairing_test(schedule, levels=None, teams_per_level=None):
     """
-    Tests that the second half of the schedule mirrors the matchups in the first half.
-    For each level, if team A plays team B in week N, they must also play in week N+first_half_weeks.
+    Tests that matchups follow proper mirroring across cycles.
+    For a level with n teams, matchups should repeat every n-1 weeks.
 
     Args:
         schedule: The formatted schedule data
-        first_half_weeks: Number of weeks in the first half (default: 5)
+        levels: List of competition levels (default: ["A", "B", "C"])
+        teams_per_level: Dict mapping each level to its number of teams
 
     Returns:
-        bool: True if the mirror property is maintained, False otherwise
+        bool: True if proper mirroring is maintained, False otherwise
     """
+    if levels is None:
+        levels = ["A", "B", "C"]
+
+    if teams_per_level is None:
+        teams_per_level = {level: 6 for level in levels}
+
     passed = True
+    max_teams = max(teams_per_level.values())
+    season_weeks = 2 * (max_teams - 1)  # Total weeks in the season
 
     # Organize the schedule into a better format for checking
     matchups_by_week = {}
@@ -230,37 +258,56 @@ def mirror_pairing_test(schedule, first_half_weeks=5):
                 # Store as a sorted pair to ensure consistent comparison
                 matchups_by_week[week_num][level].append(tuple(sorted([team1, team2])))
 
-    # Check mirror weeks
-    for first_week in range(1, first_half_weeks + 1):
-        mirror_week = first_week + first_half_weeks
+    # Check mirror cycles for each level
+    for level in levels:
+        n_teams = teams_per_level[level]
+        cycle_length = n_teams - 1  # Length of one round-robin cycle
 
-        if mirror_week not in matchups_by_week:
-            print(f"Mirror week {mirror_week} not found in schedule")
-            passed = False
-            continue
-
-        # For each level, check if matchups are mirrored
-        for level in matchups_by_week[first_week]:
-            if level not in matchups_by_week[mirror_week]:
-                print(f"Level {level} not found in mirror week {mirror_week}")
+        # For each base week in the first cycle
+        for base_week in range(1, cycle_length + 1):
+            if base_week not in matchups_by_week:
+                print(f"Level {level}: Week {base_week} not found in schedule")
                 passed = False
                 continue
 
-            # Get matchups for both weeks
-            first_matchups = set(matchups_by_week[first_week][level])
-            mirror_matchups = set(matchups_by_week[mirror_week][level])
-
-            # Check if they match
-            if first_matchups != mirror_matchups:
-                print(
-                    f"Week {first_week} and mirror week {mirror_week} have different matchups for level {level}"
-                )
-                print(f"  Week {first_week} matchups: {first_matchups}")
-                print(f"  Week {mirror_week} matchups: {mirror_matchups}")
+            if level not in matchups_by_week[base_week]:
+                print(f"Level {level}: No matchups found in week {base_week}")
                 passed = False
+                continue
+
+            base_matchups = set(matchups_by_week[base_week][level])
+
+            # Calculate how many full cycles we should have
+            num_cycles = season_weeks // cycle_length
+
+            # Check each mirror week
+            for cycle in range(1, num_cycles):
+                mirror_week = base_week + (cycle * cycle_length)
+
+                # Skip if beyond the schedule
+                if mirror_week > season_weeks or mirror_week not in matchups_by_week:
+                    continue
+
+                if level not in matchups_by_week[mirror_week]:
+                    print(
+                        f"Level {level}: No matchups found in mirror week {mirror_week}"
+                    )
+                    passed = False
+                    continue
+
+                mirror_matchups = set(matchups_by_week[mirror_week][level])
+
+                # Check if they match
+                if base_matchups != mirror_matchups:
+                    print(
+                        f"Level {level}: Week {base_week} and mirror week {mirror_week} have different matchups"
+                    )
+                    print(f"  Week {base_week} matchups: {base_matchups}")
+                    print(f"  Week {mirror_week} matchups: {mirror_matchups}")
+                    passed = False
 
     if passed:
-        print("All mirror week matchups are preserved correctly.")
+        print("All mirror cycle matchups are preserved correctly.")
 
     return passed
 
@@ -375,7 +422,7 @@ def run_all_tests(schedule, levels=None, teams_per_level=None):
     pairing_result = pairing_tests(schedule, levels, teams_per_level)
     print()
 
-    slot_dist_result = global_slot_distribution_test(schedule, {1: 1, 2: 3, 3: 2, 4: 3})
+    slot_dist_result = global_slot_distribution_test(schedule)
     print()
 
     referee_result = referee_player_test(schedule)
@@ -387,7 +434,7 @@ def run_all_tests(schedule, levels=None, teams_per_level=None):
     cycle_result = cycle_pairing_test(schedule, levels, teams_per_level)
     print()
 
-    mirror_result = mirror_pairing_test(schedule)
+    mirror_result = mirror_pairing_test(schedule, levels, teams_per_level)
     print()
 
     all_passed = (
