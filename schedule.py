@@ -30,8 +30,8 @@ config = {
     },
     # Schedule structure
     "courts_per_slot": {
-        1: 1,
-        2: 3,
+        1: 2,
+        2: 2,
         3: 2,
         4: 3,
     },  # Number of courts available in each slot (1-indexed)
@@ -44,7 +44,7 @@ config = {
     # Constraints for play balance
     # These are the maximum number of games a team can play in a slot for the whole season.
     "slot_limits": {
-        1: 2,  # Teams can play at most 2 games in slot 1
+        1: 3,  # Teams can play at most 2 games in slot 1
         2: 6,  # Teams can play at most 6 games in slots 2 and 3
         3: 6,
         4: 4,  # Teams can play at most 4 games in slot 4

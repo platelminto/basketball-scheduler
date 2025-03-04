@@ -6,28 +6,20 @@
         {
           "level": "B",
           "teams": [
-            "MidTeam1",
-            "MidTeam6"
-          ],
-          "ref": "MidTeam2"
-        },
-        {
-          "level": "B",
-          "teams": [
             "MidTeam3",
             "MidTeam4"
           ],
-          "ref": "MidTeam5"
+          "ref": "MidTeam1"
         }
       ],
       "2": [
         {
-          "level": "A",
+          "level": "B",
           "teams": [
-            "HighTeam2",
-            "HighTeam5"
+            "MidTeam1",
+            "MidTeam6"
           ],
-          "ref": "HighTeam1"
+          "ref": "MidTeam3"
         },
         {
           "level": "B",
@@ -35,17 +27,25 @@
             "MidTeam2",
             "MidTeam5"
           ],
-          "ref": "MidTeam1"
+          "ref": "MidTeam4"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam2",
+            "LowTeam5"
+          ],
+          "ref": "LowTeam1"
         }
       ],
       "3": [
         {
           "level": "A",
           "teams": [
-            "HighTeam1",
-            "HighTeam6"
+            "HighTeam2",
+            "HighTeam5"
           ],
-          "ref": "HighTeam2"
+          "ref": "HighTeam1"
         },
         {
           "level": "C",
@@ -60,18 +60,18 @@
         {
           "level": "A",
           "teams": [
+            "HighTeam1",
+            "HighTeam6"
+          ],
+          "ref": "HighTeam2"
+        },
+        {
+          "level": "A",
+          "teams": [
             "HighTeam3",
             "HighTeam4"
           ],
-          "ref": "HighTeam6"
-        },
-        {
-          "level": "C",
-          "teams": [
-            "LowTeam2",
-            "LowTeam5"
-          ],
-          "ref": "LowTeam1"
+          "ref": "HighTeam5"
         },
         {
           "level": "C",
@@ -94,7 +94,25 @@
             "LowTeam1",
             "LowTeam5"
           ],
-          "ref": "LowTeam4"
+          "ref": "LowTeam3"
+        }
+      ],
+      "2": [
+        {
+          "level": "B",
+          "teams": [
+            "MidTeam1",
+            "MidTeam5"
+          ],
+          "ref": "MidTeam6"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam4",
+            "LowTeam6"
+          ],
+          "ref": "LowTeam5"
         },
         {
           "level": "C",
@@ -102,10 +120,10 @@
             "LowTeam2",
             "LowTeam3"
           ],
-          "ref": "LowTeam6"
+          "ref": "LowTeam1"
         }
       ],
-      "2": [
+      "3": [
         {
           "level": "A",
           "teams": [
@@ -115,30 +133,12 @@
           "ref": "HighTeam3"
         },
         {
-          "level": "C",
-          "teams": [
-            "LowTeam4",
-            "LowTeam6"
-          ],
-          "ref": "LowTeam3"
-        }
-      ],
-      "3": [
-        {
-          "level": "A",
-          "teams": [
-            "HighTeam2",
-            "HighTeam3"
-          ],
-          "ref": "HighTeam4"
-        },
-        {
           "level": "B",
           "teams": [
-            "MidTeam2",
-            "MidTeam3"
+            "MidTeam4",
+            "MidTeam6"
           ],
-          "ref": "MidTeam4"
+          "ref": "MidTeam2"
         }
       ],
       "4": [
@@ -148,23 +148,23 @@
             "HighTeam4",
             "HighTeam6"
           ],
-          "ref": "HighTeam2"
+          "ref": "HighTeam5"
+        },
+        {
+          "level": "A",
+          "teams": [
+            "HighTeam2",
+            "HighTeam3"
+          ],
+          "ref": "HighTeam1"
         },
         {
           "level": "B",
           "teams": [
-            "MidTeam1",
-            "MidTeam5"
+            "MidTeam2",
+            "MidTeam3"
           ],
-          "ref": "MidTeam3"
-        },
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam4",
-            "MidTeam6"
-          ],
-          "ref": "MidTeam2"
+          "ref": "MidTeam4"
         }
       ]
     }
@@ -174,13 +174,41 @@
     "slots": {
       "1": [
         {
+          "level": "A",
+          "teams": [
+            "HighTeam3",
+            "HighTeam5"
+          ],
+          "ref": "HighTeam4"
+        }
+      ],
+      "2": [
+        {
+          "level": "A",
+          "teams": [
+            "HighTeam1",
+            "HighTeam4"
+          ],
+          "ref": "HighTeam3"
+        },
+        {
+          "level": "A",
+          "teams": [
+            "HighTeam2",
+            "HighTeam6"
+          ],
+          "ref": "HighTeam5"
+        },
+        {
           "level": "B",
           "teams": [
             "MidTeam1",
             "MidTeam4"
           ],
-          "ref": "MidTeam3"
-        },
+          "ref": "MidTeam2"
+        }
+      ],
+      "3": [
         {
           "level": "B",
           "teams": [
@@ -188,9 +216,17 @@
             "MidTeam6"
           ],
           "ref": "MidTeam5"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam2",
+            "LowTeam6"
+          ],
+          "ref": "LowTeam4"
         }
       ],
-      "2": [
+      "4": [
         {
           "level": "B",
           "teams": [
@@ -206,42 +242,6 @@
             "LowTeam4"
           ],
           "ref": "LowTeam2"
-        }
-      ],
-      "3": [
-        {
-          "level": "A",
-          "teams": [
-            "HighTeam3",
-            "HighTeam5"
-          ],
-          "ref": "HighTeam1"
-        },
-        {
-          "level": "C",
-          "teams": [
-            "LowTeam2",
-            "LowTeam6"
-          ],
-          "ref": "LowTeam1"
-        }
-      ],
-      "4": [
-        {
-          "level": "A",
-          "teams": [
-            "HighTeam1",
-            "HighTeam4"
-          ],
-          "ref": "HighTeam5"
-        },
-        {
-          "level": "A",
-          "teams": [
-            "HighTeam2",
-            "HighTeam6"
-          ],
-          "ref": "HighTeam3"
         },
         {
           "level": "C",
@@ -259,38 +259,38 @@
     "slots": {
       "1": [
         {
-          "level": "B",
+          "level": "C",
           "teams": [
-            "MidTeam2",
-            "MidTeam4"
+            "LowTeam1",
+            "LowTeam3"
           ],
-          "ref": "MidTeam1"
-        },
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam5",
-            "MidTeam6"
-          ],
-          "ref": "MidTeam3"
+          "ref": "LowTeam4"
         }
       ],
       "2": [
         {
           "level": "A",
           "teams": [
-            "HighTeam5",
-            "HighTeam6"
+            "HighTeam1",
+            "HighTeam3"
           ],
           "ref": "HighTeam2"
         },
         {
-          "level": "B",
+          "level": "C",
           "teams": [
-            "MidTeam1",
-            "MidTeam3"
+            "LowTeam2",
+            "LowTeam4"
           ],
-          "ref": "MidTeam4"
+          "ref": "LowTeam3"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam5",
+            "LowTeam6"
+          ],
+          "ref": "LowTeam1"
         }
       ],
       "3": [
@@ -300,41 +300,41 @@
             "HighTeam2",
             "HighTeam4"
           ],
-          "ref": "HighTeam5"
+          "ref": "HighTeam6"
         },
         {
-          "level": "C",
+          "level": "B",
           "teams": [
-            "LowTeam5",
-            "LowTeam6"
+            "MidTeam5",
+            "MidTeam6"
           ],
-          "ref": "LowTeam2"
+          "ref": "MidTeam1"
         }
       ],
       "4": [
         {
           "level": "A",
           "teams": [
-            "HighTeam1",
-            "HighTeam3"
+            "HighTeam5",
+            "HighTeam6"
           ],
           "ref": "HighTeam4"
         },
         {
-          "level": "C",
+          "level": "B",
           "teams": [
-            "LowTeam1",
-            "LowTeam3"
+            "MidTeam1",
+            "MidTeam3"
           ],
-          "ref": "LowTeam5"
+          "ref": "MidTeam5"
         },
         {
-          "level": "C",
+          "level": "B",
           "teams": [
-            "LowTeam2",
-            "LowTeam4"
+            "MidTeam2",
+            "MidTeam4"
           ],
-          "ref": "LowTeam6"
+          "ref": "MidTeam6"
         }
       ]
     }
@@ -343,14 +343,6 @@
     "week": 5,
     "slots": {
       "1": [
-        {
-          "level": "C",
-          "teams": [
-            "LowTeam3",
-            "LowTeam6"
-          ],
-          "ref": "LowTeam1"
-        },
         {
           "level": "C",
           "teams": [
@@ -364,16 +356,24 @@
         {
           "level": "B",
           "teams": [
-            "MidTeam1",
-            "MidTeam2"
+            "MidTeam4",
+            "MidTeam5"
           ],
-          "ref": "MidTeam6"
+          "ref": "MidTeam2"
         },
         {
           "level": "C",
           "teams": [
             "LowTeam1",
             "LowTeam2"
+          ],
+          "ref": "LowTeam5"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam3",
+            "LowTeam6"
           ],
           "ref": "LowTeam4"
         }
@@ -390,10 +390,10 @@
         {
           "level": "B",
           "teams": [
-            "MidTeam3",
-            "MidTeam6"
+            "MidTeam1",
+            "MidTeam2"
           ],
-          "ref": "MidTeam1"
+          "ref": "MidTeam3"
         }
       ],
       "4": [
@@ -416,10 +416,10 @@
         {
           "level": "B",
           "teams": [
-            "MidTeam4",
-            "MidTeam5"
+            "MidTeam3",
+            "MidTeam6"
           ],
-          "ref": "MidTeam3"
+          "ref": "MidTeam1"
         }
       ]
     }
@@ -429,6 +429,16 @@
     "slots": {
       "1": [
         {
+          "level": "B",
+          "teams": [
+            "MidTeam2",
+            "MidTeam5"
+          ],
+          "ref": "MidTeam3"
+        }
+      ],
+      "2": [
+        {
           "level": "A",
           "teams": [
             "HighTeam1",
@@ -437,58 +447,12 @@
           "ref": "HighTeam3"
         },
         {
-          "level": "A",
-          "teams": [
-            "HighTeam2",
-            "HighTeam5"
-          ],
-          "ref": "HighTeam4"
-        }
-      ],
-      "2": [
-        {
-          "level": "A",
-          "teams": [
-            "HighTeam3",
-            "HighTeam4"
-          ],
-          "ref": "HighTeam5"
-        },
-        {
-          "level": "C",
-          "teams": [
-            "LowTeam3",
-            "LowTeam4"
-          ],
-          "ref": "LowTeam2"
-        }
-      ],
-      "3": [
-        {
           "level": "B",
           "teams": [
             "MidTeam1",
             "MidTeam6"
           ],
-          "ref": "MidTeam2"
-        },
-        {
-          "level": "C",
-          "teams": [
-            "LowTeam2",
-            "LowTeam5"
-          ],
-          "ref": "LowTeam3"
-        }
-      ],
-      "4": [
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam2",
-            "MidTeam5"
-          ],
-          "ref": "MidTeam6"
+          "ref": "MidTeam5"
         },
         {
           "level": "B",
@@ -496,7 +460,17 @@
             "MidTeam3",
             "MidTeam4"
           ],
-          "ref": "MidTeam1"
+          "ref": "MidTeam2"
+        }
+      ],
+      "3": [
+        {
+          "level": "A",
+          "teams": [
+            "HighTeam3",
+            "HighTeam4"
+          ],
+          "ref": "HighTeam1"
         },
         {
           "level": "C",
@@ -504,7 +478,33 @@
             "LowTeam1",
             "LowTeam6"
           ],
-          "ref": "LowTeam5"
+          "ref": "LowTeam3"
+        }
+      ],
+      "4": [
+        {
+          "level": "A",
+          "teams": [
+            "HighTeam2",
+            "HighTeam5"
+          ],
+          "ref": "HighTeam4"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam2",
+            "LowTeam5"
+          ],
+          "ref": "LowTeam6"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam3",
+            "LowTeam4"
+          ],
+          "ref": "LowTeam1"
         }
       ]
     }
@@ -520,6 +520,24 @@
             "MidTeam5"
           ],
           "ref": "MidTeam4"
+        }
+      ],
+      "2": [
+        {
+          "level": "A",
+          "teams": [
+            "HighTeam1",
+            "HighTeam5"
+          ],
+          "ref": "HighTeam4"
+        },
+        {
+          "level": "B",
+          "teams": [
+            "MidTeam4",
+            "MidTeam6"
+          ],
+          "ref": "MidTeam1"
         },
         {
           "level": "B",
@@ -527,25 +545,7 @@
             "MidTeam2",
             "MidTeam3"
           ],
-          "ref": "MidTeam6"
-        }
-      ],
-      "2": [
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam4",
-            "MidTeam6"
-          ],
           "ref": "MidTeam5"
-        },
-        {
-          "level": "C",
-          "teams": [
-            "LowTeam4",
-            "LowTeam6"
-          ],
-          "ref": "LowTeam2"
         }
       ],
       "3": [
@@ -555,7 +555,7 @@
             "HighTeam4",
             "HighTeam6"
           ],
-          "ref": "HighTeam1"
+          "ref": "HighTeam5"
         },
         {
           "level": "C",
@@ -563,31 +563,31 @@
             "LowTeam2",
             "LowTeam3"
           ],
-          "ref": "LowTeam4"
+          "ref": "LowTeam5"
         }
       ],
       "4": [
         {
           "level": "A",
           "teams": [
-            "HighTeam1",
-            "HighTeam5"
-          ],
-          "ref": "HighTeam6"
-        },
-        {
-          "level": "A",
-          "teams": [
             "HighTeam2",
             "HighTeam3"
           ],
-          "ref": "HighTeam4"
+          "ref": "HighTeam6"
         },
         {
           "level": "C",
           "teams": [
             "LowTeam1",
             "LowTeam5"
+          ],
+          "ref": "LowTeam2"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam4",
+            "LowTeam6"
           ],
           "ref": "LowTeam3"
         }
@@ -601,28 +601,28 @@
         {
           "level": "C",
           "teams": [
-            "LowTeam1",
-            "LowTeam4"
-          ],
-          "ref": "LowTeam3"
-        },
-        {
-          "level": "C",
-          "teams": [
             "LowTeam2",
             "LowTeam6"
           ],
-          "ref": "LowTeam5"
+          "ref": "LowTeam4"
         }
       ],
       "2": [
         {
-          "level": "B",
+          "level": "A",
           "teams": [
-            "MidTeam3",
-            "MidTeam5"
+            "HighTeam2",
+            "HighTeam6"
           ],
-          "ref": "MidTeam4"
+          "ref": "HighTeam3"
+        },
+        {
+          "level": "C",
+          "teams": [
+            "LowTeam1",
+            "LowTeam4"
+          ],
+          "ref": "LowTeam6"
         },
         {
           "level": "C",
@@ -630,28 +630,10 @@
             "LowTeam3",
             "LowTeam5"
           ],
-          "ref": "LowTeam1"
+          "ref": "LowTeam2"
         }
       ],
       "3": [
-        {
-          "level": "A",
-          "teams": [
-            "HighTeam1",
-            "HighTeam4"
-          ],
-          "ref": "HighTeam3"
-        },
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam1",
-            "MidTeam4"
-          ],
-          "ref": "MidTeam2"
-        }
-      ],
-      "4": [
         {
           "level": "A",
           "teams": [
@@ -661,12 +643,30 @@
           "ref": "HighTeam1"
         },
         {
+          "level": "B",
+          "teams": [
+            "MidTeam3",
+            "MidTeam5"
+          ],
+          "ref": "MidTeam4"
+        }
+      ],
+      "4": [
+        {
           "level": "A",
           "teams": [
-            "HighTeam2",
-            "HighTeam6"
+            "HighTeam1",
+            "HighTeam4"
           ],
-          "ref": "HighTeam4"
+          "ref": "HighTeam5"
+        },
+        {
+          "level": "B",
+          "teams": [
+            "MidTeam1",
+            "MidTeam4"
+          ],
+          "ref": "MidTeam3"
         },
         {
           "level": "B",
@@ -674,7 +674,7 @@
             "MidTeam2",
             "MidTeam6"
           ],
-          "ref": "MidTeam1"
+          "ref": "MidTeam5"
         }
       ]
     }
@@ -684,48 +684,22 @@
     "slots": {
       "1": [
         {
-          "level": "A",
+          "level": "C",
           "teams": [
-            "HighTeam1",
-            "HighTeam3"
+            "LowTeam2",
+            "LowTeam4"
           ],
-          "ref": "HighTeam5"
-        },
-        {
-          "level": "A",
-          "teams": [
-            "HighTeam2",
-            "HighTeam4"
-          ],
-          "ref": "HighTeam6"
+          "ref": "LowTeam5"
         }
       ],
       "2": [
         {
           "level": "A",
           "teams": [
-            "HighTeam5",
-            "HighTeam6"
+            "HighTeam1",
+            "HighTeam3"
           ],
           "ref": "HighTeam2"
-        },
-        {
-          "level": "C",
-          "teams": [
-            "LowTeam2",
-            "LowTeam4"
-          ],
-          "ref": "LowTeam1"
-        }
-      ],
-      "3": [
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam5",
-            "MidTeam6"
-          ],
-          "ref": "MidTeam2"
         },
         {
           "level": "C",
@@ -734,24 +708,6 @@
             "LowTeam3"
           ],
           "ref": "LowTeam4"
-        }
-      ],
-      "4": [
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam1",
-            "MidTeam3"
-          ],
-          "ref": "MidTeam5"
-        },
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam2",
-            "MidTeam4"
-          ],
-          "ref": "MidTeam6"
         },
         {
           "level": "C",
@@ -759,7 +715,51 @@
             "LowTeam5",
             "LowTeam6"
           ],
-          "ref": "LowTeam3"
+          "ref": "LowTeam2"
+        }
+      ],
+      "3": [
+        {
+          "level": "A",
+          "teams": [
+            "HighTeam2",
+            "HighTeam4"
+          ],
+          "ref": "HighTeam1"
+        },
+        {
+          "level": "B",
+          "teams": [
+            "MidTeam1",
+            "MidTeam3"
+          ],
+          "ref": "MidTeam6"
+        }
+      ],
+      "4": [
+        {
+          "level": "A",
+          "teams": [
+            "HighTeam5",
+            "HighTeam6"
+          ],
+          "ref": "HighTeam4"
+        },
+        {
+          "level": "B",
+          "teams": [
+            "MidTeam2",
+            "MidTeam4"
+          ],
+          "ref": "MidTeam1"
+        },
+        {
+          "level": "B",
+          "teams": [
+            "MidTeam5",
+            "MidTeam6"
+          ],
+          "ref": "MidTeam3"
         }
       ]
     }
@@ -771,10 +771,20 @@
         {
           "level": "A",
           "teams": [
+            "HighTeam3",
+            "HighTeam6"
+          ],
+          "ref": "HighTeam2"
+        }
+      ],
+      "2": [
+        {
+          "level": "A",
+          "teams": [
             "HighTeam1",
             "HighTeam2"
           ],
-          "ref": "HighTeam3"
+          "ref": "HighTeam6"
         },
         {
           "level": "A",
@@ -782,46 +792,18 @@
             "HighTeam4",
             "HighTeam5"
           ],
-          "ref": "HighTeam6"
-        }
-      ],
-      "2": [
-        {
-          "level": "A",
-          "teams": [
-            "HighTeam3",
-            "HighTeam6"
-          ],
-          "ref": "HighTeam1"
+          "ref": "HighTeam3"
         },
-        {
-          "level": "B",
-          "teams": [
-            "MidTeam4",
-            "MidTeam5"
-          ],
-          "ref": "MidTeam6"
-        }
-      ],
-      "3": [
         {
           "level": "B",
           "teams": [
             "MidTeam3",
             "MidTeam6"
           ],
-          "ref": "MidTeam4"
-        },
-        {
-          "level": "C",
-          "teams": [
-            "LowTeam4",
-            "LowTeam5"
-          ],
-          "ref": "LowTeam6"
+          "ref": "MidTeam1"
         }
       ],
-      "4": [
+      "3": [
         {
           "level": "B",
           "teams": [
@@ -833,10 +815,28 @@
         {
           "level": "C",
           "teams": [
+            "LowTeam4",
+            "LowTeam5"
+          ],
+          "ref": "LowTeam1"
+        }
+      ],
+      "4": [
+        {
+          "level": "B",
+          "teams": [
+            "MidTeam4",
+            "MidTeam5"
+          ],
+          "ref": "MidTeam2"
+        },
+        {
+          "level": "C",
+          "teams": [
             "LowTeam1",
             "LowTeam2"
           ],
-          "ref": "LowTeam4"
+          "ref": "LowTeam5"
         },
         {
           "level": "C",
@@ -844,7 +844,7 @@
             "LowTeam3",
             "LowTeam6"
           ],
-          "ref": "LowTeam5"
+          "ref": "LowTeam4"
         }
       ]
     }
