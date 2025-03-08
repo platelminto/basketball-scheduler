@@ -28,19 +28,16 @@ config = {
         "B": 6,
         "C": 6,
     },
+    "first_half_weeks": 5,
+    "total_weeks": 10,
+    "num_slots": 4,
     # Schedule structure
     "courts_per_slot": {
-        1: 2,
-        2: 2,
-        3: 2,
-        4: 3,
-    },  # Number of courts available in each slot (1-indexed)
-    # Distributions for levels
-    # "distributions_list": [
-    #     (1, 2, 2),  # low-slot distribution
-    #     (2, 3, 4),  # middle distribution
-    #     (3, 4, 4),  # high-slot distribution
-    # ],
+        1: [1, 1, 2, 2, 2, 2, 2, 2, 2, 2],
+        2: [3, 3, 2, 2, 2, 2, 2, 2, 2, 2],
+        3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+        4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    },  # Number of courts available in each slot
     # Constraints for play balance
     # These are the maximum number of games a team can play in a slot for the whole season.
     "slot_limits": {
@@ -56,19 +53,6 @@ config = {
     "priority_slots": [1, 4],  # Slots where balance is more important
     "priority_multiplier": 100,  # Extra weight for priority slots in balance calculations
 }
-
-config.update(
-    {
-        "first_half_weeks": max(config["teams_per_level"].values())
-        - 1,  # Weeks in first half; second half will mirror these
-        "total_weeks": 2
-        * (
-            max(config["teams_per_level"].values()) - 1
-        ),  # Total number of weeks in the season
-        # Slots configuration
-        "num_slots": len(config["courts_per_slot"]),  # Number of time slots (1-indexed)
-    }
-)
 
 # Derived parameters
 levels = config["levels"]
@@ -312,12 +296,13 @@ def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
                     s: slot_assignment.count(s)
                     for s in range(1, config["num_slots"] + 1)
                 }
-                # Check global capacity: for each slot, usage + candidate_count <= courts available.
+                # Check global capacity: for each slot, usage + candidate_count <= courts available for this week.
                 feasible = True
                 for s in range(1, config["num_slots"] + 1):
-                    if current_usage[s] + candidate_count.get(s, 0) > config[
-                        "courts_per_slot"
-                    ].get(s, 0):
+                    if (
+                        current_usage[s] + candidate_count.get(s, 0)
+                        > config["courts_per_slot"][s][week]
+                    ):
                         feasible = False
                         break
                 if not feasible:
@@ -393,12 +378,13 @@ def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
                     s: slot_assignment.count(s)
                     for s in range(1, config["num_slots"] + 1)
                 }
-                # Check that global capacity is not exceeded.
+                # Check that global capacity is not exceeded for this specific week.
                 feasible = True
                 for s in range(1, config["num_slots"] + 1):
-                    if current_usage[s] + candidate_count.get(s, 0) > config[
-                        "courts_per_slot"
-                    ].get(s, 0):
+                    if (
+                        current_usage[s] + candidate_count.get(s, 0)
+                        > config["courts_per_slot"][s][week + weeks]
+                    ):
                         feasible = False
                         break
                 if not feasible:
@@ -521,10 +507,15 @@ def total_ref_imbalance(level, ref_counts):
     return sum((x - mean) ** 2 for x in values)
 
 
-def is_week_global_valid(week_assignment):
+def is_week_global_valid(week_assignment, week_index):
     """
-    Check that for the given week assignment (a dict mapping level -> (slot_assignment, pairing, ref_assignment)),
-    the total number of games assigned to each slot exactly equals the expected value from config["courts_per_slot"].
+    Check that for the given week assignment, the total number of games assigned
+    to each slot exactly equals the expected value from config["courts_per_slot"]
+    for the specific week.
+
+    Args:
+        week_assignment: The assignment for the week
+        week_index: The week index (0-based) to check against
     """
     usage = {s: 0 for s in range(1, config["num_slots"] + 1)}
     for level in week_assignment:
@@ -532,7 +523,7 @@ def is_week_global_valid(week_assignment):
         for s in slot_assignment:
             usage[s] += 1
     for s in usage:
-        if usage[s] != config["courts_per_slot"].get(s, 0):
+        if usage[s] != config["courts_per_slot"][s][week_index]:
             return False
     return True
 
@@ -638,15 +629,15 @@ def balance_schedule(
 
             # Check constraints
             is_valid = (
-                is_week_global_valid(new_schedule[w1])
-                and is_week_global_valid(new_schedule[w2])
+                is_week_global_valid(new_schedule[w1], w1)
+                and is_week_global_valid(new_schedule[w2], w2)
                 and (
                     mirror_w1 >= len(new_schedule)
-                    or is_week_global_valid(new_schedule[mirror_w1])
+                    or is_week_global_valid(new_schedule[mirror_w1], mirror_w1)
                 )
                 and (
                     mirror_w2 >= len(new_schedule)
-                    or is_week_global_valid(new_schedule[mirror_w2])
+                    or is_week_global_valid(new_schedule[mirror_w2], mirror_w2)
                 )
             )
 
@@ -725,10 +716,11 @@ def balance_schedule(
                 )
 
             # Check global constraints
-            is_valid = is_week_global_valid(new_schedule[w]) and (
-                mirror_w >= len(new_schedule)
-                or is_week_global_valid(new_schedule[mirror_w])
-            )
+            is_valid = is_week_global_valid(new_schedule[w], w)
+            if mirror_w < len(new_schedule):
+                is_valid = is_valid and is_week_global_valid(
+                    new_schedule[mirror_w], mirror_w
+                )
 
             if is_valid:
                 candidate_obj = composite_objective(
@@ -948,13 +940,20 @@ def validate_config(config):
     total_teams = sum(config["teams_per_level"].values())
     total_games_per_round = total_teams // 2
 
-    # 1. Check that sum of courts per slot equals total games per round
-    courts_sum = sum(config["courts_per_slot"].values())
-    if courts_sum != total_games_per_round:
-        raise ValueError(
-            f"Sum of courts per slot ({courts_sum}) must equal total games per round "
-            f"(sum of teams per level / 2 = {total_games_per_round})"
+    # 1. Check that sum of courts per slot equals total games per round for each week
+    for week_idx in range(
+        len(config["courts_per_slot"][1])
+    ):  # Assuming slot 1 has values for all weeks
+        courts_sum = sum(
+            config["courts_per_slot"][s][week_idx]
+            for s in range(1, config["num_slots"] + 1)
+            if s in config["courts_per_slot"]
         )
+        if courts_sum != total_games_per_round:
+            raise ValueError(
+                f"Week {week_idx+1}: Sum of courts per slot ({courts_sum}) must equal total games per round "
+                f"(sum of teams per level / 2 = {total_games_per_round})"
+            )
 
     # 2. Check that entries in courts_per_slot match num_slots
     if set(config["courts_per_slot"].keys()) != set(range(1, config["num_slots"] + 1)):
@@ -962,7 +961,16 @@ def validate_config(config):
             f"Keys in courts_per_slot must exactly match slots 1 through {config['num_slots']}"
         )
 
-    # 3. Check that slot limits totals are sufficient
+    # 3. Check that each slot has values for all weeks
+    weeks_count = len(config["courts_per_slot"][1])
+    for slot in config["courts_per_slot"]:
+        if len(config["courts_per_slot"][slot]) != weeks_count:
+            raise ValueError(
+                f"Slot {slot} has {len(config['courts_per_slot'][slot])} weeks of data, "
+                f"but should have {weeks_count}"
+            )
+
+    # 4. Check that slot limits totals are sufficient
     games_per_team = (config["total_weeks"] * (total_teams - 1)) // total_teams
     slot_limits_sum = sum(config["slot_limits"].values())
     min_required = int(games_per_team * 1.5)
@@ -972,13 +980,13 @@ def validate_config(config):
             f"number of games each team plays ({games_per_team}), which is {min_required}"
         )
 
-    # 4. Check that priority slots count is reasonable
+    # 5. Check that priority slots count is reasonable
     if len(config["priority_slots"]) > 2:
         raise ValueError(
             f"Number of priority slots ({len(config['priority_slots'])}) should be 2 or fewer"
         )
 
-    # 5. Ensure total_weeks is exactly double first_half_weeks
+    # 6. Ensure total_weeks is exactly double first_half_weeks
     if config["total_weeks"] != config["first_half_weeks"] * 2:
         raise ValueError(
             f"Total weeks ({config['total_weeks']}) should be exactly double the first half weeks "
@@ -1030,7 +1038,9 @@ if __name__ == "__main__":
         cpt = cycle_pairing_test(final_schedule, levels, config["teams_per_level"])
         rpt = referee_player_test(final_schedule)
         ast = adjacent_slot_test(final_schedule)
-        gst = global_slot_distribution_test(final_schedule, config["courts_per_slot"])
+        gst = global_slot_distribution_test(
+            final_schedule, config["courts_per_slot"], config["num_slots"]
+        )
         mpt = mirror_pairing_test(
             final_schedule, first_half_weeks=config["first_half_weeks"]
         )

@@ -69,28 +69,36 @@ def pairing_tests(schedule, levels, teams_per_level):
     return passed
 
 
-def global_slot_distribution_test(schedule, expected):
+def global_slot_distribution_test(schedule, expected_courts_per_slot, num_slots):
     """
-    Tests that each slot has the correct number of games across all levels.
+    Tests that each slot has the correct number of games across all levels for each week.
 
     Args:
         schedule: The formatted schedule data
+        expected_courts_per_slot: Dict mapping slots to lists of expected court counts by week
     """
     all_ok = True
 
     for week in schedule:
         week_num = week["week"]
-        week_counts = {s: 0 for s in [1, 2, 3, 4]}
+        week_idx = week_num - 1  # Convert 1-based week to 0-based index
+        week_counts = {s: 0 for s in range(1, num_slots + 1)}
 
         # Count games in each slot
-        for slot_num in range(1, 5):
+        for slot_num in range(1, num_slots + 1):
             slot_key = str(slot_num)
             if slot_key in week["slots"]:
                 week_counts[slot_num] = len(week["slots"][slot_key])
 
-        if week_counts != expected:
+        # Check against expected values for this week
+        expected_this_week = {
+            s: expected_courts_per_slot[s][week_idx] for s in expected_courts_per_slot
+        }
+
+        if week_counts != expected_this_week:
             print(
-                f"Week {week_num}: Global slot distribution incorrect: {week_counts} (expected {expected})"
+                f"Week {week_num}: Global slot distribution incorrect: {week_counts} "
+                f"(expected {expected_this_week})"
             )
             all_ok = False
 
@@ -349,59 +357,3 @@ def cycle_pairing_test(schedule, levels, teams_per_level):
         print("All levels follow proper cycling patterns for matchups")
 
     return passed
-
-
-def run_all_tests(schedule, levels=None, teams_per_level=None):
-    """
-    Run all schedule tests.
-
-    Args:
-        schedule: The formatted schedule data
-        levels: List of competition levels (default: ["A", "B", "C"])
-        teams_per_level: Dict mapping each level to its number of teams
-            (default: {"A": 6, "B": 6, "C": 6})
-
-    Returns:
-        bool: True if all tests passed, False otherwise
-    """
-    if levels is None:
-        levels = ["A", "B", "C"]
-
-    if teams_per_level is None:
-        teams_per_level = {level: 6 for level in levels}
-
-    print("\n=== RUNNING SCHEDULE TESTS ===\n")
-
-    pairing_result = pairing_tests(schedule, levels, teams_per_level)
-    print()
-
-    slot_dist_result = global_slot_distribution_test(schedule, {1: 1, 2: 3, 3: 2, 4: 3})
-    print()
-
-    referee_result = referee_player_test(schedule)
-    print()
-
-    adjacent_result = adjacent_slot_test(schedule)
-    print()
-
-    cycle_result = cycle_pairing_test(schedule, levels, teams_per_level)
-    print()
-
-    mirror_result = mirror_pairing_test(schedule)
-    print()
-
-    all_passed = (
-        pairing_result
-        and slot_dist_result
-        and referee_result
-        and adjacent_result
-        and cycle_result
-        and mirror_result
-    )
-
-    if all_passed:
-        print("All tests passed! This is a valid schedule.")
-    else:
-        print("Some tests failed. The schedule needs adjustment.")
-
-    return all_passed
