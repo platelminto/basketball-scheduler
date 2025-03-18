@@ -136,61 +136,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add first week by default with today's date
     addWeek();
 
+    // Set up global event listeners
     document.getElementById('addWeekBtn').addEventListener('click', () => {
-        // Get the next date after all existing weeks
-        const nextDate = findNextWeekDate();
-        addWeek(null, nextDate);
+        addWeek(null, findNextWeekDate());
     });
 
-    document.getElementById('copyWeekBtn').addEventListener('click', () => {
-        const weeks = weeksContainer.children;
-        if (weeks.length > 0) {
-            // Find the last non-off week to use as template
-            let lastNonOffWeek = null;
-            for (let i = weeks.length - 1; i >= 0; i--) {
-                if (!weeks[i].classList.contains('off-week')) {
-                    lastNonOffWeek = weeks[i];
-                    break;
-                }
-            }
-            
-            if (lastNonOffWeek) {
-                // Get next week date like we do for other operations
-                const nextDate = findNextWeekDate();
-                
-                // Create a new week with template structure, but using next date
-                const weekDiv = createWeekElement();
-                const daysContainer = weekDiv.querySelector('.days-container');
-                
-                // Copy template days but adjust dates
-                const templateDays = lastNonOffWeek.querySelectorAll('.day-container');
-                const firstTemplateDate = new Date(templateDays[0].querySelector('input[type="date"]').value);
-                
-                // Calculate date difference in days between first template date and next week date
-                const daysDifference = Math.round((nextDate - firstTemplateDate) / (1000 * 60 * 60 * 24));
-                
-                templateDays.forEach((templateDay) => {
-                    // Get original date and add the days difference
-                    const originalDate = new Date(templateDay.querySelector('input[type="date"]').value);
-                    const newDate = new Date(originalDate);
-                    newDate.setDate(newDate.getDate() + daysDifference);
-                    addDay(daysContainer, templateDay, newDate);
-                });
-                
-                // Add event listeners
-                setupWeekEventListeners(weekDiv);
-                weeksContainer.appendChild(weekDiv);
-                updateWeekNumbers();
-            }
-        }
-    });
-
+    document.getElementById('copyWeekBtn').addEventListener('click', copyLastWeek);
     document.getElementById('addOffWeekBtn').addEventListener('click', () => {
-        // Get last non-off week's first date
-        const lastDate = findLastNonOffWeekDate();
-        addOffWeek(lastDate);
+        addOffWeek(findNextWeekDate());
     });
 
+    // Helper functions
     function formatDate(date) {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -202,22 +158,75 @@ document.addEventListener('DOMContentLoaded', function() {
         return new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
     }
 
-    function addWeek(templateWeek = null, startDate = null) {
-        const weekDiv = createWeekElement();
-        const daysContainer = weekDiv.querySelector('.days-container');
+    function findNextWeekDate() {
+        const weeks = weeksContainer.children;
+        if (weeks.length === 0) {
+            // If no weeks exist, start from next Monday
+            const date = new Date();
+            while (date.getDay() !== 1) {
+                date.setDate(date.getDate() + 1);
+            }
+            return date;
+        }
+
+        // For existing weeks, get the date from the last week (off or not)
+        const lastWeek = weeks[weeks.length - 1];
+        if (lastWeek.classList.contains('off-week')) {
+            // For off weeks, parse the date from the text
+            const dateStr = lastWeek.textContent.match(/\d{4}-\d{2}-\d{2}/)[0];
+            const date = new Date(dateStr);
+            date.setDate(date.getDate() + 7);
+            return date;
+        } else {
+            // For regular weeks, get the first day's date
+            const firstDay = lastWeek.querySelector('.day-container input[type="date"]');
+            const date = new Date(firstDay.value);
+            date.setDate(date.getDate() + 7);
+            return date;
+        }
+    }
+
+    function copyLastWeek() {
+        const weeks = weeksContainer.children;
+        if (weeks.length === 0) return;
         
-        // If no start date provided, use next Monday
+        // Find the last non-off week to use as template
+        let lastNonOffWeek = null;
+        for (let i = weeks.length - 1; i >= 0; i--) {
+            if (!weeks[i].classList.contains('off-week')) {
+                lastNonOffWeek = weeks[i];
+                break;
+            }
+        }
+        
+        if (lastNonOffWeek) {
+            addWeek(lastNonOffWeek, findNextWeekDate());
+        }
+    }
+
+    // Helper function to scroll to an element
+    function scrollToElement(element) {
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // Simplified week creation
+    function addWeek(templateWeek = null, startDate = null) {
+        // Default to next Monday if no date provided
         if (!startDate) {
             startDate = new Date();
-            while (startDate.getDay() !== 1) { // 1 is Monday
+            while (startDate.getDay() !== 1) {
                 startDate.setDate(startDate.getDate() + 1);
             }
         }
 
-        // Add default Monday or copy from template
+        const weekDiv = createWeekElement();
+        const daysContainer = weekDiv.querySelector('.days-container');
+        
         if (templateWeek) {
+            // Copy days from template
             const templateDays = templateWeek.querySelectorAll('.day-container');
-            // Calculate the days to add to get from template first day to startDate
             const firstTemplateDate = new Date(templateDays[0].querySelector('input[type="date"]').value);
             const daysDifference = Math.round((startDate - firstTemplateDate) / (1000 * 60 * 60 * 24));
             
@@ -228,13 +237,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 addDay(daysContainer, templateDay, newDate);
             });
         } else {
-            addDay(daysContainer, null, startDate); // Adds default Monday
+            // Add a default day (Monday)
+            addDay(daysContainer, null, startDate);
         }
 
         setupWeekEventListeners(weekDiv);
         weeksContainer.appendChild(weekDiv);
+        updateWeekNumbers();
+        
+        // Scroll to the newly added week
+        scrollToElement(weekDiv);
     }
 
+    // Simplified day creation
     function addDay(container, templateDay = null, date = null) {
         const dayDiv = document.createElement('div');
         dayDiv.className = 'day-container';
@@ -266,8 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update day name when date changes
         dateInput.addEventListener('change', function() {
-            const newDayName = getDayName(this.value);
-            this.nextElementSibling.textContent = newDayName;
+            this.nextElementSibling.textContent = getDayName(this.value);
         });
 
         // Add default times or copy from template
@@ -297,9 +311,9 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(dayDiv);
     }
 
+    // Simplified time slot validation and creation
     function validateTimeFormat(value) {
-        const pattern = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
-        return pattern.test(value);
+        return /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(value);
     }
 
     function addTimeSlot(container, defaultValues = null) {
@@ -333,6 +347,43 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(timeRow);
     }
 
+    // Unified adjusting of dates when weeks are deleted
+    function adjustSubsequentWeekDates(startIndex) {
+        for (let i = startIndex; i < weeksContainer.children.length; i++) {
+            const currentWeek = weeksContainer.children[i];
+            
+            if (currentWeek.classList.contains('off-week')) {
+                // For off weeks, adjust the date in the content
+                const dateMatch = currentWeek.textContent.match(/\d{4}-\d{2}-\d{2}/);
+                if (dateMatch) {
+                    const oldDate = new Date(dateMatch[0]);
+                    const newDate = new Date(oldDate);
+                    newDate.setDate(newDate.getDate() - 7);
+                    
+                    // Replace only the date text, not the entire innerHTML
+                    const newDateStr = formatDate(newDate);
+                    
+                    // Find the text node containing the date and update it
+                    const offWeekTextDiv = currentWeek.querySelector('.week-header').nextElementSibling;
+                    offWeekTextDiv.textContent = `Off Week (${newDateStr})`;
+                }
+            } else {
+                // For regular weeks, adjust all days
+                const days = currentWeek.querySelectorAll('.day-container');
+                days.forEach(day => {
+                    const dateInput = day.querySelector('input[type="date"]');
+                    const oldDate = new Date(dateInput.value);
+                    const newDate = new Date(oldDate);
+                    newDate.setDate(newDate.getDate() - 7);
+                    dateInput.value = formatDate(newDate);
+                    
+                    // Update day name
+                    dateInput.nextElementSibling.textContent = getDayName(newDate);
+                });
+            }
+        }
+    }
+
     function updateWeekNumbers() {
         let weekCount = 0;
         Array.from(weeksContainer.children).forEach((week) => {
@@ -341,38 +392,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 week.querySelector('h4').textContent = `Week ${weekCount}`;
             }
         });
-    }
-
-    function findLastNonOffWeekDate() {
-        return findNextWeekDate();
-    }
-
-    function findNextWeekDate() {
-        const weeks = weeksContainer.children;
-        if (weeks.length === 0) {
-            // If no weeks exist, start from next Monday
-            const date = new Date();
-            while (date.getDay() !== 1) {
-                date.setDate(date.getDate() + 1);
-            }
-            return date;
-        }
-
-        // For existing weeks, get the date from the last week (off or not)
-        const lastWeek = weeks[weeks.length - 1];
-        if (lastWeek.classList.contains('off-week')) {
-            // For off weeks, parse the date from the text
-            const dateStr = lastWeek.textContent.match(/\d{4}-\d{2}-\d{2}/)[0];
-            const date = new Date(dateStr);
-            date.setDate(date.getDate() + 7);
-            return date;
-        } else {
-            // For regular weeks, get the first day's date
-            const firstDay = lastWeek.querySelector('.day-container input[type="date"]');
-            const date = new Date(firstDay.value);
-            date.setDate(date.getDate() + 7);
-            return date;
-        }
     }
 
     function addOffWeek(startDate) {
@@ -390,52 +409,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add delete functionality
         weekDiv.querySelector('.delete-week-btn').addEventListener('click', () => {
-            // Get index of week being deleted
             const weeks = Array.from(weeksContainer.children);
             const weekIndex = weeks.indexOf(weekDiv);
-            
-            // Remove the week
             weekDiv.remove();
-            
-            // Adjust dates of all weeks after this one
-            for (let i = weekIndex; i < weeksContainer.children.length; i++) {
-                const currentWeek = weeksContainer.children[i];
-                
-                if (currentWeek.classList.contains('off-week')) {
-                    // For off weeks, adjust the date in the content
-                    const dateMatch = currentWeek.textContent.match(/\d{4}-\d{2}-\d{2}/);
-                    if (dateMatch) {
-                        const oldDate = new Date(dateMatch[0]);
-                        const newDate = new Date(oldDate);
-                        newDate.setDate(newDate.getDate() - 7);
-                        
-                        // Replace the date text
-                        const newDateStr = formatDate(newDate);
-                        currentWeek.innerHTML = currentWeek.innerHTML.replace(dateMatch[0], newDateStr);
-                    }
-                } else {
-                    // For regular weeks, adjust all days
-                    const days = currentWeek.querySelectorAll('.day-container');
-                    days.forEach(day => {
-                        const dateInput = day.querySelector('input[type="date"]');
-                        const oldDate = new Date(dateInput.value);
-                        const newDate = new Date(oldDate);
-                        newDate.setDate(newDate.getDate() - 7);
-                        dateInput.value = formatDate(newDate);
-                        
-                        // Update day name
-                        const dayNameSpan = dateInput.nextElementSibling;
-                        dayNameSpan.textContent = getDayName(newDate);
-                    });
-                }
-            }
-            
+            adjustSubsequentWeekDates(weekIndex);
             updateWeekNumbers();
         });
 
         weeksContainer.appendChild(weekDiv);
+        
+        // Scroll to the newly added off week
+        scrollToElement(weekDiv);
     }
 
+    // Simplified data extraction
     function getWeekData(weekElement) {
         if (weekElement.classList.contains('off-week')) {
             return {
@@ -455,6 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
+    // Form submission handler
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -482,9 +470,9 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         console.log(data);
+        // Here you would typically send the data to the server
     });
 
-    // Helper function to create week element
     function createWeekElement() {
         const nonOffWeekCount = Array.from(weeksContainer.children).filter(w => !w.classList.contains('off-week')).length;
         const weekNum = nonOffWeekCount + 1;
@@ -507,13 +495,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return weekDiv;
     }
 
-    // Helper function to setup week event listeners
     function setupWeekEventListeners(weekDiv) {
         const daysContainer = weekDiv.querySelector('.days-container');
-        const addDayBtn = weekDiv.querySelector('.add-day-btn');
-        const deleteWeekBtn = weekDiv.querySelector('.delete-week-btn');
         
-        addDayBtn.addEventListener('click', () => {
+        // Add day button functionality
+        weekDiv.querySelector('.add-day-btn').addEventListener('click', () => {
             const lastDay = daysContainer.querySelector('.day-container:last-child');
             if (lastDay) {
                 const lastDate = new Date(lastDay.querySelector('input[type="date"]').value);
@@ -523,51 +509,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        if (deleteWeekBtn) {
-            deleteWeekBtn.addEventListener('click', () => {
-                // Get index of week being deleted
-                const weeks = Array.from(weeksContainer.children);
-                const weekIndex = weeks.indexOf(weekDiv);
-                
-                // Remove the week
-                weekDiv.remove();
-                
-                // Adjust dates of all weeks after this one
-                for (let i = weekIndex; i < weeksContainer.children.length; i++) {
-                    const currentWeek = weeksContainer.children[i];
-                    
-                    if (currentWeek.classList.contains('off-week')) {
-                        // For off weeks, adjust the date in the content
-                        const dateMatch = currentWeek.textContent.match(/\d{4}-\d{2}-\d{2}/);
-                        if (dateMatch) {
-                            const oldDate = new Date(dateMatch[0]);
-                            const newDate = new Date(oldDate);
-                            newDate.setDate(newDate.getDate() - 7);
-                            
-                            // Replace the date text
-                            const newDateStr = formatDate(newDate);
-                            currentWeek.innerHTML = currentWeek.innerHTML.replace(dateMatch[0], newDateStr);
-                        }
-                    } else {
-                        // For regular weeks, adjust all days
-                        const days = currentWeek.querySelectorAll('.day-container');
-                        days.forEach(day => {
-                            const dateInput = day.querySelector('input[type="date"]');
-                            const oldDate = new Date(dateInput.value);
-                            const newDate = new Date(oldDate);
-                            newDate.setDate(newDate.getDate() - 7);
-                            dateInput.value = formatDate(newDate);
-                            
-                            // Update day name
-                            const dayNameSpan = dateInput.nextElementSibling;
-                            dayNameSpan.textContent = getDayName(newDate);
-                        });
-                    }
-                }
-                
-                updateWeekNumbers();
-            });
-        }
+        // Week deletion functionality (simplified)
+        weekDiv.querySelector('.delete-week-btn').addEventListener('click', () => {
+            const weeks = Array.from(weeksContainer.children);
+            const weekIndex = weeks.indexOf(weekDiv);
+            weekDiv.remove();
+            adjustSubsequentWeekDates(weekIndex);
+            updateWeekNumbers();
+        });
     }
 });
 </script>
