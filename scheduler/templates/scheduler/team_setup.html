@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% block title %}Team & Court Setup{% endblock %}
+
+{% block extra_css %}
+<style>
+    .level-container {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .team-levels-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .level-column {
+        flex: 1;
+        min-width: 250px;
+    }
+    
+    .level-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .level-name-input {
+        font-weight: bold;
+        border: 1px solid transparent;
+        background: transparent;
+        font-size: 1.25rem;
+    }
+    
+    .level-name-input:focus {
+        border-color: #dee2e6;
+        background: white;
+    }
+    
+    .team-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .delete-btn {
+        color: red;
+        cursor: pointer;
+        border: none;
+        background: none;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .form-actions {
+        margin-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .court-section {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #dee2e6;
+    }
+    
+    .courts-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Team & Court Setup</h2>
+    
+    <form id="teamSetupForm" class="mt-4">
+        <input type="hidden" id="scheduleData" name="scheduleData" value="">
+        
+        <!-- Team Levels Section -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Team Levels</h4>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addLevelBtn">+ Add Level</button>
+            </div>
+            
+            <div id="teamLevelsContainer" class="team-levels-container">
+                <!-- Level columns will be added here -->
+            </div>
+        </div>
+        
+        <!-- Court Names Section -->
+        <div class="court-section">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>Court Names</h4>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addCourtBtn">+ Add Court</button>
+            </div>
+            
+            <div id="courtsContainer" class="courts-container">
+                <!-- Court inputs will be added here -->
+            </div>
+        </div>
+        
+        <div class="form-actions mt-4">
+            <button type="button" class="btn btn-secondary" id="backBtn">Back to Schedule</button>
+            <button type="submit" class="btn btn-success">Continue to Game Assignment</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get schedule data from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const scheduleDataParam = urlParams.get('scheduleData');
+    
+    if (scheduleDataParam) {
+        document.getElementById('scheduleData').value = scheduleDataParam;
+    }
+    
+    const teamLevelsContainer = document.getElementById('teamLevelsContainer');
+    const courtsContainer = document.getElementById('courtsContainer');
+    
+    // Default levels
+    const defaultLevels = ['High', 'Mid', 'Low'];
+    
+    // Add default level columns
+    defaultLevels.forEach(level => {
+        addLevelColumn(level);
+    });
+    
+    // Add default courts
+    for (let i = 1; i <= 3; i++) {
+        addCourt(`Court ${i}`);
+    }
+    
+    // Setup level adding functionality
+    document.getElementById('addLevelBtn').addEventListener('click', () => {
+        const nextLevelNum = teamLevelsContainer.children.length + 1;
+        addLevelColumn(`Level ${nextLevelNum}`);
+    });
+    
+    // Setup court adding functionality
+    document.getElementById('addCourtBtn').addEventListener('click', () => {
+        const nextCourtNum = courtsContainer.children.length + 1;
+        addCourt(`Court ${nextCourtNum}`);
+    });
+    
+    // Setup back button
+    document.getElementById('backBtn').addEventListener('click', () => {
+        history.back();
+    });
+    
+    // Form submission
+    document.getElementById('teamSetupForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const scheduleData = document.getElementById('scheduleData').value;
+        
+        // Collect teams data
+        const teamsData = {};
+        document.querySelectorAll('.level-column').forEach(levelColumn => {
+            const levelName = levelColumn.querySelector('.level-name-input').value.trim();
+            if (levelName) {
+                teamsData[levelName] = Array.from(levelColumn.querySelectorAll('.team-input'))
+                    .map(input => input.value.trim())
+                    .filter(team => team !== '');
+            }
+        });
+        
+        // Collect courts data
+        const courtsData = Array.from(document.querySelectorAll('.court-input'))
+            .map(input => input.value.trim())
+            .filter(court => court !== '');
+        
+        // Combine all data
+        const combinedData = {
+            schedule: scheduleData ? JSON.parse(scheduleData) : {},
+            teams: teamsData,
+            courts: courtsData
+        };
+        
+        console.log(combinedData);
+        
+        // Redirect to game assignment page with data
+        window.location.href = `/scheduler/game_assignment/?setupData=${encodeURIComponent(JSON.stringify(combinedData))}`;
+    });
+    
+    // Helper function to add a level column
+    function addLevelColumn(levelName) {
+        const levelColumn = document.createElement('div');
+        levelColumn.className = 'level-column';
+        levelColumn.innerHTML = `
+            <div class="level-header">
+                <input type="text" class="level-name-input form-control" value="${levelName}" required>
+                <button type="button" class="btn btn-outline-danger btn-sm delete-level-btn">×</button>
+            </div>
+            <div class="teams-container">
+                <!-- Teams will be added here -->
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm mt-2 add-team-btn">+ Add Team</button>
+        `;
+        
+        const teamsContainer = levelColumn.querySelector('.teams-container');
+        
+        // Add default teams
+        for (let i = 1; i <= 8; i++) {
+            addTeam(teamsContainer, `Team ${i}`);
+        }
+        
+        // Setup delete level button
+        levelColumn.querySelector('.delete-level-btn').addEventListener('click', () => {
+            if (teamLevelsContainer.children.length > 1) {
+                levelColumn.remove();
+            } else {
+                alert('You must have at least one level');
+            }
+        });
+        
+        // Setup add team button
+        levelColumn.querySelector('.add-team-btn').addEventListener('click', () => {
+            addTeam(teamsContainer, '');
+        });
+        
+        teamLevelsContainer.appendChild(levelColumn);
+    }
+    
+    // Helper function to add a team input
+    function addTeam(container, defaultValue) {
+        const teamRow = document.createElement('div');
+        teamRow.className = 'team-row';
+        teamRow.innerHTML = `
+            <button type="button" class="delete-btn">&times;</button>
+            <input type="text" class="form-control team-input" 
+                   placeholder="Team Name" 
+                   value="${defaultValue || ''}"
+                   required>
+        `;
+        
+        teamRow.querySelector('.delete-btn').addEventListener('click', () => {
+            teamRow.remove();
+        });
+        
+        container.appendChild(teamRow);
+    }
+    
+    // Helper function to add a court input
+    function addCourt(defaultValue) {
+        const courtRow = document.createElement('div');
+        courtRow.className = 'team-row';
+        courtRow.innerHTML = `
+            <button type="button" class="delete-btn">&times;</button>
+            <input type="text" class="form-control court-input" 
+                   placeholder="Court Name" 
+                   value="${defaultValue || ''}"
+                   required>
+        `;
+        
+        courtRow.querySelector('.delete-btn').addEventListener('click', () => {
+            courtRow.remove();
+        });
+        
+        courtsContainer.appendChild(courtRow);
+    }
+});
+</script>
+{% endblock %} 

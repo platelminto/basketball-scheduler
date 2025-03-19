@@ -470,7 +470,9 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         console.log(data);
-        // Here you would typically send the data to the server
+        
+        // Forward to the team setup page with the schedule data
+        window.location.href = `/scheduler/team_setup/?scheduleData=${encodeURIComponent(JSON.stringify(data))}`;
     });
 
     function createWeekElement() {
@@ -517,6 +519,141 @@ document.addEventListener('DOMContentLoaded', function() {
             adjustSubsequentWeekDates(weekIndex);
             updateWeekNumbers();
         });
+    }
+
+    function randomFill() {
+        document.querySelectorAll('.game-entry').forEach(gameEntry => {
+            // First select a random level
+            const levelSelect = gameEntry.querySelector('.level-select');
+            const levelOptions = Array.from(levelSelect.options).filter(opt => opt.value);
+            
+            if (levelOptions.length === 0) return;
+            
+            const randomLevel = levelOptions[Math.floor(Math.random() * levelOptions.length)];
+            levelSelect.value = randomLevel.value;
+            levelSelect.dispatchEvent(new Event('change'));
+
+            // Use a chain of promises to ensure proper sequence
+            const fillTeams = () => new Promise(resolve => {
+                setTimeout(() => {
+                    // Fill team 1
+                    const team1Select = gameEntry.querySelector('.team1-select');
+                    const team1Options = Array.from(team1Select.options).filter(opt => opt.value);
+                    if (team1Options.length === 0) {
+                        resolve(false);
+                        return;
+                    }
+                    
+                    let team1 = team1Options[Math.floor(Math.random() * team1Options.length)];
+                    team1Select.value = team1.value;
+                    team1Select.dispatchEvent(new Event('change'));
+                    
+                    // Fill team 2
+                    const team2Select = gameEntry.querySelector('.team2-select');
+                    const team2Options = Array.from(team2Select.options)
+                        .filter(opt => opt.value && !opt.disabled);
+                    if (team2Options.length === 0) {
+                        resolve(false);
+                        return;
+                    }
+                    
+                    let team2 = team2Options[Math.floor(Math.random() * team2Options.length)];
+                    team2Select.value = team2.value;
+                    team2Select.dispatchEvent(new Event('change'));
+                    
+                    resolve(true);
+                }, 100);
+            });
+
+            const fillReferee = () => new Promise(resolve => {
+                setTimeout(() => {
+                    const refSelect = gameEntry.querySelector('.ref-select');
+                    const refOptions = Array.from(refSelect.options)
+                        .filter(opt => opt.value && !opt.disabled);
+                    
+                    if (refOptions.length === 0) {
+                        resolve();
+                        return;
+                    }
+                    
+                    // 25% chance to choose "Other" for referee
+                    const useOther = Math.random() < 0.25 && refOptions.some(opt => opt.value === 'other');
+                    
+                    if (useOther) {
+                        refSelect.value = 'other';
+                        refSelect.dispatchEvent(new Event('change'));
+                        
+                        setTimeout(() => {
+                            const refOtherInput = gameEntry.querySelector('.ref-other-input.visible');
+                            if (refOtherInput) {
+                                const randomNames = ['Coach Bob', 'Ref Sarah', 'Judge Mike', 'Official Jane', 
+                                                'Umpire Dave', 'Referee Smith', 'Guest Ref', 'Volunteer', 
+                                                'Staff Member', 'Tournament Official'];
+                                refOtherInput.value = randomNames[Math.floor(Math.random() * randomNames.length)];
+                            }
+                            resolve();
+                        }, 100);
+                    } else {
+                        let ref = refOptions[Math.floor(Math.random() * refOptions.length)];
+                        refSelect.value = ref.value;
+                        refSelect.dispatchEvent(new Event('change'));
+                        resolve();
+                    }
+                }, 100);
+            });
+
+            const fillCourt = () => new Promise(resolve => {
+                setTimeout(() => {
+                    const courtSelect = gameEntry.querySelector('.court-select');
+                    
+                    // 20% chance of selecting "Other"
+                    const useOther = Math.random() < 0.2;
+                    
+                    if (useOther) {
+                        courtSelect.value = 'other';
+                        courtSelect.dispatchEvent(new Event('change'));
+                        
+                        setTimeout(() => {
+                            const courtOtherInput = gameEntry.querySelector('.court-other-input.visible');
+                            if (courtOtherInput) {
+                                const randomCourts = ['Court X', 'Outdoor Court', 'Practice Court', 
+                                                    'Main Hall', 'Stadium Court', 'Court B', 'Auxiliary Court',
+                                                    'Court North', 'Court South', 'Training Court'];
+                                courtOtherInput.value = Math.random() < 0.5 ? 
+                                    `Court ${Math.floor(Math.random() * 5) + 4}` : 
+                                    randomCourts[Math.floor(Math.random() * randomCourts.length)];
+                            }
+                            resolve();
+                        }, 100);
+                    } else {
+                        resolve();
+                    }
+                }, 100);
+            });
+
+            // Chain the promises to ensure proper sequence
+            fillTeams()
+                .then(success => {
+                    if (success) {
+                        return fillReferee();
+                    }
+                })
+                .then(() => {
+                    return fillCourt();
+                })
+                .catch(error => {
+                    console.error('Error during random fill:', error);
+                });
+        });
+    }
+
+    function getCsrfToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        
+        return cookieValue || '';
     }
 });
 </script>

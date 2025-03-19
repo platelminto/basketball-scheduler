@@ -1,0 +1,1032 @@
+{% extends 'base.html' %}
+
+{% block title %}Game Assignment{% endblock %}
+
+{% block extra_css %}
+<style>
+    .week-container {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .day-container {
+        border-left: 3px solid #dee2e6;
+        padding: 10px 15px;
+        margin: 10px 0;
+    }
+    
+    .time-slot {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed #dee2e6;
+    }
+    
+    .time-slot-header {
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+    
+    .time-slot-header:hover {
+        color: #0d6efd;
+    }
+    
+    .time-slot-header::before {
+        content: '▼';
+        font-size: 0.8rem;
+        margin-right: 0.5rem;
+    }
+    
+    .time-slot.collapsed .time-slot-header::before {
+        content: '►';
+    }
+    
+    .time-slot.collapsed .game-entries {
+        display: none;
+    }
+    
+    .game-entries {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .game-entry {
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.75rem;
+        background-color: #f8f9fa;
+    }
+    
+    .form-group {
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    
+    .teams-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .teams-row .form-group {
+        flex: 1;
+    }
+    
+    .vs-label {
+        margin-top: 1.5rem;
+        font-weight: bold;
+    }
+    
+    .form-actions {
+        margin-top: 1.5rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .week-header, .day-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        cursor: pointer;
+    }
+    
+    .week-header:hover, .day-header:hover {
+        color: #0d6efd;
+    }
+    
+    .day-date {
+        font-weight: 500;
+    }
+    
+    .week-header::before, .day-header::before {
+        content: '▼';
+        font-size: 0.8rem;
+        margin-right: 0.5rem;
+    }
+    
+    .week-container.collapsed .week-header::before,
+    .day-container.collapsed .day-header::before {
+        content: '►';
+    }
+    
+    .week-container.collapsed .week-content,
+    .day-container.collapsed .day-content {
+        display: none;
+    }
+    
+    .other-input {
+        margin-top: 0.5rem;
+        display: none;
+    }
+    
+    .other-input.visible {
+        display: block;
+    }
+    
+    .validation-result {
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 5px;
+    }
+    
+    .validation-result h5 {
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+    
+    .validation-result.passed {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .validation-result.failed {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .validation-message {
+        margin-bottom: 10px;
+    }
+    
+    .validation-explanation {
+        font-style: italic;
+        color: #666;
+        margin-bottom: 10px;
+    }
+    
+    #validationResults {
+        margin-bottom: 25px;
+    }
+    
+    #generateScheduleBtn {
+        display: none;
+    }
+    
+    #randomFillBtn {
+        margin-right: auto;
+    }
+    
+    .form-check {
+        margin-top: 10px;
+    }
+    
+    .incomplete {
+        border: 2px solid #f8d7da;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Game Assignment</h2>
+    
+    <form id="gameAssignmentForm" class="mt-4" novalidate>
+        {% csrf_token %}
+        <input type="hidden" id="setupData" name="setupData" value="">
+        
+        <div id="scheduleContainer">
+            <!-- Weeks, days, and game assignments will be added here -->
+        </div>
+        
+        <div id="validationResults" style="display: none;">
+            <!-- Validation results will be shown here -->
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" class="btn btn-warning" id="randomFillBtn">Random Fill (Dev)</button>
+            <button type="button" class="btn btn-secondary" id="backBtn">Back to Team Setup</button>
+            <button type="button" class="btn btn-primary" id="validateBtn">Validate Schedule</button>
+            <button type="submit" class="btn btn-success" id="generateScheduleBtn">Generate Schedule</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Hide the Generate Schedule button initially
+    document.getElementById('generateScheduleBtn').style.display = 'none';
+    
+    // Show Random Fill button only in development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        document.getElementById('randomFillBtn').style.display = 'block';
+    } else {
+        document.getElementById('randomFillBtn').style.display = 'none';
+    }
+    
+    // Get setup data from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const setupDataParam = urlParams.get('setupData');
+    let setupData = {};
+    
+    if (setupDataParam) {
+        try {
+            setupData = JSON.parse(decodeURIComponent(setupDataParam));
+            document.getElementById('setupData').value = setupDataParam;
+            
+            // Render the schedule with game assignments
+            renderSchedule(setupData);
+        } catch (e) {
+            console.error('Error parsing setup data:', e);
+            alert('Invalid setup data. Please go back and try again.');
+        }
+    } else {
+        alert('No setup data found. Please go back and complete the team setup.');
+    }
+    
+    // Setup back button
+    document.getElementById('backBtn').addEventListener('click', () => {
+        history.back();
+    });
+    
+    // Random fill button
+    document.getElementById('randomFillBtn').addEventListener('click', randomFill);
+    
+    // Validate button
+    document.getElementById('validateBtn').addEventListener('click', validateSchedule);
+    
+    // Form submission
+    document.getElementById('gameAssignmentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Collect all game assignments
+        const gameAssignments = collectGameAssignments();
+        
+        // Combine all data
+        const finalData = {
+            ...setupData,
+            gameAssignments: gameAssignments
+        };
+        
+        console.log('Final schedule data:', finalData);
+        
+        // Here you would submit this data to the server or redirect to the next page
+        alert('Schedule generated successfully! Ready to save.');
+        // Example redirect: window.location.href = `/scheduler/view_schedule/?scheduleData=${encodeURIComponent(JSON.stringify(finalData))}`;
+    });
+    
+    // Helper function to collect all game assignments
+    function collectGameAssignments() {
+        const gameAssignments = [];
+        
+        document.querySelectorAll('.game-entry').forEach(gameEntry => {
+            const weekNum = gameEntry.dataset.week;
+            const date = gameEntry.dataset.date;
+            const time = gameEntry.dataset.time;
+            const gameIndex = gameEntry.dataset.gameIndex;
+            
+            const levelSelect = gameEntry.querySelector('.level-select');
+            const team1Select = gameEntry.querySelector('.team1-select');
+            const team2Select = gameEntry.querySelector('.team2-select');
+            const refSelect = gameEntry.querySelector('.ref-select');
+            const refOtherInput = gameEntry.querySelector('.ref-other-input');
+            const courtSelect = gameEntry.querySelector('.court-select');
+            const courtOtherInput = gameEntry.querySelector('.court-other-input');
+            
+            // Skip incomplete entries
+            if (!levelSelect.value || !team1Select.value || !team2Select.value || !refSelect.value || !courtSelect.value) {
+                return;
+            }
+            
+            // Get the ref value (either from select or other input)
+            let referee = refSelect.value;
+            if (referee === 'other') {
+                // If it's "other", use the input value if present, otherwise just use "External Referee"
+                referee = refOtherInput?.value.trim() || 'External Referee';
+            }
+            
+            // Get the court value (either from select or other input)
+            let court = courtSelect.value;
+            if (court === 'other' && courtOtherInput) {
+                court = courtOtherInput.value.trim() || 'Other Court';
+            }
+            
+            gameAssignments.push({
+                week: parseInt(weekNum),
+                date: date,
+                time: time,
+                gameIndex: parseInt(gameIndex),
+                level: levelSelect.value,
+                team1: team1Select.value,
+                team2: team2Select.value,
+                referee: referee,
+                court: court
+            });
+        });
+        
+        return gameAssignments;
+    }
+    
+    // Function to validate the schedule
+    function validateSchedule() {
+        let isComplete = true;
+        document.querySelectorAll('.game-entry').forEach(gameEntry => {
+            const levelSelect = gameEntry.querySelector('.level-select');
+            const team1Select = gameEntry.querySelector('.team1-select');
+            const team2Select = gameEntry.querySelector('.team2-select');
+            const refSelect = gameEntry.querySelector('.ref-select');
+            const courtSelect = gameEntry.querySelector('.court-select');
+            
+            // For "other" option fields
+            const courtOtherInput = gameEntry.querySelector('.court-other-input');
+            
+            // Only check court other input if it's selected
+            const needsCourtInput = courtSelect.value === 'other' && 
+                                  courtOtherInput && 
+                                  !courtOtherInput.value.trim();
+
+            if (!levelSelect.value || 
+                !team1Select.value || 
+                !team2Select.value || 
+                !refSelect.value || 
+                !courtSelect.value || 
+                needsCourtInput) {
+                isComplete = false;
+                gameEntry.classList.add('incomplete');
+            } else {
+                gameEntry.classList.remove('incomplete');
+            }
+        });
+        
+        if (!isComplete) {
+            alert('Please complete all game entries before validating');
+            return;
+        }
+        
+        // Collect and convert data for validation
+        const gameAssignments = collectGameAssignments();
+        const scheduleFormat = webToScheduleFormat(gameAssignments);
+        
+        // Call the validation endpoint
+        fetch('/scheduler/validate_schedule/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({
+                schedule: scheduleFormat
+            })
+        })
+        .then(response => response.json())
+        .then(validationResults => {
+            // Display validation results
+            displayValidationResults(validationResults);
+        })
+        .catch(error => {
+            console.error('Validation error:', error);
+            alert('Error during validation. Please try again.');
+        });
+    }
+    
+    // Function to display validation results
+    function displayValidationResults(results) {
+        const resultsContainer = document.getElementById('validationResults');
+        resultsContainer.innerHTML = '<h3 class="mb-4">Validation Results</h3>';
+        resultsContainer.style.display = 'block';
+        
+        // Track if any validations failed
+        let allPassed = true;
+        
+        // Define explanations for each validation
+        const explanations = {
+            'Pairings': 'Each team should face every other team in their level exactly once in a balanced schedule.',
+            'Cycle Pairings': 'Teams ideally play different opponents in varied order throughout the season.',
+            'Referee-Player': 'A team cannot referee a game in which they are playing.',
+            'Adjacent Slots': 'Teams typically referee in time slots adjacent to when they play.'
+        };
+        
+        Object.entries(results).forEach(([testName, result]) => {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `validation-result ${result.passed ? 'passed' : 'failed'}`;
+            
+            if (!result.passed) {
+                allPassed = false;
+            }
+            
+            resultDiv.innerHTML = `
+                <h5>${testName}</h5>
+                <p class="validation-message">${result.message}</p>
+                <p class="validation-explanation">${explanations[testName] || ''}</p>
+                ${!result.passed ? `
+                    <div class="form-check">
+                        <input class="form-check-input override-check" type="checkbox" 
+                               id="override_${testName}" 
+                               data-test="${testName}">
+                        <label class="form-check-label" for="override_${testName}">
+                            Override - proceed with the schedule anyway
+                        </label>
+                    </div>
+                ` : ''}
+            `;
+            
+            resultsContainer.appendChild(resultDiv);
+        });
+        
+        // Add event listeners to override checkboxes
+        document.querySelectorAll('.override-check').forEach(checkbox => {
+            checkbox.addEventListener('change', updateGenerateButton);
+        });
+        
+        // Show the generate button if everything passed
+        if (allPassed) {
+            document.getElementById('generateScheduleBtn').style.display = 'inline-block';
+            document.getElementById('validateBtn').style.display = 'none';
+        } else {
+            // Initial update of generate button (disabled until all overrides checked)
+            updateGenerateButton();
+        }
+    }
+    
+    // Function to update the generate button based on override checkboxes
+    function updateGenerateButton() {
+        const failedChecks = document.querySelectorAll('.validation-result.failed .override-check');
+        const allOverridden = Array.from(failedChecks).every(check => check.checked);
+        
+        if (allOverridden) {
+            document.getElementById('generateScheduleBtn').style.display = 'inline-block';
+            document.getElementById('validateBtn').style.display = 'none';
+        } else {
+            document.getElementById('generateScheduleBtn').style.display = 'none';
+            document.getElementById('validateBtn').style.display = 'inline-block';
+        }
+    }
+    
+    // Function to get CSRF token
+    function getCsrfToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        
+        return cookieValue || '';
+    }
+    
+    // Web to Schedule format conversion
+    function webToScheduleFormat(gameAssignments) {
+        // First, group by week and day
+        const weekDayGroups = {};
+        gameAssignments.forEach(game => {
+            const weekKey = game.week;
+            const dayKey = game.date;
+            
+            if (!weekDayGroups[weekKey]) {
+                weekDayGroups[weekKey] = {};
+            }
+            if (!weekDayGroups[weekKey][dayKey]) {
+                weekDayGroups[weekKey][dayKey] = [];
+            }
+            weekDayGroups[weekKey][dayKey].push(game);
+        });
+
+        // For each day, create slot numbers based on unique times
+        const schedule = [];
+        Object.entries(weekDayGroups).forEach(([weekNum, days]) => {
+            const weekGames = {
+                'week': parseInt(weekNum),
+                'slots': {}
+            };
+
+            Object.entries(days).forEach(([date, games]) => {
+                // Get unique times and sort them
+                const times = [...new Set(games.map(g => g.time))].sort();
+                
+                // Map each time to a slot number (1-based)
+                const timeToSlot = {};
+                times.forEach((time, idx) => {
+                    timeToSlot[time] = idx + 1;
+                });
+
+                // Group games by slot
+                games.forEach(game => {
+                    const slot = timeToSlot[game.time];
+                    if (!weekGames.slots[slot]) {
+                        weekGames.slots[slot] = [];
+                    }
+                    weekGames.slots[slot].push({
+                        'level': game.level,
+                        'teams': [game.team1, game.team2],
+                        'ref': game.referee
+                    });
+                });
+            });
+
+            schedule.push(weekGames);
+        });
+
+        return schedule;
+    }
+    
+    // Random fill function - with better handling for "other" fields
+    function randomFill() {
+        document.querySelectorAll('.game-entry').forEach(gameEntry => {
+            // First select a random level
+            const levelSelect = gameEntry.querySelector('.level-select');
+            const levelOptions = Array.from(levelSelect.options).filter(opt => opt.value);
+            
+            if (levelOptions.length === 0) return;
+            
+            const randomLevel = levelOptions[Math.floor(Math.random() * levelOptions.length)];
+            levelSelect.value = randomLevel.value;
+            levelSelect.dispatchEvent(new Event('change'));
+
+            // Use a chain of promises to ensure proper sequence
+            const fillTeams = () => new Promise(resolve => {
+                setTimeout(() => {
+                    // Fill team 1
+                    const team1Select = gameEntry.querySelector('.team1-select');
+                    const team1Options = Array.from(team1Select.options).filter(opt => opt.value);
+                    if (team1Options.length === 0) {
+                        resolve(false);
+                        return;
+                    }
+                    
+                    let team1 = team1Options[Math.floor(Math.random() * team1Options.length)];
+                    team1Select.value = team1.value;
+                    team1Select.dispatchEvent(new Event('change'));
+                    
+                    // Fill team 2
+                    const team2Select = gameEntry.querySelector('.team2-select');
+                    const team2Options = Array.from(team2Select.options)
+                        .filter(opt => opt.value && !opt.disabled);
+                    if (team2Options.length === 0) {
+                        resolve(false);
+                        return;
+                    }
+                    
+                    let team2 = team2Options[Math.floor(Math.random() * team2Options.length)];
+                    team2Select.value = team2.value;
+                    team2Select.dispatchEvent(new Event('change'));
+                    
+                    resolve(true);
+                }, 100);
+            });
+
+            const fillReferee = () => new Promise(resolve => {
+                setTimeout(() => {
+                    const refSelect = gameEntry.querySelector('.ref-select');
+                    const refOptions = Array.from(refSelect.options)
+                        .filter(opt => opt.value && !opt.disabled);
+                    
+                    if (refOptions.length === 0) {
+                        resolve();
+                        return;
+                    }
+                    
+                    // 25% chance to choose "Other" for referee
+                    const useOther = Math.random() < 0.25 && refOptions.some(opt => opt.value === 'other');
+                    
+                    if (useOther) {
+                        refSelect.value = 'other';
+                        refSelect.dispatchEvent(new Event('change'));
+                        
+                        setTimeout(() => {
+                            const refOtherInput = gameEntry.querySelector('.ref-other-input.visible');
+                            if (refOtherInput) {
+                                const randomNames = ['Coach Bob', 'Ref Sarah', 'Judge Mike', 'Official Jane', 
+                                                'Umpire Dave', 'Referee Smith', 'Guest Ref', 'Volunteer', 
+                                                'Staff Member', 'Tournament Official'];
+                                refOtherInput.value = randomNames[Math.floor(Math.random() * randomNames.length)];
+                            }
+                            resolve();
+                        }, 100);
+                    } else {
+                        let ref = refOptions[Math.floor(Math.random() * refOptions.length)];
+                        refSelect.value = ref.value;
+                        refSelect.dispatchEvent(new Event('change'));
+                        resolve();
+                    }
+                }, 100);
+            });
+
+            const fillCourt = () => new Promise(resolve => {
+                setTimeout(() => {
+                    const courtSelect = gameEntry.querySelector('.court-select');
+                    
+                    // 20% chance of selecting "Other"
+                    const useOther = Math.random() < 0.2;
+                    
+                    if (useOther) {
+                        courtSelect.value = 'other';
+                        courtSelect.dispatchEvent(new Event('change'));
+                        
+                        setTimeout(() => {
+                            const courtOtherInput = gameEntry.querySelector('.court-other-input.visible');
+                            if (courtOtherInput) {
+                                const randomCourts = ['Court X', 'Outdoor Court', 'Practice Court', 
+                                                    'Main Hall', 'Stadium Court', 'Court B', 'Auxiliary Court',
+                                                    'Court North', 'Court South', 'Training Court'];
+                                courtOtherInput.value = Math.random() < 0.5 ? 
+                                    `Court ${Math.floor(Math.random() * 5) + 4}` : 
+                                    randomCourts[Math.floor(Math.random() * randomCourts.length)];
+                            }
+                            resolve();
+                        }, 100);
+                    } else {
+                        resolve();
+                    }
+                }, 100);
+            });
+
+            // Chain the promises to ensure proper sequence
+            fillTeams()
+                .then(success => {
+                    if (success) {
+                        return fillReferee();
+                    }
+                })
+                .then(() => {
+                    return fillCourt();
+                })
+                .catch(error => {
+                    console.error('Error during random fill:', error);
+                });
+        });
+    }
+    
+    // Function to render the schedule
+    function renderSchedule(data) {
+        const scheduleContainer = document.getElementById('scheduleContainer');
+        const schedule = data.schedule;
+        const teams = data.teams;
+        const courts = data.courts;
+        
+        // Clear container
+        scheduleContainer.innerHTML = '';
+        
+        let currentWeekNum = 0;
+        
+        // Create elements for each week (excluding off weeks)
+        schedule.weeks.forEach((week, weekIndex) => {
+            // Skip off weeks
+            if (week.isOffWeek) {
+                return;
+            }
+            
+            currentWeekNum++;
+            const weekContainer = createWeekElement(currentWeekNum);
+            
+            // Create elements for each day in the week
+            week.days.forEach(day => {
+                const dayContainer = createDayElement(day.date);
+                
+                // Create elements for each time slot in the day
+                day.times.forEach(timeSlot => {
+                    const timeSlotElement = createTimeSlotElement(timeSlot.time);
+                    const gameEntriesContainer = document.createElement('div');
+                    gameEntriesContainer.className = 'game-entries';
+                    
+                    // Create a game entry for each court available in this time slot
+                    for (let i = 0; i < timeSlot.courts; i++) {
+                        // Determine the default court
+                        const defaultCourtIndex = timeSlot.courts > courts.length ? 
+                            i : // If more courts needed than available, just use sequential
+                            courts.length - timeSlot.courts + i; // Start from the end for defaults
+                        
+                        const defaultCourt = defaultCourtIndex >= 0 && defaultCourtIndex < courts.length ? 
+                            courts[defaultCourtIndex] : '';
+                        
+                        const gameEntry = createGameEntryElement(
+                            teams,
+                            courts,
+                            defaultCourt,
+                            currentWeekNum,
+                            day.date,
+                            timeSlot.time,
+                            i
+                        );
+                        
+                        gameEntriesContainer.appendChild(gameEntry);
+                    }
+                    
+                    timeSlotElement.appendChild(gameEntriesContainer);
+                    dayContainer.querySelector('.day-content').appendChild(timeSlotElement);
+                });
+                
+                weekContainer.querySelector('.week-content').appendChild(dayContainer);
+            });
+            
+            scheduleContainer.appendChild(weekContainer);
+        });
+        
+        // Add collapsible functionality
+        setupCollapsible();
+    }
+    
+    // Helper function to create a week element
+    function createWeekElement(weekNum) {
+        const weekContainer = document.createElement('div');
+        weekContainer.className = 'week-container';
+        weekContainer.innerHTML = `
+            <div class="week-header">
+                <h4>Week ${weekNum}</h4>
+            </div>
+            <div class="week-content">
+                <!-- Days will be added here -->
+            </div>
+        `;
+        
+        return weekContainer;
+    }
+    
+    // Helper function to create a day element
+    function createDayElement(date) {
+        const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+        const formattedDate = new Date(date).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        const dayContainer = document.createElement('div');
+        dayContainer.className = 'day-container';
+        dayContainer.innerHTML = `
+            <div class="day-header">
+                <div class="day-date">${dayName}, ${formattedDate}</div>
+            </div>
+            <div class="day-content">
+                <!-- Time slots will be added here -->
+            </div>
+        `;
+        
+        return dayContainer;
+    }
+    
+    // Helper function to create a time slot element
+    function createTimeSlotElement(time) {
+        const timeSlot = document.createElement('div');
+        timeSlot.className = 'time-slot';
+        
+        // Format time for display (24h to 12h)
+        const formattedTime = format12HourTime(time);
+        
+        timeSlot.innerHTML = `
+            <div class="time-slot-header">${formattedTime}</div>
+            <!-- Game entries will be added here -->
+        `;
+        
+        return timeSlot;
+    }
+    
+    // Helper function to create a game entry element
+    function createGameEntryElement(teams, courts, defaultCourt, weekNum, date, time, gameIndex) {
+        const gameEntry = document.createElement('div');
+        gameEntry.className = 'game-entry';
+        gameEntry.dataset.week = weekNum;
+        gameEntry.dataset.date = date;
+        gameEntry.dataset.time = time;
+        gameEntry.dataset.gameIndex = gameIndex;
+        
+        // Create level options
+        let levelOptions = '<option value="">Select Level</option>';
+        Object.keys(teams).forEach(level => {
+            levelOptions += `<option value="${level}">${level}</option>`;
+        });
+        
+        // Create court options with "Other" option
+        let courtOptions = '<option value="">Select Court</option>';
+        courts.forEach(court => {
+            const selected = court === defaultCourt ? 'selected' : '';
+            courtOptions += `<option value="${court}" ${selected}>${court}</option>`;
+        });
+        courtOptions += '<option value="other">Other...</option>';
+        
+        gameEntry.innerHTML = `
+            <div class="form-group">
+                <label>Level:</label>
+                <select class="form-control level-select" required>
+                    ${levelOptions}
+                </select>
+            </div>
+            <div class="teams-row">
+                <div class="form-group">
+                    <label>Team 1:</label>
+                    <select class="form-control team1-select" required disabled>
+                        <option value="">Select Team</option>
+                    </select>
+                </div>
+                <div class="vs-label">vs</div>
+                <div class="form-group">
+                    <label>Team 2:</label>
+                    <select class="form-control team2-select" required disabled>
+                        <option value="">Select Team</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Referee:</label>
+                <select class="form-control ref-select" required disabled>
+                    <option value="">Select Team</option>
+                </select>
+                <input type="text" class="form-control ref-other-input other-input" 
+                       placeholder="Enter referee name (optional)">
+            </div>
+            <div class="form-group">
+                <label>Court:</label>
+                <select class="form-control court-select" required>
+                    ${courtOptions}
+                </select>
+                <input type="text" class="form-control court-other-input other-input" 
+                       placeholder="Enter court name" required>
+            </div>
+        `;
+        
+        // Setup level selection event to populate team dropdowns
+        const levelSelect = gameEntry.querySelector('.level-select');
+        const team1Select = gameEntry.querySelector('.team1-select');
+        const team2Select = gameEntry.querySelector('.team2-select');
+        const refSelect = gameEntry.querySelector('.ref-select');
+        
+        levelSelect.addEventListener('change', function() {
+            const selectedLevel = this.value;
+            
+            // Reset and disable team dropdowns if no level selected
+            if (!selectedLevel) {
+                resetTeamDropdowns(team1Select, team2Select, refSelect);
+                return;
+            }
+            
+            // Enable and populate team dropdowns
+            const teamsInLevel = teams[selectedLevel] || [];
+            populateTeamDropdowns(teamsInLevel, team1Select, team2Select, refSelect);
+        });
+        
+        // Setup team selection to prevent duplicate selections
+        team1Select.addEventListener('change', () => updateTeamOptions(team1Select, team2Select, refSelect));
+        team2Select.addEventListener('change', () => updateTeamOptions(team1Select, team2Select, refSelect));
+        
+        // Setup other input handlers
+        setupOtherInputHandlers(gameEntry);
+        
+        return gameEntry;
+    }
+    
+    // Helper function to show/hide "Other" input fields
+    function setupOtherInputHandlers(gameEntry) {
+        const refSelect = gameEntry.querySelector('.ref-select');
+        const refOtherInput = gameEntry.querySelector('.ref-other-input');
+        const courtSelect = gameEntry.querySelector('.court-select');
+        const courtOtherInput = gameEntry.querySelector('.court-other-input');
+        
+        refSelect.addEventListener('change', function() {
+            if (this.value === 'other') {
+                refOtherInput.classList.add('visible');
+            } else {
+                refOtherInput.classList.remove('visible');
+            }
+        });
+        
+        courtSelect.addEventListener('change', function() {
+            if (this.value === 'other') {
+                courtOtherInput.classList.add('visible');
+            } else {
+                courtOtherInput.classList.remove('visible');
+            }
+        });
+    }
+    
+    // Helper function to format time from 24h to 12h
+    function format12HourTime(time24h) {
+        const [hours, minutes] = time24h.split(':');
+        const hour = parseInt(hours);
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${period}`;
+    }
+    
+    // Helper function to reset team dropdowns
+    function resetTeamDropdowns(...dropdowns) {
+        dropdowns.forEach(dropdown => {
+            dropdown.innerHTML = '<option value="">Select Team</option>';
+            dropdown.disabled = true;
+        });
+    }
+    
+    // Helper function to populate team dropdowns
+    function populateTeamDropdowns(teams, ...dropdowns) {
+        dropdowns.forEach(dropdown => {
+            dropdown.innerHTML = '<option value="">Select Team</option>';
+            teams.forEach(team => {
+                dropdown.innerHTML += `<option value="${team}">${team}</option>`;
+            });
+            
+            // Add "Other" option for referee dropdown
+            if (dropdown === dropdowns[2]) { // referee is the third dropdown
+                dropdown.innerHTML += '<option value="other">Other...</option>';
+            }
+            
+            dropdown.disabled = false;
+        });
+    }
+    
+    // Helper function to update team options to prevent duplicates
+    function updateTeamOptions(team1Select, team2Select, refSelect) {
+        const selectedTeams = [
+            team1Select.value,
+            team2Select.value
+        ].filter(Boolean);
+        
+        // Get all available teams from the first dropdown (they all have the same options)
+        const allTeams = Array.from(team1Select.options)
+            .map(option => option.value)
+            .filter(value => value && value !== 'other');
+        
+        // Update each team dropdown
+        [team1Select, team2Select].forEach(dropdown => {
+            const currentValue = dropdown.value;
+            
+            // Store current selection
+            dropdown.innerHTML = '<option value="">Select Team</option>';
+            
+            // Re-add all options, disabling those already selected in other dropdowns
+            allTeams.forEach(team => {
+                const isSelected = team === currentValue;
+                const isDisabled = selectedTeams.includes(team) && !isSelected;
+                
+                dropdown.innerHTML += `
+                    <option value="${team}" 
+                        ${isSelected ? 'selected' : ''} 
+                        ${isDisabled ? 'disabled' : ''}>
+                        ${team}
+                    </option>
+                `;
+            });
+        });
+        
+        // Update ref dropdown - can't ref if playing
+        const currentRefValue = refSelect.value;
+        refSelect.innerHTML = '<option value="">Select Team</option>';
+        
+        allTeams.forEach(team => {
+            const isSelected = team === currentRefValue;
+            const isDisabled = selectedTeams.includes(team);
+            
+            refSelect.innerHTML += `
+                <option value="${team}" 
+                    ${isSelected ? 'selected' : ''} 
+                    ${isDisabled ? 'disabled' : ''}>
+                    ${team}
+                </option>
+            `;
+        });
+        
+        // Add "Other" option for referee
+        refSelect.innerHTML += `
+            <option value="other" ${currentRefValue === 'other' ? 'selected' : ''}>
+                Other...
+            </option>
+        `;
+        
+        // Show/hide other input field
+        const refOtherInput = refSelect.closest('.form-group').querySelector('.ref-other-input');
+        if (refOtherInput) {
+            if (currentRefValue === 'other') {
+                refOtherInput.classList.add('visible');
+            } else {
+                refOtherInput.classList.remove('visible');
+            }
+        }
+    }
+    
+    // Setup collapsible elements
+    function setupCollapsible() {
+        // Add click handlers to all week headers
+        document.querySelectorAll('.week-header').forEach(header => {
+            header.addEventListener('click', function() {
+                const weekContainer = this.closest('.week-container');
+                weekContainer.classList.toggle('collapsed');
+            });
+        });
+        
+        // Add click handlers to all day headers
+        document.querySelectorAll('.day-header').forEach(header => {
+            header.addEventListener('click', function() {
+                const dayContainer = this.closest('.day-container');
+                dayContainer.classList.toggle('collapsed');
+            });
+        });
+        
+        // Add click handlers to all time slot headers
+        document.querySelectorAll('.time-slot-header').forEach(header => {
+            header.addEventListener('click', function() {
+                const timeSlot = this.closest('.time-slot');
+                timeSlot.classList.toggle('collapsed');
+            });
+        });
+    }
+});
+</script>
+{% endblock %} 

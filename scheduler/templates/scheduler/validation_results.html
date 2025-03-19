@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Validation Results{% endblock %}
+
+{% block extra_css %}
+<style>
+    .validation-result {
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+    
+    .validation-result.passed {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .validation-result.failed {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .form-actions {
+        margin-top: 1.5rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Validation Results</h2>
+    
+    <div id="validationResults" class="mt-4">
+        {% for test_name, result in validation_results.items %}
+            <div class="validation-result {% if result.passed %}passed{% else %}failed{% endif %}">
+                <h5>{{ test_name }}</h5>
+                <p>{{ result.message }}</p>
+                {% if not result.passed %}
+                    <div class="form-check">
+                        <input class="form-check-input override-check" type="checkbox" 
+                               id="override_{{ test_name }}" 
+                               data-test="{{ test_name }}">
+                        <label class="form-check-label" for="override_{{ test_name }}">
+                            Override this validation (I acknowledge the issue)
+                        </label>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    
+    <form action="/scheduler/game_assignment/" method="post" class="mt-4">
+        {% csrf_token %}
+        <input type="hidden" name="schedule_data" value="{{ schedule_data }}">
+        
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="history.back()">Back to Game Assignment</button>
+            <button type="submit" class="btn btn-success" id="generateScheduleBtn" disabled>Generate Schedule</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enable/disable generate button based on overrides
+    function updateGenerateButton() {
+        const failedChecks = document.querySelectorAll('.validation-result.failed .override-check');
+        const allOverridden = Array.from(failedChecks).every(check => check.checked);
+        
+        document.getElementById('generateScheduleBtn').disabled = !allOverridden;
+    }
+    
+    // Add listeners to checkboxes
+    document.querySelectorAll('.override-check').forEach(checkbox => {
+        checkbox.addEventListener('change', updateGenerateButton);
+    });
+    
+    // Initial check
+    updateGenerateButton();
+});
+</script>
+{% endblock %} 
