@@ -190,15 +190,12 @@ def compute_overall_ref_counts(schedule, teams, levels, config=None):
     return counts
 
 
-def print_statistics(schedule, teams, levels, config=None):
+def print_statistics(schedule, teams, levels, config):
     """
     Print various statistics for the schedule.
     Works with both team indices and team names.
     Compact view with all teams together.
     """
-    # Use global config if not provided
-    if config is None:
-        from schedule import config
 
     print("\n=== STATISTICS ===")
 

@@ -2,11 +2,9 @@ import json
 import os
 
 
-def convert_to_formatted_schedule(schedule, levels, config=None):
+def convert_to_formatted_schedule(schedule, levels, config):
     """Convert internal schedule format to the standardized JSON format"""
-    # Use global config if not provided
-    if config is None:
-        from schedule import config
+
 
     # Create a dictionary of team names by level
     team_names_by_level = {}
