@@ -403,10 +403,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Define explanations for each validation
         const explanations = {
-            'Pairings': 'Each team should face every other team in their level exactly once in a balanced schedule.',
-            'Cycle Pairings': 'Teams ideally play different opponents in varied order throughout the season.',
-            'Referee-Player': 'A team cannot referee a game in which they are playing.',
-            'Adjacent Slots': 'Teams typically referee in time slots adjacent to when they play.'
+            'Pairings': 'Teams must play against other teams in their level a specific number of times based on level size.',
+            'Cycle Pairings': 'For levels with fewer teams, matchups must repeat in proper round-robin cycles throughout the season.',
+            'Referee-Player': 'A team cannot referee any game in which they are playing.',
+            'Adjacent Slots': 'Teams can only referee games in time slots that are directly before or after their own game.'
         };
         
         Object.entries(results).forEach(([testName, result]) => {

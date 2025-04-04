@@ -772,21 +772,21 @@ def validate_schedule(request):
     validation_results = {
         "Pairings": {
             "passed": pairing_tests(schedule_data, levels, config["teams_per_level"]),
-            "message": "Each team plays against every other team exactly once",
+            "message": "Teams play the correct number of times based on their level size",
         },
         "Cycle Pairings": {
             "passed": cycle_pairing_test(
                 schedule_data, levels, config["teams_per_level"]
             ),
-            "message": "Teams play in different orders throughout the schedule",
+            "message": "Matchups repeat in proper round-robin cycles for each level",
         },
         "Referee-Player": {
             "passed": referee_player_test(schedule_data),
-            "message": "No team referees a game they are playing in",
+            "message": "No team referees a game in which they are playing",
         },
         "Adjacent Slots": {
             "passed": adjacent_slot_test(schedule_data),
-            "message": "Teams referee in slots adjacent to their games",
+            "message": "Teams only referee in slots directly adjacent to when they play",
         },
     }
 
