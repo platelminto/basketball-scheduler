@@ -50,14 +50,14 @@ config = {
     # Constraints for play balance
     # These are the maximum number of games a team can play in a slot for the whole season.
     "slot_limits": {
-        1: 4,  # Teams can play at most 2 games in slot 1
+        1: 3,  # Teams can play at most 3 games in slot 1
         2: 6,  # Teams can play at most 6 games in slots 2 and 3
         3: 6,
         4: 4,  # Teams can play at most 4 games in slot 4
     },
     # Constraints for referee balance
-    "min_referee_count": 3,  # Minimum times a team must referee in a season per level
-    "max_referee_count": 7,  # Maximum times a team can referee in a season per level
+    "min_referee_count": 4,  # Minimum times a team must referee in a season per level
+    "max_referee_count": 6,  # Maximum times a team can referee in a season per level
     # Optimization priorities
     "priority_slots": [1, 4],  # Slots where balance is more important
     "priority_multiplier": 100,  # Extra weight for priority slots in balance calculations
@@ -765,32 +765,59 @@ def balance_schedule(
 # Run Post-Processing Phases & Testing
 #########################################
 
+def validate_schedule(schedule, teams, levels):
+    """
+    Validate schedule against configured limits:
+    1. Teams must referee between min_referee_count and max_referee_count times in any level
+    2. Teams must play within the configured slot limits
+    Returns (bool, str) - (is_valid, error_message)
+    """
+    # Check referee counts
+    ref_counts = {level: {t: 0 for t in teams[level]} for level in levels}
+    for week in schedule:
+        for level in week:
+            _, _, ref_assignment = week[level]
+            for r in ref_assignment:
+                ref_counts[level][r] += 1
 
-def validate_schedule(request):
-    schedule_data = json.loads(request.body)["schedule"]
+    min_ref = config["min_referee_count"]
+    max_ref = config["max_referee_count"]
 
-    validation_results = {
-        "Pairings": {
-            "passed": pairing_tests(schedule_data, levels, config["teams_per_level"]),
-            "message": "Teams play the correct number of times based on their level size",
-        },
-        "Cycle Pairings": {
-            "passed": cycle_pairing_test(
-                schedule_data, levels, config["teams_per_level"]
-            ),
-            "message": "Matchups repeat in proper round-robin cycles for each level",
-        },
-        "Referee-Player": {
-            "passed": referee_player_test(schedule_data),
-            "message": "No team referees a game in which they are playing",
-        },
-        "Adjacent Slots": {
-            "passed": adjacent_slot_test(schedule_data),
-            "message": "Teams only referee in slots directly adjacent to when they play",
-        },
+    for level in levels:
+        for team in teams[level]:
+            if ref_counts[level][team] > max_ref or ref_counts[level][team] < min_ref:
+                return (
+                    False,
+                    f"Team {team+1} referees {ref_counts[level][team]} times in level {level} "
+                    f"(should be between {min_ref} and {max_ref})",
+                )
+
+    # Check slot limits
+    play_counts = {
+        level: {
+            t: {s: 0 for s in range(1, config["num_slots"] + 1)} for t in teams[level]
+        }
+        for level in levels
     }
+    for week in schedule:
+        for level in week:
+            distribution, pairing, _ = week[level]
+            for i, slot in enumerate(distribution):
+                t1, t2 = pairing[i]
+                play_counts[level][t1][slot] += 1
+                play_counts[level][t2][slot] += 1
 
-    return JsonResponse(validation_results)
+    for level in levels:
+        for team in teams[level]:
+            for slot, limit in config["slot_limits"].items():
+                if play_counts[level][team][slot] > limit:
+                    return (
+                        False,
+                        f"Team {team+1} plays {play_counts[level][team][slot]} times in slot {slot} "
+                        f"in level {level} (max is {limit})",
+                    )
+
+    return True, "Schedule is valid"
 
 
 def find_schedule_attempt():
