@@ -63,26 +63,9 @@ config = {
     "priority_multiplier": 100,  # Extra weight for priority slots in balance calculations
 }
 
-# Derived parameters
-levels = config["levels"]
-first_half_weeks = config["first_half_weeks"]
-total_weeks = config["total_weeks"]
-
-# Get all teams as a list of integers for each level
-teams = {}
-all_teams = []
-for level in levels:
-    teams[level] = list(range(config["teams_per_level"][level]))
-    all_teams.extend(teams[level])
-
 ###########################
 # Parameters & Round-Robin
 ###########################
-
-# The three available slot distributions.
-# (When one level gets (1,2,2), another (2,3,4) and the third (3,4,4),
-# the overall weekly capacities are met:
-#  Slot 1: 1 game, Slot 2: 3 games, Slot 3: 2 games, Slot 4: 3 games.)
 
 
 def generate_round_robin_pairings(n):
@@ -102,18 +85,6 @@ def generate_round_robin_pairings(n):
         rounds.append(round_games)
         teams_list = [teams_list[0]] + [teams_list[-1]] + teams_list[1:-1]
     return rounds
-
-
-# Generate fixed round-robin pairings for each level.
-rr_pairings = {}
-for level in levels:
-    rr_pairings[level] = generate_round_robin_pairings(
-        config["teams_per_level"][level]
-    )  # 5 rounds for 6 teams
-
-levels = config["levels"]
-# For each level, create teams as 0-indexed integers.
-teams = {level: list(range(config["teams_per_level"][level])) for level in levels}
 
 
 #############################################
@@ -266,7 +237,7 @@ def get_ref_assignment(level, slot_assignment, pairing, current_ref_counts):
 #############################################
 
 
-def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
+def solve_half_schedule(rr_pairings, weeks, teams, initial_ref_counts=None):
     """
     For each week, for each level assign a candidate slot assignment (and corresponding referee assignment)
     that meets both local and global constraints.
@@ -275,9 +246,11 @@ def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
       - The sum of games assigned to a slot (across levels) does not exceed the courts available in that slot.
     """
     if initial_ref_counts is None:
-        ref_counts = {level: {t: 0 for t in teams[level]} for level in levels}
+        ref_counts = {level: {t: 0 for t in teams[level]} for level in config["levels"]}
     else:
-        ref_counts = {level: dict(initial_ref_counts[level]) for level in levels}
+        ref_counts = {
+            level: dict(initial_ref_counts[level]) for level in config["levels"]
+        }
     schedule = [None] * weeks
 
     def backtrack(week):
@@ -287,12 +260,12 @@ def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
         global_usage = {s: 0 for s in range(1, config["num_slots"] + 1)}
         week_assignment = {}
         # Copy referee counts to update as we assign each level.
-        new_ref_counts = {level: dict(ref_counts[level]) for level in levels}
+        new_ref_counts = {level: dict(ref_counts[level]) for level in config["levels"]}
 
         def assign_level(i, current_usage):
-            if i == len(levels):
+            if i == len(config["levels"]):
                 return True
-            level = levels[i]
+            level = config["levels"][i]
             pairing = rr_pairings[level][
                 week
             ]  # Fixed round-robin pairing for this level.
@@ -342,7 +315,7 @@ def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
         if not assign_level(0, global_usage):
             return False
         schedule[week] = week_assignment
-        for level in levels:
+        for level in config["levels"]:
             ref_counts[level] = new_ref_counts[level]
         return backtrack(week + 1)
 
@@ -352,7 +325,7 @@ def solve_half_schedule(rr_pairings, weeks, initial_ref_counts=None):
         return None, None
 
 
-def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
+def solve_second_half(rr_pairings, first_half_schedule, teams, initial_ref_counts):
     """
     Solve the second half of the schedule.
 
@@ -362,7 +335,7 @@ def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
     direct game-by-game backtracking approach with global usage constraints.
     """
     weeks = config["first_half_weeks"]
-    ref_counts = {level: dict(initial_ref_counts[level]) for level in levels}
+    ref_counts = {level: dict(initial_ref_counts[level]) for level in config["levels"]}
     schedule = [None] * weeks
 
     def backtrack(week):
@@ -370,12 +343,12 @@ def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
             return True
         global_usage = {s: 0 for s in range(1, config["num_slots"] + 1)}
         week_assignment = {}
-        new_ref_counts = {level: dict(ref_counts[level]) for level in levels}
+        new_ref_counts = {level: dict(ref_counts[level]) for level in config["levels"]}
 
         def assign_level(i, current_usage):
-            if i == len(levels):
+            if i == len(config["levels"]):
                 return True
-            level = levels[i]
+            level = config["levels"][i]
             # Use the pairing from the first half schedule for this level and week.
             pairing = first_half_schedule[week][level][1]
             num_games = len(pairing)
@@ -424,7 +397,7 @@ def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
         if not assign_level(0, global_usage):
             return False
         schedule[week] = week_assignment
-        for level in levels:
+        for level in config["levels"]:
             ref_counts[level] = new_ref_counts[level]
         return backtrack(week + 1)
 
@@ -439,7 +412,7 @@ def solve_second_half(rr_pairings, first_half_schedule, initial_ref_counts):
 ##############################################
 
 
-def weighted_play_imbalance_metric(schedule):
+def weighted_play_imbalance_metric(schedule, teams):
     """
     Compute a weighted global imbalance metric based on configured limits.
     For each level and team for each slot, if the actual count exceeds the limit,
@@ -447,11 +420,13 @@ def weighted_play_imbalance_metric(schedule):
     For priority slots, multiply the penalty by an extra multiplier.
     Lower values indicate better balance.
     """
-    play_counts = compute_team_play_counts(schedule)  # level -> {team -> {slot: count}}
+    play_counts = compute_team_play_counts(
+        schedule, teams
+    )  # level -> {team -> {slot: count}}
     total = 0.0
     violation_penalty = 1e6  # Penalty factor for exceeding the limit
 
-    for level in levels:
+    for level in config["levels"]:
         for t in teams[level]:
             for s in range(1, config["num_slots"] + 1):
                 count = play_counts[level][t][s]
@@ -471,7 +446,7 @@ def weighted_play_imbalance_metric(schedule):
     return total
 
 
-def compute_team_play_counts(schedule):
+def compute_team_play_counts(schedule, teams):
     """
     For each level, compute a dict: team -> {slot: count} of playing appearances.
     Each game in a week (for a level) contributes 1 appearance in its slot for each team playing.
@@ -480,10 +455,10 @@ def compute_team_play_counts(schedule):
         level: {
             t: {s: 0 for s in range(1, config["num_slots"] + 1)} for t in teams[level]
         }
-        for level in levels
+        for level in config["levels"]
     }
     for week in schedule:
-        for level in week:
+        for level in config["levels"]:
             distribution, pairing, _ = week[level]
             for i in range(len(pairing)):
                 slot = distribution[i]
@@ -498,10 +473,10 @@ def compute_team_play_counts(schedule):
 ##############################################
 
 
-def compute_overall_ref_counts(schedule):
-    counts = {level: {t: 0 for t in teams[level]} for level in levels}
+def compute_overall_ref_counts(schedule, teams):
+    counts = {level: {t: 0 for t in teams[level]} for level in config["levels"]}
     for week in schedule:
-        for level in week:
+        for level in config["levels"]:
             _, _, ref_assignment = week[level]
             for r in ref_assignment:
                 counts[level][r] += 1
@@ -537,15 +512,15 @@ def is_week_global_valid(week_assignment, week_index):
     return True
 
 
-def composite_objective(schedule, weight_play=1.0, weight_ref=1.0):
+def composite_objective(schedule, teams, weight_play=1.0, weight_ref=1.0):
     """
     Compute the composite objective from play imbalance and referee imbalance only.
     (Global slot distribution is now enforced as a hard constraint.)
     """
-    play_cost = weighted_play_imbalance_metric(schedule)
-    overall = compute_overall_ref_counts(schedule)
+    play_cost = weighted_play_imbalance_metric(schedule, teams)
+    overall = compute_overall_ref_counts(schedule, teams)
     ref_cost = 0
-    for level in levels:
+    for level in config["levels"]:
         ref_cost += total_ref_imbalance(level, overall[level])
     return weight_play * play_cost + weight_ref * ref_cost
 
@@ -553,7 +528,8 @@ def composite_objective(schedule, weight_play=1.0, weight_ref=1.0):
 # Update balance_schedule to accept the new parameters
 def balance_schedule(
     schedule,
-    max_iterations=300,
+    teams,
+    max_iterations=125,
     weight_play=0.1,
     weight_ref=10.0,
     cooling_rate=0.9,
@@ -583,19 +559,19 @@ def balance_schedule(
 
     # Create initial copy - we still need one to avoid modifying the input
     new_schedule = copy.deepcopy(schedule)
-    current_obj = composite_objective(new_schedule, weight_play, weight_ref)
+    current_obj = composite_objective(new_schedule, teams, weight_play, weight_ref)
 
     # Track statistics to guide the search
     rejected_count = 0
     accepted_count = 0
 
     # Identify imbalanced teams/slots for targeted improvement
-    play_counts = compute_team_play_counts(new_schedule)
-    ref_counts = compute_overall_ref_counts(new_schedule)
+    play_counts = compute_team_play_counts(new_schedule, teams)
+    ref_counts = compute_overall_ref_counts(new_schedule, teams)
 
     # Pre-calculate problematic areas to target
     problematic_teams = {}
-    for level in levels:
+    for level in config["levels"]:
         problematic_teams[level] = []
         for team in teams[level]:
             for slot, limit in config["slot_limits"].items():
@@ -614,7 +590,7 @@ def balance_schedule(
         if move_type == "swap":
             # Swap move: choose two different weeks and one level; swap their assignments (and mirror weeks)
             w1, w2 = random.sample(range(config["first_half_weeks"]), 2)
-            level = random.choice(levels)
+            level = random.choice(config["levels"])
 
             # Save original assignments before swapping
             orig_w1 = new_schedule[w1][level]
@@ -653,7 +629,7 @@ def balance_schedule(
             # Evaluate if the constraint is satisfied
             if is_valid:
                 candidate_obj = composite_objective(
-                    new_schedule, weight_play, weight_ref
+                    new_schedule, teams, weight_play, weight_ref
                 )
                 delta = candidate_obj - current_obj
 
@@ -679,7 +655,7 @@ def balance_schedule(
         else:  # candidate move
             # Try a new slot assignment for a random week and level
             w = random.randrange(config["first_half_weeks"])
-            level = random.choice(levels)
+            level = random.choice(config["levels"])
             current_assignment, pairing, current_ref = new_schedule[w][level]
 
             # Generate alternative assignments
@@ -733,7 +709,7 @@ def balance_schedule(
 
             if is_valid:
                 candidate_obj = composite_objective(
-                    new_schedule, weight_play, weight_ref
+                    new_schedule, teams, weight_play, weight_ref
                 )
                 delta = candidate_obj - current_obj
 
@@ -764,6 +740,7 @@ def balance_schedule(
 #########################################
 # Run Post-Processing Phases & Testing
 #########################################
+
 
 def validate_schedule(schedule, teams, levels):
     """
@@ -820,27 +797,35 @@ def validate_schedule(schedule, teams, levels):
     return True, "Schedule is valid"
 
 
-def find_schedule_attempt():
+def find_schedule_attempt(teams):
     """Single attempt to find a valid schedule"""
+
+    # Generate fixed round-robin pairings for each level.
+    rr_pairings = {}
+    for level in config["levels"]:
+        rr_pairings[level] = generate_round_robin_pairings(
+            config["teams_per_level"][level]
+        )
+
     # Solve first half
     first_half_schedule, first_half_ref_counts = solve_half_schedule(
-        rr_pairings, first_half_weeks
+        rr_pairings, config["first_half_weeks"], teams
     )
     if first_half_schedule is None:
         return None
 
     second_half_schedule, second_half_ref_counts = solve_second_half(
-        rr_pairings, first_half_schedule, first_half_ref_counts
+        rr_pairings, first_half_schedule, teams, first_half_ref_counts
     )
     if second_half_schedule is None:
         return None
 
     full_schedule = first_half_schedule + second_half_schedule
 
-    final_schedule = balance_schedule(full_schedule)
+    final_schedule = balance_schedule(full_schedule, teams)
 
     # Validate the schedule
-    is_valid, message = validate_schedule(final_schedule, teams, levels)
+    is_valid, message = validate_schedule(final_schedule, teams, config["levels"])
     print(message)
     if is_valid:
         return final_schedule
@@ -848,6 +833,7 @@ def find_schedule_attempt():
 
 
 def find_schedule(
+    teams,
     use_saved_schedule=True,
     filename="saved_schedule.json",
     max_attempts=30000,
@@ -892,7 +878,7 @@ def find_schedule(
         # Sequential approach for single core
         for attempt in range(max_attempts):
             total_attempts += 1
-            schedule = find_schedule_attempt()
+            schedule = find_schedule_attempt(teams)
             if schedule is not None:
                 raw_schedule = schedule
                 break
@@ -906,7 +892,7 @@ def find_schedule(
         for attempt in range(0, max_attempts, attempts_per_batch):
             with Pool(num_cores) as pool:
                 schedules = pool.starmap(
-                    find_schedule_attempt, [()] * attempts_per_batch
+                    find_schedule_attempt, [(teams,)] * attempts_per_batch
                 )
                 for schedule in schedules:
                     if schedule is not None:
@@ -930,7 +916,7 @@ def find_schedule(
     print(f"Schedule found in {end_time - start_time:.2f} seconds")
 
     # Convert to the standardized JSON format
-    schedule_data = convert_to_formatted_schedule(raw_schedule, levels)
+    schedule_data = convert_to_formatted_schedule(raw_schedule, config["levels"])
 
     # Save the newly generated schedule
     save_schedule_to_file(schedule_data, filename)
@@ -1033,7 +1019,10 @@ if __name__ == "__main__":
 
     print("Generating new schedule...")
     start_time = time.time()
-    final_schedule, total_attempts = find_schedule(use_saved_schedule=False)
+    
+    teams = {level: list(range(config["teams_per_level"][level])) for level in config["levels"]}
+    
+    final_schedule, total_attempts = find_schedule(use_saved_schedule=False, teams=teams)
     end_time = time.time()
 
     if final_schedule:
@@ -1042,8 +1031,10 @@ if __name__ == "__main__":
     if final_schedule:
         print_schedule(final_schedule)
         print("\nRunning tests on final schedule:")
-        pt = pairing_tests(final_schedule, levels, config["teams_per_level"])
-        cpt = cycle_pairing_test(final_schedule, levels, config["teams_per_level"])
+        pt = pairing_tests(final_schedule, config["levels"], config["teams_per_level"])
+        cpt = cycle_pairing_test(
+            final_schedule, config["levels"], config["teams_per_level"]
+        )
         rpt = referee_player_test(final_schedule)
         ast = adjacent_slot_test(final_schedule)
         gst = global_slot_distribution_test(
@@ -1054,7 +1045,7 @@ if __name__ == "__main__":
         )
 
         # Pass the config to print_statistics
-        print_statistics(final_schedule, teams, levels, config)
+        print_statistics(final_schedule, teams, config["levels"])
 
         print("\nTest Results:")
         print(f"  Pairings correct: {pt}")
