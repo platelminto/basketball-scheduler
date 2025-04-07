@@ -206,6 +206,7 @@
         
         <div class="form-actions">
             <button type="button" class="btn btn-warning" id="randomFillBtn">Random Fill (Dev)</button>
+            <button type="button" class="btn btn-info" id="getConfigBtn">Get Config (Dev)</button>
             <button type="button" class="btn btn-secondary" id="backBtn">Back to Team Setup</button>
             <button type="button" class="btn btn-primary" id="validateBtn">Validate Schedule</button>
             <button type="submit" class="btn btn-success" id="generateScheduleBtn">Generate Schedule</button>
@@ -223,8 +224,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Show Random Fill button only in development
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         document.getElementById('randomFillBtn').style.display = 'block';
+        document.getElementById('getConfigBtn').style.display = 'block';
     } else {
         document.getElementById('randomFillBtn').style.display = 'none';
+        document.getElementById('getConfigBtn').style.display = 'none';
     }
     
     // Get setup data from URL parameters
@@ -254,6 +257,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Random fill button
     document.getElementById('randomFillBtn').addEventListener('click', randomFill);
+    
+    // Get Config button
+    document.getElementById('getConfigBtn').addEventListener('click', getConfig);
     
     // Validate button
     document.getElementById('validateBtn').addEventListener('click', validateSchedule);
@@ -332,45 +338,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to validate the schedule
     function validateSchedule() {
-        let isComplete = true;
-        document.querySelectorAll('.game-entry').forEach(gameEntry => {
-            const levelSelect = gameEntry.querySelector('.level-select');
-            const team1Select = gameEntry.querySelector('.team1-select');
-            const team2Select = gameEntry.querySelector('.team2-select');
-            const refSelect = gameEntry.querySelector('.ref-select');
-            const courtSelect = gameEntry.querySelector('.court-select');
-            
-            // For "other" option fields
-            const courtOtherInput = gameEntry.querySelector('.court-other-input');
-            
-            // Only check court other input if it's selected
-            const needsCourtInput = courtSelect.value === 'other' && 
-                                  courtOtherInput && 
-                                  !courtOtherInput.value.trim();
-
-            if (!levelSelect.value || 
-                !team1Select.value || 
-                !team2Select.value || 
-                !refSelect.value || 
-                !courtSelect.value || 
-                needsCourtInput) {
-                isComplete = false;
-                gameEntry.classList.add('incomplete');
-            } else {
-                gameEntry.classList.remove('incomplete');
-            }
-        });
+        const scheduleData = collectScheduleData(); // Your function to collect schedule data
         
-        if (!isComplete) {
-            alert('Please complete all game entries before validating');
-            return;
-        }
+        // Get the config data that was received earlier when calling getConfig()
+        // This assumes you're storing it somewhere in your JS after the getConfig call
+        const configData = window.storedConfigData; // Or however you're storing it
         
-        // Collect and convert data for validation
-        const gameAssignments = collectGameAssignments();
-        const scheduleFormat = webToScheduleFormat(gameAssignments);
-        
-        // Call the validation endpoint
         fetch('/scheduler/validate_schedule/', {
             method: 'POST',
             headers: {
@@ -378,17 +351,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-CSRFToken': getCsrfToken(),
             },
             body: JSON.stringify({
-                schedule: scheduleFormat
+                schedule: scheduleData,
+                config: configData
             })
         })
         .then(response => response.json())
-        .then(validationResults => {
-            // Display validation results
-            displayValidationResults(validationResults);
+        .then(data => {
+            // Handle validation results
+            displayValidationResults(data);
         })
         .catch(error => {
-            console.error('Validation error:', error);
-            alert('Error during validation. Please try again.');
+            console.error('Error validating schedule:', error);
         });
     }
     
@@ -1026,6 +999,203 @@ document.addEventListener('DOMContentLoaded', function() {
                 timeSlot.classList.toggle('collapsed');
             });
         });
+    }
+
+    // Add a global variable to store the config
+    let storedConfigData = null;
+
+    function getConfig() {
+        const setupDataParam = document.getElementById('setupData').value;
+        
+        if (!setupDataParam) {
+            console.error('No setup data available');
+            return;
+        }
+        
+        // Show loading indicator or message
+        console.log('Generating schedule, please wait...');
+        
+        fetch('/scheduler/get_config/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({
+                setupData: setupDataParam
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Failed to generate schedule');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Configuration from schedule creator:', data.config);
+            console.log('Generated schedule:', data.schedule);
+            
+            // Store the config data for later use
+            storedConfigData = data.config;
+            
+            // Fill the form with the generated schedule
+            fillFormWithSchedule(data.schedule);
+        })
+        .catch(error => {
+            console.error('Error generating schedule:', error);
+            alert('Error generating schedule: ' + error.message);
+        });
+    }
+
+    // Function to fill the form with the generated schedule
+    function fillFormWithSchedule(schedule) {
+        console.log('Starting to fill form with schedule:', JSON.stringify(schedule));
+        
+        // Get all game entries in the form
+        const gameEntries = document.querySelectorAll('.game-entry');
+        console.log(`Found ${gameEntries.length} game entries in the form`);
+        
+        // Map each form game entry to its week and time slot
+        const formGameEntryMap = {};
+        
+        // Group the form's game entries by week and time
+        gameEntries.forEach((gameEntry) => {
+            const weekNum = parseInt(gameEntry.dataset.week);
+            const timeSlot = gameEntry.dataset.time;
+            
+            if (!formGameEntryMap[weekNum]) {
+                formGameEntryMap[weekNum] = {};
+            }
+            
+            if (!formGameEntryMap[weekNum][timeSlot]) {
+                formGameEntryMap[weekNum][timeSlot] = [];
+            }
+            
+            formGameEntryMap[weekNum][timeSlot].push(gameEntry);
+        });
+        
+        console.log('Form game entry map:', formGameEntryMap);
+        
+        // Process each week in the generated schedule
+        schedule.forEach(week => {
+            const weekNum = week.week;
+            if (!weekNum) {
+                console.error('Week number is undefined in schedule item:', week);
+                return; // Skip this week
+            }
+            
+            console.log(`Processing week ${weekNum}`);
+            
+            if (!week.slots || Object.keys(week.slots).length === 0) {
+                console.log(`No slots for week ${weekNum}`);
+                return; // Skip this week
+            }
+            
+            if (!formGameEntryMap[weekNum]) {
+                console.log(`No form entries for week ${weekNum}`);
+                return; // Skip this week
+            }
+            
+            // Get the times for this week in the form, sorted
+            const times = Object.keys(formGameEntryMap[weekNum]).sort();
+            console.log(`Times for week ${weekNum}:`, times);
+            
+            // Map each time to a slot (1-based index)
+            const timeToSlot = {};
+            times.forEach((time, idx) => {
+                timeToSlot[time] = (idx + 1).toString(); // Convert to string to match slots keys
+            });
+            
+            console.log(`Time to slot mapping for week ${weekNum}:`, timeToSlot);
+            console.log(`Available slots in schedule for week ${weekNum}:`, Object.keys(week.slots));
+            
+            // For each time in this week, find and assign games
+            times.forEach(time => {
+                const slotNumber = timeToSlot[time];
+                console.log(`Processing time ${time} (slot ${slotNumber})`);
+                
+                // Get the games for this slot from the schedule
+                const gamesForSlot = week.slots[slotNumber] || [];
+                console.log(`Found ${gamesForSlot.length} games for slot ${slotNumber}`);
+                
+                // Get the game entries for this time in the form
+                const entriesForTime = formGameEntryMap[weekNum][time] || [];
+                console.log(`Found ${entriesForTime.length} form entries for time ${time}`);
+                
+                // Assign games to entries
+                gamesForSlot.forEach((game, gameIndex) => {
+                    if (gameIndex < entriesForTime.length) {
+                        console.log(`Assigning game to entry ${gameIndex}:`, game);
+                        fillGameEntry(entriesForTime[gameIndex], game);
+                    } else {
+                        console.log(`No form entry for game ${gameIndex}`);
+                    }
+                });
+            });
+        });
+        
+        alert('Schedule loading process completed!');
+    }
+
+    // Helper function to fill a single game entry
+    function fillGameEntry(gameEntry, game) {
+        console.log('Filling game entry with:', game);
+        
+        // Set the level
+        const levelSelect = gameEntry.querySelector('.level-select');
+        console.log(`Setting level to: ${game.level}. Available options:`, 
+            Array.from(levelSelect.options).map(o => o.value));
+        
+        levelSelect.value = game.level;
+        levelSelect.dispatchEvent(new MouseEvent('change', { bubbles: true }));
+        
+        // Use setTimeout to ensure the team dropdowns get populated
+        setTimeout(() => {
+            // Set teams
+            const team1Select = gameEntry.querySelector('.team1-select');
+            const team2Select = gameEntry.querySelector('.team2-select');
+            
+            console.log(`Team1 options:`, Array.from(team1Select.options).map(o => o.value));
+            console.log(`Setting team1 to: ${game.teams[0]}`);
+            team1Select.value = game.teams[0];
+            team1Select.dispatchEvent(new MouseEvent('change', { bubbles: true }));
+            
+            setTimeout(() => {
+                console.log(`Team2 options:`, Array.from(team2Select.options).map(o => o.value));
+                console.log(`Setting team2 to: ${game.teams[1]}`);
+                team2Select.value = game.teams[1];
+                team2Select.dispatchEvent(new MouseEvent('change', { bubbles: true }));
+                
+                // Set referee
+                setTimeout(() => {
+                    const refSelect = gameEntry.querySelector('.ref-select');
+                    console.log(`Ref options:`, Array.from(refSelect.options).map(o => o.value));
+                    console.log(`Setting referee to: ${game.ref}`);
+                    
+                    const refOptions = Array.from(refSelect.options).map(opt => opt.value);
+                    
+                    if (refOptions.includes(game.ref)) {
+                        refSelect.value = game.ref;
+                        refSelect.dispatchEvent(new MouseEvent('change', { bubbles: true }));
+                    } else {
+                        // Handle external referee
+                        refSelect.value = 'other';
+                        refSelect.dispatchEvent(new MouseEvent('change', { bubbles: true }));
+                        
+                        setTimeout(() => {
+                            const refOtherInput = gameEntry.querySelector('.ref-other-input.visible');
+                            if (refOtherInput) {
+                                refOtherInput.value = game.ref;
+                            } else {
+                                console.warn('Could not find visible ref other input');
+                            }
+                        }, 100);
+                    }
+                }, 100);
+            }, 100);
+        }, 300);
     }
 });
 </script>

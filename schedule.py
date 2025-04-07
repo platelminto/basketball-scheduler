@@ -62,6 +62,8 @@ DEFAULT_CONFIG = {
     "priority_multiplier": 100,  # Extra weight for priority slots in balance calculations
 }
 
+DEFAULT_CONFIG["team_names_by_level"] = {level: [f"{level}Team{i+1}" for i in range(DEFAULT_CONFIG["teams_per_level"][level])] for level in DEFAULT_CONFIG["levels"]}
+    
 
 # Top-level helper function for multiprocessing
 def _run_find_schedule_attempt(config):
@@ -73,16 +75,18 @@ def _run_find_schedule_attempt(config):
 
 
 class Scheduler:
-    def __init__(self, config):
+    def __init__(self, config=None):
         """
         Initializes the Scheduler with a given configuration.
 
         Args:
             config (dict): The configuration dictionary for the schedule.
         """
-        self.config = config
-        # Validate config immediately
+        self.config = DEFAULT_CONFIG
+        if config:
+            self.config.update(config)
         self._validate_config()
+        
         # Derive teams from config and store
         self.teams = {
             level: list(range(self.config["teams_per_level"][level]))
@@ -815,7 +819,7 @@ class Scheduler:
     def balance_schedule(
         self,
         schedule,
-        max_iterations=125,
+        max_iterations=200,
         weight_play=0.1,
         weight_ref=10.0,
         cooling_rate=0.9,
@@ -1384,7 +1388,7 @@ class Scheduler:
 
     def find_schedule(
         self,
-        use_saved_schedule=True,
+        use_saved_schedule=False,
         filename="saved_schedule.json",
         max_attempts=30000,
         num_cores=None,
@@ -1514,9 +1518,9 @@ if __name__ == "__main__":
     # Using the default defined earlier, but could override here:
     config = DEFAULT_CONFIG
     # Example override:
-    config["min_referee_count"] = 4
-    config["max_referee_count"] = 6
-    config["slot_limits"][1] = 3
+    # config["min_referee_count"] = 4
+    # config["max_referee_count"] = 6
+    # config["slot_limits"][1] = 3
     # Define filename (consider making this configurable via args)
     filename = os.path.join(os.path.dirname(__file__), "saved_schedule.json")
 
@@ -1533,7 +1537,7 @@ if __name__ == "__main__":
         use_saved_schedule=False,  # Try loading first
         filename=filename,
         max_attempts=30000,  # Reduced attempts for quicker testing
-        num_cores=14,  # Use None for parallel, 1 for sequential
+        num_cores=1,  # Use None for parallel, 1 for sequential
     )
     end_time = time.time()
 

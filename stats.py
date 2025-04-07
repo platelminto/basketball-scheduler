@@ -62,14 +62,21 @@ def create_teams_dict(teams, levels, config=None):
 
         # Create the mappings based on level
         for idx in range(team_count):
-            if level == "A":
-                name = f"HighTeam{idx+1}"
-            elif level == "B":
-                name = f"MidTeam{idx+1}"
-            elif level == "C":
-                name = f"LowTeam{idx+1}"
+            # Use team names from config instead of hardcoded names
+            if level in config["team_names_by_level"] and idx < len(
+                config["team_names_by_level"][level]
+            ):
+                name = config["team_names_by_level"][level][idx]
             else:
-                name = f"{level}Team{idx+1}"
+                # Fallback to old naming pattern if config is incomplete
+                if level == "A":
+                    name = f"HighTeam{idx+1}"
+                elif level == "B":
+                    name = f"MidTeam{idx+1}"
+                elif level == "C":
+                    name = f"LowTeam{idx+1}"
+                else:
+                    name = f"{level}Team{idx+1}"
 
             name_to_index[level][name] = idx
             index_to_name[level][idx] = name
@@ -242,9 +249,8 @@ def print_statistics(schedule, teams, levels, config):
                 refs = team_ref[level][team_idx][slot]
                 slot_counts.append(f"Slot {slot}: {plays} (refs {refs})")
 
-            # Join all slot counts with commas
             slot_str = ", ".join(slot_counts)
-            print(f"    {team_name}: {slot_str}")  # Note: added indentation
+            print(f"    {team_name}: {slot_str}")
 
     # Print referee totals as a separate section at the bottom
     print("\nReferee Totals:")

@@ -2,8 +2,6 @@ from django.shortcuts import render
 from django.http import JsonResponse
 import json
 
-# Direct imports from schedule.py
-
 from django.views.decorators.csrf import ensure_csrf_cookie
 from tests import (
     pairing_tests,
@@ -11,6 +9,7 @@ from tests import (
     referee_player_test,
     adjacent_slot_test,
 )
+from utils import get_config_from_schedule_creator
 
 
 def schedule_viewer(request):
@@ -39,11 +38,13 @@ def validate_schedule(request):
         try:
             data = json.loads(request.body)
             schedule_data = data.get("schedule", [])
+            config_data = data.get("config", {})
 
-            # Get level and team configuration
-            # In a real app, you'd get this from your database or settings
-            levels = ["A", "B", "C"]  # Example
-            teams_per_level = {"A": 6, "B": 6, "C": 6}  # Example
+            # Extract levels and teams_per_level from the provided config
+            levels = config_data.get("levels", ["A", "B", "C"])
+            teams_per_level = config_data.get(
+                "teams_per_level", {"A": 6, "B": 6, "C": 6}
+            )
 
             validation_results = {
                 "Pairings": {
@@ -69,5 +70,44 @@ def validate_schedule(request):
             return JsonResponse(validation_results)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+@ensure_csrf_cookie
+def get_config(request):
+    """
+    View to get configuration from the schedule creator and generate a schedule
+    """
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            setup_data = data.get("setupData", "")
+
+            if not setup_data:
+                return JsonResponse({"error": "No setup data provided"}, status=400)
+
+            # Parse the setup data
+            setup_data = json.loads(setup_data)
+
+            # Get configuration from the setup data
+            config = get_config_from_schedule_creator(setup_data)
+
+            from schedule import Scheduler
+
+            # Create a scheduler with our config
+            scheduler = Scheduler(config)
+
+            # Generate the schedule
+            schedule, _ = scheduler.find_schedule(
+                num_cores=1, use_saved_schedule=False, max_attempts=30000
+            )
+
+            return JsonResponse({"config": scheduler.config, "schedule": schedule})
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data"}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)

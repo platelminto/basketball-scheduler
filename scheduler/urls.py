@@ -10,4 +10,5 @@ urlpatterns = [
     path("team_setup/", views.team_setup, name="team_setup"),
     path("game_assignment/", views.game_assignment, name="game_assignment"),
     path("validate_schedule/", views.validate_schedule, name="validate_schedule"),
+    path("get_config/", views.get_config, name="get_config"),
 ]

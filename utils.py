@@ -5,28 +5,7 @@ import os
 def convert_to_formatted_schedule(schedule, levels, config):
     """Convert internal schedule format to the standardized JSON format"""
 
-
-    # Create a dictionary of team names by level
-    team_names_by_level = {}
-    for level in levels:
-        team_count = config["teams_per_level"][level]
-        if level == "A":
-            team_names_by_level[level] = [f"HighTeam{i+1}" for i in range(team_count)]
-        elif level == "B":
-            team_names_by_level[level] = [f"MidTeam{i+1}" for i in range(team_count)]
-        elif level == "C":
-            team_names_by_level[level] = [f"LowTeam{i+1}" for i in range(team_count)]
-        else:
-            team_names_by_level[level] = [
-                f"{level}Team{i+1}" for i in range(team_count)
-            ]
-
-    def team_name(team_idx, level):
-        if level in team_names_by_level and 0 <= team_idx < len(
-            team_names_by_level[level]
-        ):
-            return team_names_by_level[level][team_idx]
-        return f"{level}{team_idx + 1}"  # Fallback
+    team_names_by_level = config["team_names_by_level"]
 
     # Restructure the schedule for better readability
     formatted_schedule = []
@@ -48,16 +27,64 @@ def convert_to_formatted_schedule(schedule, levels, config):
                 game = {
                     "level": level,
                     "teams": [
-                        team_name(team1_idx, level),
-                        team_name(team2_idx, level),
+                        team_names_by_level[level][team1_idx],
+                        team_names_by_level[level][team2_idx],
                     ],
-                    "ref": team_name(ref, level),
+                    "ref": team_names_by_level[level][ref],
                 }
                 week_data["slots"][str(slot)].append(game)
 
         formatted_schedule.append(week_data)
 
     return formatted_schedule
+
+
+def get_config_from_schedule_creator(team_setup_output) -> dict:
+    # team_setup_output: dict = json.loads(team_setup_output_str)
+    config = {}
+
+    if (
+        len(set(len(team_names) for team_names in team_setup_output["teams"].values()))
+        != 1
+    ):
+        raise ValueError(
+            "All levels must have the same number of teams to use the auto-generated schedule"
+        )
+
+    config["levels"] = list(team_setup_output["teams"].keys())
+
+    config["teams_per_level"] = {
+        level: len(team_names)
+        for level, team_names in team_setup_output["teams"].items()
+    }
+
+    weeks = [
+        week for week in team_setup_output["schedule"]["weeks"] if not week["isOffWeek"]
+    ]
+
+    # check all weeks only have 1 day
+    if any(len(week["days"]) != 1 for week in weeks):
+        raise ValueError(
+            "All weeks must have only 1 day to use the auto-generated schedule"
+        )
+
+    # check all days have the same number of times
+    if len(set(len(day["times"]) for week in weeks for day in week["days"])) != 1:
+        raise ValueError(
+            "All days must have the same number of slots to use the auto-generated schedule"
+        )
+
+    courts_per_slot = {i: [] for i in range(1, len(weeks[0]["days"][0]["times"]) + 1)}
+    for week in weeks:
+        day = week["days"][0]
+        for i, time in enumerate(day["times"]):
+            courts_per_slot[i + 1].append(time["courts"])
+
+    config["courts_per_slot"] = courts_per_slot
+
+    config["team_names_by_level"] = team_setup_output["teams"]
+
+    return config
 
 
 def load_schedule_from_file(filename="saved_schedule.json"):
@@ -77,21 +104,14 @@ def load_schedule_from_file(filename="saved_schedule.json"):
         return None
 
 
-def save_schedule_to_file(schedule, filename="saved_schedule.json"):
+def save_schedule_to_file(schedule, config, filename="saved_schedule.json"):
     """Save a schedule to a JSON file with descriptive team names and level/team information"""
     try:
-        # Create a dictionary of team names by level
-        team_names_by_level = {
-            "A": [f"HighTeam{i+1}" for i in range(6)],
-            "B": [f"MidTeam{i+1}" for i in range(6)],
-            "C": [f"LowTeam{i+1}" for i in range(6)],
-        }
-
         with open(filename, "w") as f:
             json.dump(schedule, f, indent=2)
 
         # Save team information in a separate file
-        team_info = {"levels": ["A", "B", "C"], "teams_by_level": team_names_by_level}
+        team_info = {"levels": config["levels"], "teams_by_level": config["team_names_by_level"]}
 
         with open(f"{os.path.splitext(filename)[0]}_teams.json", "w") as f:
             json.dump(team_info, f, indent=2)
@@ -138,3 +158,11 @@ def print_schedule(schedule_data):
                 print(f"  {level}: {team1} vs {team2} (Ref: {referee})")
 
     print("\n" + "=" * 50)
+
+
+if __name__ == "__main__":
+    team_setup_output = """
+{"schedule":{"weeks":[{"weekNumber":1,"isOffWeek":false,"days":[{"date":"2025-04-07","times":[{"time":"18:10","courts":3},{"time":"19:20","courts":2},{"time":"20:30","courts":1},{"time":"21:40","courts":3}]}]},{"weekNumber":2,"isOffWeek":true,"date":"2025-04-14"},{"weekNumber":3,"isOffWeek":false,"days":[{"date":"2025-04-21","times":[{"time":"18:10","courts":2},{"time":"19:20","courts":2},{"time":"20:30","courts":1},{"time":"21:40","courts":3}]}]},{"weekNumber":4,"isOffWeek":false,"days":[{"date":"2025-04-28","times":[{"time":"18:10","courts":2},{"time":"19:20","courts":2},{"time":"20:30","courts":1},{"time":"21:40","courts":3}]}]}]},"teams":{"Mid":["TeamMid1","TeamMid2","TeamMid3","TeamMid4","TeamMid5","TeamMid6","TeamMid7","TeamMid8"],"High":["TeamHigh1","TeamHigh2","TeamHigh3","TeamHigh4","TeamHigh5","TeamHigh6","TeamHigh7","TeamHigh8"],"Top":["TeamTop1","TeamTop2","TeamTop3","TeamTop4","TeamTop5","TeamTop6","TeamTop7","TeamTop8"]},"courts":["Court1","Court2","Court3"]}""".replace(
+        "\n", ""
+    )
+    get_config_from_schedule_creator(team_setup_output)
