@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const courtsContainer = document.getElementById('courtsContainer');
     
     // Default levels
-    const defaultLevels = ['High', 'Mid', 'Low'];
+    const defaultLevels = ['Mid', 'High', 'Top'];
     
     // Add default level columns
     defaultLevels.forEach(level => {
@@ -212,9 +212,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const teamsContainer = levelColumn.querySelector('.teams-container');
         
-        // Add default teams
+        // Add default teams with level name included
         for (let i = 1; i <= 8; i++) {
-            addTeam(teamsContainer, `Team ${i}`);
+            addTeam(teamsContainer, `Team ${levelName}${i}`);
         }
         
         // Setup delete level button

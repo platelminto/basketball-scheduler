@@ -1574,11 +1574,6 @@ if __name__ == "__main__":
             print(f"  Adjacent-slot condition: {ast}")
             print(f"  Global slot distribution: {gst}")
             print(f"  Mirror pairings: {mpt}")
-        elif final_schedule_data:
-            print("\n--- Tests Skipped (Used Saved Schedule) ---")
-            print(
-                "(Tests require the internal raw schedule format generated during creation)"
-            )
 
     else:
         print("\nFailed to load or generate a valid schedule.")

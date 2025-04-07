@@ -1,13 +1,8 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.http import JsonResponse
-from .models import SavedSchedule
 import json
-import os
-import datetime
 
 # Direct imports from schedule.py
-import schedule
-from schedule import find_schedule, load_schedule_from_file, save_schedule_to_file
 
 from django.views.decorators.csrf import ensure_csrf_cookie
 from tests import (
