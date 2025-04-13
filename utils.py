@@ -40,7 +40,6 @@ def convert_to_formatted_schedule(schedule, levels, config):
 
 
 def get_config_from_schedule_creator(team_setup_output) -> dict:
-    # team_setup_output: dict = json.loads(team_setup_output_str)
     config = {}
 
     if (
@@ -83,6 +82,10 @@ def get_config_from_schedule_creator(team_setup_output) -> dict:
     config["courts_per_slot"] = courts_per_slot
 
     config["team_names_by_level"] = team_setup_output["teams"]
+    
+    config["total_weeks"] = len(weeks)
+    
+    config["first_half_weeks"] = len(weeks) // 2
 
     return config
 

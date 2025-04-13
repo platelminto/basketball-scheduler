@@ -170,7 +170,7 @@
         margin-bottom: 25px;
     }
     
-    #generateScheduleBtn {
+    #saveScheduleBtn {
         display: none;
     }
     
@@ -191,25 +191,43 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Game Assignment</h2>
-    
+
+    <!-- Auto-generate Button -->
+    <div class="mb-3">
+        <button type="button" class="btn btn-info" id="autoGenerateBtn">Auto-generate Schedule</button>
+    </div>
+
     <form id="gameAssignmentForm" class="mt-4" novalidate>
         {% csrf_token %}
         <input type="hidden" id="setupData" name="setupData" value="">
-        
-        <div id="scheduleContainer">
-            <!-- Weeks, days, and game assignments will be added here -->
+
+        <!-- Action Buttons Group 1 -->
+        <div class="d-flex gap-2 mb-2">
+            <button type="button" class="btn btn-warning me-auto" id="randomFillBtn">Random Fill (Dev)</button> <!-- me-auto pushes Back button right -->
+            <button type="button" class="btn btn-secondary" id="backBtn">Back to Team Setup</button>
         </div>
-        
-        <div id="validationResults" style="display: none;">
+
+        <!-- Action Buttons Group 2 -->
+        <div class="d-flex gap-2 mb-3">
+            <button type="button" class="btn btn-primary" id="validateBtn">Validate Schedule</button>
+            <button type="submit" class="btn btn-success" id="saveScheduleBtn">Save Schedule</button>
+        </div>
+
+        <!-- Updated note about validation -->
+        <p class="text-muted small mb-3">
+            <i class="fas fa-info-circle"></i> Please click the "Validate Schedule" button. The "Save Schedule" button will appear once validation passes or failures are ignored.
+        </p>
+
+        <!-- Validation results section -->
+        <div id="validationResults" style="display: none;" class="mb-4"> <!-- Added margin-bottom -->
             <!-- Validation results will be shown here -->
         </div>
-        
-        <div class="form-actions">
-            <button type="button" class="btn btn-warning" id="randomFillBtn">Random Fill (Dev)</button>
-            <button type="button" class="btn btn-info" id="getConfigBtn">Get Config (Dev)</button>
-            <button type="button" class="btn btn-secondary" id="backBtn">Back to Team Setup</button>
-            <button type="button" class="btn btn-primary" id="validateBtn">Validate Schedule</button>
-            <button type="submit" class="btn btn-success" id="generateScheduleBtn">Generate Schedule</button>
+
+        <!-- Added Title for Schedule Section -->
+        <h4 class="mt-4 border-top pt-3">Schedule Details</h4>
+
+        <div id="scheduleContainer">
+            <!-- Weeks, days, and game assignments will be added here -->
         </div>
     </form>
 </div>
@@ -218,16 +236,16 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Hide the Generate Schedule button initially
-    document.getElementById('generateScheduleBtn').style.display = 'none';
+    // Hide the Save Schedule button initially
+    document.getElementById('saveScheduleBtn').style.display = 'none';
     
     // Show Random Fill button only in development
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         document.getElementById('randomFillBtn').style.display = 'block';
-        document.getElementById('getConfigBtn').style.display = 'block';
+        document.getElementById('autoGenerateBtn').style.display = 'block';
     } else {
         document.getElementById('randomFillBtn').style.display = 'none';
-        document.getElementById('getConfigBtn').style.display = 'none';
+        document.getElementById('autoGenerateBtn').style.display = 'none';
     }
     
     // Get setup data from URL parameters
@@ -258,11 +276,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Random fill button
     document.getElementById('randomFillBtn').addEventListener('click', randomFill);
     
-    // Get Config button
-    document.getElementById('getConfigBtn').addEventListener('click', getConfig);
+    // Auto-generate Schedule button
+    document.getElementById('autoGenerateBtn').addEventListener('click', autoGenerateSchedule);
     
     // Validate button
     document.getElementById('validateBtn').addEventListener('click', validateSchedule);
+    
+    // Add listener to detect changes in the schedule form after initial setup
+    document.getElementById('scheduleContainer').addEventListener('change', function(event) {
+        // Check if the change occurred on a relevant form element within a game entry
+        if (event.target.matches('.game-entry select, .game-entry input')) {
+            console.log('Schedule change detected. Resetting validation state.');
+            resetValidationState();
+        }
+    });
     
     // Form submission
     document.getElementById('gameAssignmentForm').addEventListener('submit', function(e) {
@@ -280,7 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Final schedule data:', finalData);
         
         // Here you would submit this data to the server or redirect to the next page
-        alert('Schedule generated successfully! Ready to save.');
+        alert('Schedule saved successfully!');
         // Example redirect: window.location.href = `/scheduler/view_schedule/?scheduleData=${encodeURIComponent(JSON.stringify(finalData))}`;
     });
     
@@ -338,12 +365,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to validate the schedule
     function validateSchedule() {
-        const scheduleData = collectScheduleData(); // Your function to collect schedule data
-        
-        // Get the config data that was received earlier when calling getConfig()
-        // This assumes you're storing it somewhere in your JS after the getConfig call
-        const configData = window.storedConfigData; // Or however you're storing it
-        
+        // Reset state before starting validation
+        resetValidationState();
+
+        // 1. Collect the current assignments from the form
+        const currentAssignments = collectGameAssignments();
+        // 2. Convert the assignments to the backend schedule format
+        const scheduleData = webToScheduleFormat(currentAssignments);
+
+        // Get levels and teams_per_level directly from setupData
+        if (!setupData || !setupData.teams) {
+             console.error('Setup data with teams information not found.');
+             alert('Could not find team setup information. Please reload the page or go back.');
+             return;
+        }
+        const levels = Object.keys(setupData.teams);
+        const teams_per_level = {};
+        for (const level in setupData.teams) {
+            teams_per_level[level] = setupData.teams[level].length;
+        }
+        const minimalConfig = { levels: levels, teams_per_level: teams_per_level };
+
         fetch('/scheduler/validate_schedule/', {
             method: 'POST',
             headers: {
@@ -352,89 +394,181 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 schedule: scheduleData,
-                config: configData
+                config: minimalConfig
             })
         })
         .then(response => response.json())
         .then(data => {
             // Handle validation results
+            window.currentValidationResults = data; // Store results globally for checkbox handlers
             displayValidationResults(data);
         })
         .catch(error => {
             console.error('Error validating schedule:', error);
+            alert('Error during validation: ' + error.message);
+            window.currentValidationResults = null; // Clear results on error
         });
     }
     
+    // Helper function to sanitize a string for use as an ID
+    function sanitizeForId(str) {
+        // Replace spaces and potentially other problematic characters with hyphens
+        // Keep it simple: replace spaces with hyphens and remove other non-alphanumeric chars except hyphens
+        return str.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+    }
+
     // Function to display validation results
     function displayValidationResults(results) {
         const resultsContainer = document.getElementById('validationResults');
-        resultsContainer.innerHTML = '<h3 class="mb-4">Validation Results</h3>';
+        resultsContainer.innerHTML = '<h3 class="mb-4">Validation Results</h3>'; // Clear previous results
         resultsContainer.style.display = 'block';
-        
-        // Track if any validations failed
-        let allPassed = true;
-        
-        // Define explanations for each validation
+
+        let hasFailures = false;
+
+        // Define explanations for each validation (used as fallback or title)
         const explanations = {
             'Pairings': 'Teams must play against other teams in their level a specific number of times based on level size.',
             'Cycle Pairings': 'For levels with fewer teams, matchups must repeat in proper round-robin cycles throughout the season.',
             'Referee-Player': 'A team cannot referee any game in which they are playing.',
-            'Adjacent Slots': 'Teams can only referee games in time slots that are directly before or after their own game.'
+            'Adjacent Slots': 'Teams can only referee games in time slots that are directly before or after their own game.',
+            // Add explanations for other tests if they are included in validation_results
         };
-        
-        Object.entries(results).forEach(([testName, result]) => {
-            const resultDiv = document.createElement('div');
-            resultDiv.className = `validation-result ${result.passed ? 'passed' : 'failed'}`;
-            
-            if (!result.passed) {
-                allPassed = false;
+
+        // Iterate through the results from the backend
+        for (const testName in results) {
+            if (results.hasOwnProperty(testName)) {
+                const result = results[testName];
+                const explanation = explanations[testName] || 'No description available.'; // Fallback explanation
+                const sanitizedTestName = sanitizeForId(testName); // Sanitize the test name for ID use
+                const checkboxId = `ignore-${sanitizedTestName}-checkbox`; // Use sanitized name for ID
+
+                const resultDiv = document.createElement('div');
+                resultDiv.classList.add('mb-3', 'p-3', 'border', 'rounded');
+
+                let statusIcon = '';
+                let statusText = '';
+                let ignoreCheckboxHTML = '';
+
+                if (result.passed) {
+                    resultDiv.classList.add('border-success');
+                    statusIcon = '<i class="fas fa-check-circle text-success me-2"></i>';
+                    statusText = 'Passed';
+                } else {
+                    hasFailures = true;
+                    resultDiv.classList.add('border-danger');
+                    statusIcon = '<i class="fas fa-times-circle text-danger me-2"></i>';
+                    statusText = 'Failed';
+                    // Add checkbox for failed tests using the sanitized ID
+                    ignoreCheckboxHTML = `
+                        <div class="form-check mt-2">
+                            <input class="form-check-input ignore-failure-checkbox" type="checkbox" value="" id="${checkboxId}" data-test-name="${testName}">
+                            <label class="form-check-label small" for="${checkboxId}">
+                                Ignore this failure
+                            </label>
+                        </div>
+                    `;
+                }
+
+                let errorListHTML = '';
+                if (!result.passed && result.errors && result.errors.length > 0) {
+                    errorListHTML = '<ul class="list-unstyled mt-2 mb-0 small text-muted">';
+                    result.errors.forEach(error => {
+                        errorListHTML += `<li><i class="fas fa-exclamation-triangle text-warning me-1"></i> ${escapeHTML(error)}</li>`; // Escape error message
+                    });
+                    errorListHTML += '</ul>';
+                }
+
+                resultDiv.innerHTML = `
+                    <h5 class="mb-1">${statusIcon}${testName} <span class="badge bg-${result.passed ? 'success' : 'danger'}">${statusText}</span></h5>
+                    <p class="mb-1 small">${explanation}</p>
+                    ${errorListHTML}
+                    ${ignoreCheckboxHTML}
+                `;
+                resultsContainer.appendChild(resultDiv);
+
+                // Add event listener to the checkbox if it was created
+                if (!result.passed) {
+                    // Use the sanitized ID in the querySelector
+                    const checkbox = resultDiv.querySelector(`#${checkboxId}`);
+                    // Add a null check just in case, although sanitizing should prevent it
+                    if (checkbox) {
+                        checkbox.addEventListener('change', checkValidationAndToggleButtonState);
+                    } else {
+                        console.error(`Could not find checkbox with sanitized ID: #${checkboxId} for test: ${testName}`);
+                    }
+                }
             }
-            
-            resultDiv.innerHTML = `
-                <h5>${testName}</h5>
-                <p class="validation-message">${result.message}</p>
-                <p class="validation-explanation">${explanations[testName] || ''}</p>
-                ${!result.passed ? `
-                    <div class="form-check">
-                        <input class="form-check-input override-check" type="checkbox" 
-                               id="override_${testName}" 
-                               data-test="${testName}">
-                        <label class="form-check-label" for="override_${testName}">
-                            Override - proceed with the schedule anyway
-                        </label>
-                    </div>
-                ` : ''}
-            `;
-            
-            resultsContainer.appendChild(resultDiv);
-        });
-        
-        // Add event listeners to override checkboxes
-        document.querySelectorAll('.override-check').forEach(checkbox => {
-            checkbox.addEventListener('change', updateGenerateButton);
-        });
-        
-        // Show the generate button if everything passed
-        if (allPassed) {
-            document.getElementById('generateScheduleBtn').style.display = 'inline-block';
-            document.getElementById('validateBtn').style.display = 'none';
-        } else {
-            // Initial update of generate button (disabled until all overrides checked)
-            updateGenerateButton();
         }
+
+        // Add a summary message container (initially empty or with basic text)
+        const summaryDiv = document.createElement('div');
+        summaryDiv.id = 'validationSummary'; // Give it an ID for easy access
+        summaryDiv.classList.add('mt-4', 'alert');
+        resultsContainer.appendChild(summaryDiv);
+
+        // Initial check of button states after displaying results
+        checkValidationAndToggleButtonState();
     }
     
-    // Function to update the generate button based on override checkboxes
-    function updateGenerateButton() {
-        const failedChecks = document.querySelectorAll('.validation-result.failed .override-check');
-        const allOverridden = Array.from(failedChecks).every(check => check.checked);
-        
-        if (allOverridden) {
-            document.getElementById('generateScheduleBtn').style.display = 'inline-block';
-            document.getElementById('validateBtn').style.display = 'none';
+    // NEW function to check validation status and toggle buttons
+    function checkValidationAndToggleButtonState() {
+        const results = window.currentValidationResults;
+        const resultsContainer = document.getElementById('validationResults');
+        const summaryDiv = document.getElementById('validationSummary');
+        const saveBtn = document.getElementById('saveScheduleBtn');
+        const validateBtn = document.getElementById('validateBtn');
+
+        if (!results || resultsContainer.style.display === 'none') {
+            // Validation hasn't been run or has been reset
+            saveBtn.style.display = 'none';
+            validateBtn.style.display = 'inline-block';
+            if (summaryDiv) summaryDiv.style.display = 'none'; // Hide summary
+            return;
+        }
+
+        let allPassedOrIgnored = true;
+        let hasFailures = false;
+
+        for (const testName in results) {
+            if (results.hasOwnProperty(testName)) {
+                if (!results[testName].passed) {
+                    hasFailures = true;
+                    // Use the sanitized ID to find the checkbox
+                    const sanitizedTestName = sanitizeForId(testName);
+                    const checkboxId = `ignore-${sanitizedTestName}-checkbox`;
+                    const checkbox = document.getElementById(checkboxId);
+                    if (!checkbox || !checkbox.checked) {
+                        allPassedOrIgnored = false;
+                        // break; // Don't break early, need to know if there were any failures at all
+                    }
+                }
+            }
+        }
+
+        // Update summary message
+        summaryDiv.classList.remove('alert-success', 'alert-warning', 'alert-danger'); // Clear previous classes
+        if (allPassedOrIgnored && hasFailures) {
+             summaryDiv.style.display = 'block';
+             summaryDiv.classList.add('alert-warning');
+             summaryDiv.innerHTML = '<strong><i class="fas fa-exclamation-triangle"></i> Some validation checks failed but are ignored.</strong> You can now save the schedule, but review ignored issues.';
+        } else if (allPassedOrIgnored && !hasFailures) {
+             summaryDiv.style.display = 'block';
+             summaryDiv.classList.add('alert-success');
+             summaryDiv.innerHTML = '<strong><i class="fas fa-thumbs-up"></i> All validation checks passed!</strong> Schedule is valid and ready to be saved.';
+        } else { // Some failures are not ignored
+             summaryDiv.style.display = 'block';
+             summaryDiv.classList.add('alert-danger');
+             summaryDiv.innerHTML = '<strong><i class="fas fa-times-circle"></i> Some validation checks failed.</strong> Please review the errors above or check "Ignore this failure" to proceed.';
+        }
+
+
+        // Update button visibility
+        if (allPassedOrIgnored) {
+            saveBtn.style.display = 'inline-block';
+            validateBtn.style.display = 'none';
         } else {
-            document.getElementById('generateScheduleBtn').style.display = 'none';
-            document.getElementById('validateBtn').style.display = 'inline-block';
+            saveBtn.style.display = 'none';
+            validateBtn.style.display = 'inline-block';
         }
     }
     
@@ -446,6 +580,13 @@ document.addEventListener('DOMContentLoaded', function() {
             ?.split('=')[1];
         
         return cookieValue || '';
+    }
+
+    // Helper function to escape HTML special characters (basic version)
+    function escapeHTML(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
     }
     
     // Web to Schedule format conversion
@@ -505,6 +646,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Random fill function - with better handling for "other" fields
     function randomFill() {
+        // Reset validation state whenever random fill is used
+        resetValidationState();
+
         document.querySelectorAll('.game-entry').forEach(gameEntry => {
             // First select a random level
             const levelSelect = gameEntry.querySelector('.level-select');
@@ -1001,10 +1145,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Add a global variable to store the config
-    let storedConfigData = null;
-
-    function getConfig() {
+    function autoGenerateSchedule() {
         const setupDataParam = document.getElementById('setupData').value;
         
         if (!setupDataParam) {
@@ -1015,7 +1156,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading indicator or message
         console.log('Generating schedule, please wait...');
         
-        fetch('/scheduler/get_config/', {
+        fetch('/scheduler/auto_generate_schedule/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1036,9 +1177,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             console.log('Configuration from schedule creator:', data.config);
             console.log('Generated schedule:', data.schedule);
-            
-            // Store the config data for later use
-            storedConfigData = data.config;
             
             // Fill the form with the generated schedule
             fillFormWithSchedule(data.schedule);
@@ -1196,6 +1334,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 100);
             }, 100);
         }, 300);
+    }
+
+    // Function to reset button visibility and validation results
+    function resetValidationState() {
+        document.getElementById('saveScheduleBtn').style.display = 'none';
+        document.getElementById('validateBtn').style.display = 'inline-block';
+        const validationResults = document.getElementById('validationResults');
+        validationResults.style.display = 'none';
+        validationResults.innerHTML = ''; // Clear previous results
+        window.currentValidationResults = null; // Clear stored results
     }
 });
 </script>

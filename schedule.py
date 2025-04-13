@@ -62,8 +62,13 @@ DEFAULT_CONFIG = {
     "priority_multiplier": 100,  # Extra weight for priority slots in balance calculations
 }
 
-DEFAULT_CONFIG["team_names_by_level"] = {level: [f"{level}Team{i+1}" for i in range(DEFAULT_CONFIG["teams_per_level"][level])] for level in DEFAULT_CONFIG["levels"]}
-    
+DEFAULT_CONFIG["team_names_by_level"] = {
+    level: [
+        f"{level}Team{i+1}" for i in range(DEFAULT_CONFIG["teams_per_level"][level])
+    ]
+    for level in DEFAULT_CONFIG["levels"]
+}
+
 
 # Top-level helper function for multiprocessing
 def _run_find_schedule_attempt(config):
@@ -86,7 +91,7 @@ class Scheduler:
         if config:
             self.config.update(config)
         self._validate_config()
-        
+
         # Derive teams from config and store
         self.teams = {
             level: list(range(self.config["teams_per_level"][level]))
@@ -1303,7 +1308,7 @@ class Scheduler:
 
             if courts_sum != total_games_per_round:
                 raise ValueError(
-                    f"Week {week_idx+1}: Sum of courts per slot ({courts_sum}) must equal total games per round "
+                    f"Week {week_idx+1}: Number of courts set ({courts_sum}) must equal total games per round "
                     f"({total_games_per_round})"
                 )
 
@@ -1413,9 +1418,6 @@ class Scheduler:
             schedule_data = load_schedule_from_file(filename)
             if schedule_data is not None:
                 print(f"Schedule loaded from {filename}")
-                # Validate loaded schedule against current config? Optional but recommended.
-                # valid_load, load_msg = self.validate_schedule(schedule_data) # Need to adapt validate for formatted data?
-                # if valid_load: ...
                 self.raw_schedule = (
                     None  # Indicate loaded, no raw internal format available
                 )
@@ -1547,39 +1549,74 @@ if __name__ == "__main__":
 
         # Print statistics using the data from the scheduler instance
         print("\n--- Schedule Statistics ---")
-        print_statistics(final_schedule_data, scheduler.teams, config["levels"], config)
+        # Ensure config is available here or passed appropriately
+        # Assuming 'config' dictionary is loaded earlier in the script
+        if "config" in locals() or "config" in globals():
+            print_statistics(
+                final_schedule_data, scheduler.teams, config["levels"], config
+            )
+        else:
+            print("Warning: Config data not available for statistics.")
 
         # Tests require the raw internal schedule format (stored in scheduler.raw_schedule)
         # Only run tests if a *new* schedule was generated (raw_schedule will exist)
-        if scheduler.raw_schedule:
+        if scheduler.raw_schedule and "config" in locals() or "config" in globals():
             print("\n--- Running Tests on Generated Schedule ---")
-            raw_schedule = final_schedule_data
+            raw_schedule = (
+                final_schedule_data  # Use the final formatted data if tests expect it
+            )
             levels = scheduler.config["levels"]
             teams_per_level = scheduler.config["teams_per_level"]
             courts_per_slot = scheduler.config["courts_per_slot"]
             num_slots = scheduler.config["num_slots"]
             first_half_weeks = scheduler.config["first_half_weeks"]
 
-            pt = pairing_tests(raw_schedule, levels, teams_per_level)
-            cpt = cycle_pairing_test(raw_schedule, levels, teams_per_level)
-            rpt = referee_player_test(raw_schedule)
-            ast = adjacent_slot_test(raw_schedule)
-            gst = global_slot_distribution_test(
+            # Run tests and capture results
+            pt_passed, pt_errors = pairing_tests(raw_schedule, levels, teams_per_level)
+            cpt_passed, cpt_errors = cycle_pairing_test(
+                raw_schedule, levels, teams_per_level
+            )
+            rpt_passed, rpt_errors = referee_player_test(raw_schedule)
+            ast_passed, ast_errors = adjacent_slot_test(raw_schedule)
+            gst_passed, gst_errors = global_slot_distribution_test(
                 raw_schedule, courts_per_slot, num_slots
             )
-            mpt = mirror_pairing_test(
+            mpt_passed, mpt_errors = mirror_pairing_test(
                 raw_schedule, first_half_weeks=first_half_weeks
             )
 
             print("\nTest Results:")
-            print(f"  Pairings correct: {pt}")
-            print(f"  Cycle pairings: {cpt}")
-            print(f"  No referee plays in their game: {rpt}")
-            print(f"  Adjacent-slot condition: {ast}")
-            print(f"  Global slot distribution: {gst}")
-            print(f"  Mirror pairings: {mpt}")
+            print(f"  Pairings correct: {pt_passed}")
+            if not pt_passed:
+                for error in pt_errors:
+                    print(f"    - {error}")
+            print(f"  Cycle pairings: {cpt_passed}")
+            if not cpt_passed:
+                for error in cpt_errors:
+                    print(f"    - {error}")
+            print(f"  No referee plays in their game: {rpt_passed}")
+            if not rpt_passed:
+                for error in rpt_errors:
+                    print(f"    - {error}")
+            print(f"  Adjacent-slot condition: {ast_passed}")
+            if not ast_passed:
+                for error in ast_errors:
+                    print(f"    - {error}")
+            print(f"  Global slot distribution: {gst_passed}")
+            if not gst_passed:
+                for error in gst_errors:
+                    print(f"    - {error}")
+            print(f"  Mirror pairings: {mpt_passed}")
+            if not mpt_passed:
+                for error in mpt_errors:
+                    print(f"    - {error}")
+        elif not scheduler.raw_schedule:
+            print(
+                "\n--- Tests Skipped (Running on loaded schedule or config missing) ---"
+            )
 
     else:
         print("\nFailed to load or generate a valid schedule.")
 
-    print(f"\nTotal generation attempts (if any): {total_attempts}")
+    # Assuming total_attempts is defined earlier
+    # print(f"\nTotal generation attempts (if any): {total_attempts}")
