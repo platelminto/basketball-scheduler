@@ -11,4 +11,5 @@ urlpatterns = [
     path("game_assignment/", views.game_assignment, name="game_assignment"),
     path("validate_schedule/", views.validate_schedule, name="validate_schedule"),
     path("auto_generate_schedule/", views.auto_generate_schedule, name="auto_generate_schedule"),
+    path("save_schedule/", views.save_schedule, name="save_schedule"),
 ]

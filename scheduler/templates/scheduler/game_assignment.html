@@ -294,21 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Form submission
     document.getElementById('gameAssignmentForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
-        // Collect all game assignments
-        const gameAssignments = collectGameAssignments();
-        
-        // Combine all data
-        const finalData = {
-            ...setupData,
-            gameAssignments: gameAssignments
-        };
-        
-        console.log('Final schedule data:', finalData);
-        
-        // Here you would submit this data to the server or redirect to the next page
-        alert('Schedule saved successfully!');
-        // Example redirect: window.location.href = `/scheduler/view_schedule/?scheduleData=${encodeURIComponent(JSON.stringify(finalData))}`;
+        saveSchedule();
     });
     
     // Helper function to collect all game assignments
@@ -1344,6 +1330,121 @@ document.addEventListener('DOMContentLoaded', function() {
         validationResults.style.display = 'none';
         validationResults.innerHTML = ''; // Clear previous results
         window.currentValidationResults = null; // Clear stored results
+    }
+
+    // Function to save the schedule
+    function saveSchedule() {
+        // Get the season name - first make sure we have a modal to collect it
+        const seasonName = prompt("Please enter a name for this season (e.g., '24/25 Season 1'):");
+        if (!seasonName || seasonName.trim() === '') {
+            alert('A season name is required to save the schedule.');
+            return;
+        }
+
+        // Get the setup data
+        const setupDataRaw = document.getElementById('setupData').value;
+        if (!setupDataRaw) {
+            alert('No setup data available. Please go back to team setup.');
+            return;
+        }
+        
+        const setupData = JSON.parse(setupDataRaw);
+        
+        // Collect game assignments from the form
+        const gameAssignments = collectGameAssignments();
+        if (gameAssignments.length === 0) {
+            alert('No games to save. Please create some games first.');
+            return;
+        }
+        
+        // Create the payload
+        const payload = {
+            season_name: seasonName.trim(),
+            setupData: setupData,
+            game_assignments: gameAssignments
+        };
+        
+        // Show loading state
+        const saveBtn = document.getElementById('saveScheduleBtn');
+        const originalSaveBtnText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+        
+        // Send the data to the server
+        fetch('/scheduler/save_schedule/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || 'Failed to save schedule');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Save response:', data);
+            
+            // Create a success message with appropriate styling
+            let messageHTML = '';
+            
+            if (data.status === 'success') {
+                messageHTML = `
+                    <div class="alert alert-success">
+                        <h5><i class="fas fa-check-circle"></i> Schedule Saved!</h5>
+                        <p>${escapeHTML(data.message)}</p>
+                        <p>Created ${data.games_created} games in Season ID: ${data.season_id}</p>
+                    </div>
+                `;
+            } else if (data.status === 'warning') {
+                messageHTML = `
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Schedule Partially Saved</h5>
+                        <p>${escapeHTML(data.message)}</p>
+                        <p>Created ${data.games_created} games in Season ID: ${data.season_id}</p>
+                        <p>There were ${data.errors.length} errors:</p>
+                        <ul class="small">
+                            ${data.errors.slice(0, 5).map(err => `<li>${escapeHTML(err)}</li>`).join('')}
+                            ${data.errors.length > 5 ? `<li>...and ${data.errors.length - 5} more</li>` : ''}
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            // Display the result
+            const validationResults = document.getElementById('validationResults');
+            validationResults.innerHTML = messageHTML;
+            validationResults.style.display = 'block';
+            
+            // Scroll to show the message
+            validationResults.scrollIntoView({ behavior: 'smooth' });
+        })
+        .catch(error => {
+            console.error('Error saving schedule:', error);
+            
+            // Show error message
+            const validationResults = document.getElementById('validationResults');
+            validationResults.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5><i class="fas fa-times-circle"></i> Error Saving Schedule</h5>
+                    <p>${escapeHTML(error.message || 'An unexpected error occurred')}</p>
+                </div>
+            `;
+            validationResults.style.display = 'block';
+            
+            // Scroll to show the message
+            validationResults.scrollIntoView({ behavior: 'smooth' });
+        })
+        .finally(() => {
+            // Reset button state
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalSaveBtnText;
+        });
     }
 });
 </script>

@@ -1,197 +1,121 @@
 from django.db import models
-from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q  # Import Q for complex lookups
 
 
-class Level(models.Model):
-    """Represents a competition level (Mid, High, Top)"""
+class Season(models.Model):
+    """Represents a single league season."""
 
-    LEVEL_CHOICES = [
-        ("MID", "Mid"),
-        ("HIGH", "High"),
-        ("TOP", "Top"),
-    ]
-
-    name = models.CharField(max_length=4, choices=LEVEL_CHOICES, unique=True)
-
-    def __str__(self):
-        return self.name
-
-
-class Team(models.Model):
-    """Represents a team in the league"""
-
-    name = models.CharField(max_length=100)
-    level = models.ForeignKey(Level, on_delete=models.CASCADE, related_name="teams")
-
-    # Stats fields (these could be calculated dynamically, but storing them allows for easier querying)
-    wins = models.PositiveIntegerField(default=0)
-    losses = models.PositiveIntegerField(default=0)
-    ties = models.PositiveIntegerField(default=0)
-    points_for = models.PositiveIntegerField(default=0)
-    points_against = models.PositiveIntegerField(default=0)
-
-    @property
-    def games_played(self):
-        return self.wins + self.losses + self.ties
-
-    @property
-    def point_differential(self):
-        return self.points_for - self.points_against
+    name = models.CharField(
+        max_length=100, unique=True, help_text="e.g., 24/25 Season 1"
+    )
+    is_active = models.BooleanField(
+        default=False,
+        help_text="Designates this season as the currently active one (only one can be active).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.name} ({self.level})"
+        return f"{self.name}{' (Active)' if self.is_active else ''}"
+
+    def save(self, *args, **kwargs):
+        # If this season is being set to active, deactivate all others first
+        if self.is_active:
+            Season.objects.filter(is_active=True).exclude(pk=self.pk).update(
+                is_active=False
+            )
+        super().save(*args, **kwargs)
 
     class Meta:
+        # Optional: Add a constraint to double-ensure uniqueness at the DB level,
+        # though the save method handles the logic application-side.
         constraints = [
-            # Ensure team names are unique within a level
             models.UniqueConstraint(
-                fields=["name", "level"], name="unique_team_per_level"
+                fields=["is_active"],
+                condition=Q(is_active=True),
+                name="unique_active_season",
             )
         ]
 
 
+class Level(models.Model):
+    """Represents a skill level or division within a season."""
+
+    season = models.ForeignKey(Season, related_name="levels", on_delete=models.CASCADE)
+    name = models.CharField(max_length=50, help_text="e.g., Mid, High, Top, etc.")
+
+    class Meta:
+        unique_together = (
+            "season",
+            "name",
+        )  # Level names must be unique within a season
+
+    def __str__(self):
+        return f"{self.name}"
+
+    @classmethod
+    def get_active_season_levels(cls):
+        """Helper method to get levels for the active season."""
+        active_season = Season.objects.filter(is_active=True).first()
+        if active_season:
+            return cls.objects.filter(season=active_season)
+        return cls.objects.none()  # Return an empty queryset if no active season
+
+
+class Team(models.Model):
+    """Represents a team within a specific level."""
+
+    level = models.ForeignKey(Level, related_name="teams", on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        unique_together = ("level", "name")  # Team names must be unique within a level
+        ordering = ["level", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.level.name})"
+
+    @classmethod
+    def get_active_season_teams(cls):
+        """Helper method to get teams for the active season."""
+        active_season = Season.objects.filter(is_active=True).first()
+        if active_season:
+            return cls.objects.filter(level__season=active_season)
+        return cls.objects.none()
+
+
 class Game(models.Model):
-    """Represents a game between two teams"""
+    """Represents a single game scheduled within a season."""
 
-    team1 = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="home_games")
-    team2 = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="away_games")
-    level = models.ForeignKey(Level, on_delete=models.CASCADE, related_name="games")
-    referee = models.ForeignKey(
-        Team, on_delete=models.CASCADE, related_name="refereed_games"
+    level = models.ForeignKey(Level, related_name="games", on_delete=models.CASCADE)
+    week = models.PositiveIntegerField()
+
+    # Team relationships
+    team1 = models.ForeignKey(
+        Team, related_name="games_as_team1", on_delete=models.PROTECT
     )
-    start_time = models.TimeField()
-    week = models.PositiveSmallIntegerField()
+    team2 = models.ForeignKey(
+        Team, related_name="games_as_team2", on_delete=models.PROTECT
+    )
+    referee_team = models.ForeignKey(
+        Team, related_name="games_as_referee", on_delete=models.PROTECT
+    )
 
-    # Scores (null until the game is played)
+    date_time = models.DateTimeField(null=True, blank=True)
+    court = models.CharField(max_length=100, null=True, blank=True)
     team1_score = models.PositiveIntegerField(null=True, blank=True)
     team2_score = models.PositiveIntegerField(null=True, blank=True)
 
-    # Convert property to a field for admin display
-    is_played = models.BooleanField(default=False, editable=False)
-
-    # Add this new field
-    schedule = models.ForeignKey(
-        "SavedSchedule",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="games",
-    )
-
-    @property
-    def winner(self):
-        if not self.is_played:
-            return None
-        if self.team1_score is not None and self.team2_score is not None:
-            if self.team1_score > self.team2_score:
-                return self.team1
-            elif self.team2_score > self.team1_score:
-                return self.team2
-        return None  # Tie or not played
-
-    def clean(self):
-        # Ensure team1 and team2 are different
-        if self.team1 == self.team2:
-            raise ValidationError("A team cannot play against itself")
-
-        # Ensure teams and referee are from the same level
-        if (
-            self.team1.level != self.level
-            or self.team2.level != self.level
-            or self.referee.level != self.level
-        ):
-            raise ValidationError("Teams and referee must be from the same level")
-
-        # Ensure referee is not one of the playing teams
-        if self.referee == self.team1 or self.referee == self.team2:
-            raise ValidationError("Referee cannot be one of the playing teams")
-
-        # Check if game is played
-        self.is_played = self.team1_score is not None and self.team2_score is not None
-
-    def save(self, *args, **kwargs):
-        # Get the old instance if this is an update
-        old_game = None
-        if self.pk:
-            old_game = Game.objects.filter(pk=self.pk).first()
-
-        self.clean()
-
-        # Set the level automatically based on team1's level
-        self.level = self.team1.level
-
-        # Call the original save method
-        super().save(*args, **kwargs)
-
-        # Update team stats if game is played
-        if self.is_played:
-            self.update_team_stats(old_game)
-
-    def update_team_stats(self, old_game=None):
-        # Reset previous stats for the teams if this is updating an existing game
-        if old_game and old_game.is_played:
-            # Revert old stats
-            if old_game.team1_score > old_game.team2_score:
-                old_game.team1.wins -= 1
-                old_game.team2.losses -= 1
-            elif old_game.team2_score > old_game.team1_score:
-                old_game.team2.wins -= 1
-                old_game.team1.losses -= 1
-            else:
-                old_game.team1.ties -= 1
-                old_game.team2.ties -= 1
-
-            old_game.team1.points_for -= old_game.team1_score
-            old_game.team1.points_against -= old_game.team2_score
-            old_game.team2.points_for -= old_game.team2_score
-            old_game.team2.points_against -= old_game.team1_score
-
-            old_game.team1.save()
-            old_game.team2.save()
-
-        # Update new stats - ensure scores are not None
-        if self.team1_score is not None and self.team2_score is not None:
-            if self.team1_score > self.team2_score:
-                self.team1.wins += 1
-                self.team2.losses += 1
-            elif self.team2_score > self.team1_score:
-                self.team2.wins += 1
-                self.team1.losses += 1
-            else:
-                self.team1.ties += 1
-                self.team2.ties += 1
-
-            self.team1.points_for += self.team1_score
-            self.team1.points_against += self.team2_score
-            self.team2.points_for += self.team2_score
-            self.team2.points_against += self.team1_score
-
-            self.team1.save()
-            self.team2.save()
+    class Meta:
+        ordering = ["week", "level"]
 
     def __str__(self):
-        result = f"Week {self.week}: {self.team1} vs {self.team2} (Ref: {self.referee}, Time: {self.start_time.strftime('%H:%M')})"
-        if self.is_played:
-            result += f" - Score: {self.team1_score}-{self.team2_score}"
-        return result
+        return f"Week {self.week}: {self.level.name}: {self.team1.name} vs {self.team2.name} (Ref: {self.referee_team.name})"
 
-
-class SavedSchedule(models.Model):
-    """Represents a saved schedule configuration"""
-
-    name = models.CharField(max_length=100)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    # Raw schedule data from the generator
-    raw_schedule_data = models.JSONField()
-
-    # Complete schedule data including dates, times, off-weeks
-    complete_schedule_data = models.JSONField(null=True, blank=True)
-
-    # Start date for the schedule
-    start_date = models.DateField(null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.created_at.strftime('%d/%m/%Y')})"
+    @classmethod
+    def get_active_season_games(cls):
+        """Helper method to get games for the active season."""
+        active_season = Season.objects.filter(is_active=True).first()
+        if active_season:
+            return cls.objects.filter(level__season=active_season)
+        return cls.objects.none()
