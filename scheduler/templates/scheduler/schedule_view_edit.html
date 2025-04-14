@@ -79,17 +79,36 @@
         display: none;
     }
     /* --- END NEW Collapsible Week Styles --- */
+
+    /* Style to visually indicate disabled state beyond default */
+    .schedule-input:disabled,
+    .delete-game-btn:disabled,
+    .add-game-btn:disabled {
+        cursor: not-allowed;
+        /* Optional: Adjust opacity or background if needed */
+        /* background-color: #e9ecef; */
+        /* opacity: 0.7; */
+    }
+    .form-switch .form-check-label {
+        cursor: pointer; /* Make label clickable */
+        padding-left: 0.5em; /* Add space between switch and label */
+    }
 </style>
 {% endblock %}
 
 
 {% block content %}
 <div class="container-fluid mt-4"> {% comment %} Use container-fluid for wider tables {% endcomment %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2"> {# Added flex-wrap and gap #}
         <h2>Edit Schedule: {{ season.name }}</h2>
+        {# --- ADDED: Toggle Switch --- #}
+        <div class="form-check form-switch align-self-center"> {# Align switch vertically #}
+            <input class="form-check-input" type="checkbox" role="switch" id="enableScheduleEditToggle">
+            <label class="form-check-label" for="enableScheduleEditToggle">Enable Schedule Editing</label>
+        </div>
+        {# --- END ADDED --- #}
         <div class="d-flex gap-2"> {# Group for top buttons #}
             <a href="{% url 'scheduler:schedule' %}" class="btn btn-secondary">Back to Seasons List</a>
-            <button type="button" id="resetChangesBtn" class="btn btn-warning">Reset Changes</button> {# Added Reset Button #}
             <button type="submit" form="scheduleEditForm" class="btn btn-success">Save All Changes</button> {# Moved Save Button (uses form attribute) #}
         </div>
     </div>
@@ -98,7 +117,7 @@
     {% if not games_by_week %}
         <p class="alert alert-info">No games found for this season.</p>
     {% else %}
-        <form id="scheduleEditForm" method="post" action=""> {% comment %} Action URL TBD - will point to update view {% endcomment %}
+        <form id="scheduleEditForm" method="post" action="" autocomplete="off"> {% comment %} ADDED autocomplete="off" HERE {% endcomment %}
             {% csrf_token %}
 
             {% for week, games_in_week in games_by_week.items %}
@@ -120,6 +139,7 @@
                                         <th>Score</th>
                                         <th>Team 2</th>
                                         <th>Referee</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody class="schedule-table-body">
@@ -211,12 +231,28 @@
                                                     {% endfor %}
                                                 </select>
                                             </td>
+                                            {# --- ADDED: Delete Button Cell --- #}
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-danger delete-game-btn" title="Delete Game">
+                                                    <i class="fas fa-times"></i> {# Or use text 'X' #}
+                                                </button>
+                                            </td>
+                                            {# --- END ADDED --- #}
                                         </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- Moved Add Game button here and left-aligned it -->
+                        <div class="text-start mt-3">
+                            <button type="button" class="btn btn-sm btn-primary add-game-btn" data-week-id="{{ week }}">
+                                <i class="fas fa-plus"></i> Add Game to Week {{ week }}
+                            </button>
+                        </div>
                     </div> {# --- END: Content Wrapper --- #}
+                    
+                    <!-- Remove the button from here -->
                 </div> {# --- END: Week Container --- #}
             {% endfor %}
 
@@ -234,6 +270,7 @@
 {{ teams_data_for_js|json_script:"teams-by-level-data" }}
 {# Add json_script for levels data #}
 {{ levels_data_for_js|json_script:"levels-data" }}
+{{ courts|json_script:"courts-data" }}
 
 {% endblock %}
 
@@ -317,9 +354,10 @@ document.addEventListener('DOMContentLoaded', function() {
         teamsByLevelData = {}; // Assign empty object on error
     }
 
-    let originalGameData = {};
+    // --- REMOVED originalGameData declaration here ---
+    // let originalGameData = {};
 
-    // Function to fetch original data on page load
+    // Function to fetch original data (Still needed AFTER save)
     function fetchOriginalGameData() {
         fetch(`/scheduler/schedule/${seasonId}/data/`)
             .then(response => {
@@ -329,50 +367,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
              })
             .then(data => {
-                originalGameData = data.games.reduce((acc, game) => {
+                // Build the originalGameData map *locally* just for this update
+                const freshOriginalGameData = (data.games || []).reduce((acc, game) => {
                     acc[game.id] = game;
                     return acc;
                 }, {});
-                // console.log("Original game data fetched:", originalGameData); // Keep or remove as desired
+                // console.log("fetchOriginalGameData updated original values from:", JSON.parse(JSON.stringify(freshOriginalGameData))); // Optional debug log
 
-                // ** NEW: Update original values in data attributes after fetch **
+                // Update ONLY the data-original-value attributes
                 document.querySelectorAll('tbody tr[data-game-id]').forEach(row => {
                     const gameId = row.dataset.gameId;
-                    const original = originalGameData[gameId];
+                    // Ensure gameId is treated consistently (string comparison often safer)
+                    const original = freshOriginalGameData[String(gameId)]; // Access using string key if IDs might mix types
                     if (original) {
                         row.querySelectorAll('.schedule-input').forEach(input => {
-                            const name = input.name.split('_')[0]; // e.g., 'datetime', 'court', 'level', 'team1', 'score1' etc.
+                            const name = input.name.split('_')[0];
                             let originalValue = '';
+                            // --- Use the fetched 'original' object ---
                             switch (name) {
-                                case 'datetime': originalValue = original.datetime || ''; break;
+                                case 'datetime': originalValue = original.datetime || ''; break; // Assuming 'datetime' is the key in JSON
                                 case 'court': originalValue = original.court || ''; break;
-                                case 'level': originalValue = original.level || ''; break;
-                                case 'team1': originalValue = original.team1 || ''; break;
+                                case 'level': originalValue = original.level || ''; break;     // Assuming 'level' is the level ID in JSON
+                                case 'team1': originalValue = original.team1 || ''; break;     // Assuming 'team1' is the team ID in JSON
                                 case 'score1': originalValue = original.score1 || ''; break;
-                                case 'team2': originalValue = original.team2 || ''; break;
+                                case 'team2': originalValue = original.team2 || ''; break;     // Assuming 'team2' is the team ID in JSON
                                 case 'score2': originalValue = original.score2 || ''; break;
-                                case 'referee': originalValue = original.referee || ''; break;
-                                // Add more cases if other fields are added
+                                case 'referee': originalValue = original.referee || ''; break; // Assuming 'referee' is the team ID in JSON
                             }
-                            // Ensure consistent type for comparison later if needed, though direct set should work
-                            input.dataset.originalValue = String(originalValue !== null ? originalValue : '');
+                            // --- Important: Convert null/undefined to empty string for attribute ---
+                            input.dataset.originalValue = String(originalValue !== null && originalValue !== undefined ? originalValue : '');
                         });
+                    } else {
+                         // If a game was just added, it won't have fetched original data yet.
+                         // We should set its original value to its current value or leave it empty.
+                         // For simplicity, if it's not found in fetched data, we can assume
+                         // its server-rendered state (or current state if just added) is the baseline.
+                         // Let's ensure existing ones are updated, and skip ones not found in the fetch.
+                         if (row.dataset.isNew !== "true") {
+                            console.warn(`Original data not found for existing game ID ${gameId} after save/fetch.`);
+                         }
                     }
                 });
-                // ** END NEW SECTION **
+                // --- END MODIFICATION ---
 
-                // Reset highlights after fetching new baseline data
+                // Reset highlights after updating original values
                 resetHighlights();
 
-                 // --- NEW: Pre-collapse weeks after data might be loaded/updated ---
+                 // Pre-collapse weeks based on current state
                  preCollapseCompletedWeeks();
 
             })
             .catch(error => {
-                console.error("Error fetching original game data:", error);
-                alert("Could not load original game data for comparison. Saving is disabled.");
-                const saveButton = document.querySelector('#scheduleEditForm button[type="submit"]');
-                if (saveButton) saveButton.disabled = true;
+                console.error("Error fetching original game data post-save:", error);
+                alert("Could not refresh game data after saving. Highlighting might be incorrect until page reload.");
             });
     }
 
@@ -399,8 +446,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // --- END ADDED function definition ---
 
+    // --- REMOVED the initial call to fetchOriginalGameData ---
     // Fetch original data when the page loads
-    fetchOriginalGameData();
+    // fetchOriginalGameData();
+
+    // --- Run pre-collapse check on initial load based on rendered values ---
+    preCollapseCompletedWeeks();
 
     // Function to check if a row has changed and apply highlighting
     function checkAndHighlightRow(rowElement) {
@@ -451,12 +502,29 @@ document.addEventListener('DOMContentLoaded', function() {
          });
 
         // --- Listener for Delete Buttons ---
-        // NOTE: This was added previously, ensure it's still here
         tbody.addEventListener('click', function(event) {
-            if (event.target.classList.contains('delete-game-btn')) {
-                // ... existing delete logic ...
-                 alert(`Deletion for Game ID ${gameId} needs backend implementation.\nRow will NOT be removed yet.`);
-                 // ... commented out fetch DELETE ...
+            // Find the closest button with the delete class
+            const deleteButton = event.target.closest('.delete-game-btn');
+
+            if (deleteButton) {
+                event.preventDefault(); // Prevent any default button action
+                const rowToDelete = deleteButton.closest('tr');
+                const gameId = rowToDelete.dataset.gameId; // Get game ID (could be real or temporary)
+                const isNew = rowToDelete.dataset.isNew === "true";
+
+                // Confirmation dialog
+                const confirmMessage = isNew
+                    ? "Are you sure you want to remove this newly added game?"
+                    : `Are you sure you want to remove this game? It will be deleted when you save changes.`; // Simplified confirmation
+
+                if (confirm(confirmMessage)) {
+                    console.log(`Removing row for game ID: ${gameId} (isNew: ${isNew})`);
+                    rowToDelete.remove(); // Remove the row from the table
+
+                    // NOTE: Since the backend deletes all games for the season and recreates
+                    // them based on the submitted data, removing the row here is sufficient
+                    // to prevent this game from being saved/recreated.
+                }
             }
         });
         // --- END Delete Button Listener ---
@@ -538,26 +606,168 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // --- NEW: Add Game Button functionality ---
+    let tempGameIdCounter = -1; // Counter for temporary IDs (negative to avoid conflicts with real IDs)
+    
+    // Parse the data from JSON script tags
+    const levelsData = JSON.parse(document.getElementById('levels-data').textContent);
+    const courtsData = JSON.parse(document.getElementById('courts-data').textContent);
+    
+    // Add event listeners to all Add Game buttons
+    document.querySelectorAll('.add-game-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const weekId = this.dataset.weekId;
+            const weekContainer = this.closest('.week-container');
+            const tableBody = weekContainer.querySelector('.schedule-table-body');
+            
+            if (!tableBody) {
+                console.error("Could not find table body in week container");
+                return;
+            }
+            
+            // Generate a temporary negative ID for the new game
+            const tempGameId = tempGameIdCounter--;
+            
+            // Create a new row
+            const newRow = document.createElement('tr');
+            newRow.dataset.gameId = tempGameId;
+            newRow.dataset.isNew = "true"; // Mark as a new game for the backend
+            
+            // Get the level associated with this week's table (for default level dropdown)
+            const firstLevelInWeek = tableBody.querySelector('.level-select')?.value || '';
+            
+            // Build court options directly from courtsData
+            let courtOptions = '<option value="">---------</option>';
+            courtsData.forEach(court => {
+                courtOptions += `<option value="${court}">${court}</option>`;
+            });
+            
+            // Build level options directly from levelsData
+            let levelOptions = '<option value="">---------</option>';
+            levelsData.forEach(level => {
+                levelOptions += `<option value="${level.id}" ${level.id === firstLevelInWeek ? 'selected' : ''}>${level.name}</option>`;
+            });
+            
+            // Build the HTML for the new row using these options
+            newRow.innerHTML = `
+                <td>
+                    <input type="datetime-local" name="datetime_${tempGameId}"
+                           value=""
+                           class="form-control form-control-sm datetime-input schedule-input"
+                           data-original-value="">
+                </td>
+                <td>
+                    <select name="court_${tempGameId}" class="form-select form-select-sm schedule-input"
+                            data-original-value="">
+                        ${courtOptions}
+                    </select>
+                </td>
+                <td>
+                    <select name="level_${tempGameId}" class="form-select form-select-sm level-select schedule-input"
+                            data-original-value="">
+                        ${levelOptions}
+                    </select>
+                </td>
+                <td>
+                    <select name="team1_${tempGameId}" class="form-select form-select-sm team-select team1-select schedule-input"
+                            data-original-value="">
+                        <option value="">---------</option>
+                    </select>
+                </td>
+                <td class="text-center">
+                    <input type="number" name="score1_${tempGameId}" value=""
+                           class="form-control form-control-sm score-input schedule-input" min="0" placeholder="S1"
+                           data-original-value="">
+                    <span class="vs-separator">-</span>
+                    <input type="number" name="score2_${tempGameId}" value=""
+                           class="form-control form-control-sm score-input schedule-input" min="0" placeholder="S2"
+                           data-original-value="">
+                </td>
+                <td>
+                    <select name="team2_${tempGameId}" class="form-select form-select-sm team-select team2-select schedule-input"
+                            data-original-value="">
+                        <option value="">---------</option>
+                    </select>
+                </td>
+                <td>
+                    <select name="referee_${tempGameId}" class="form-select form-select-sm team-select ref-select schedule-input"
+                            data-original-value="">
+                        <option value="">---------</option>
+                    </select>
+                </td>
+                {# --- ADDED: Delete Button Cell for New Rows --- #}
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger delete-game-btn" title="Delete Game">
+                        <i class="fas fa-times"></i> {# Or use text 'X' #}
+                    </button>
+                </td>
+                {# --- END ADDED --- #}
+            `;
+            
+            // Add the new row to the table
+            tableBody.appendChild(newRow);
+            
+            // Set the week appropriately
+            const levelSelect = newRow.querySelector('.level-select');
+            if (levelSelect && levelSelect.value) {
+                // Trigger the change event to populate team dropdowns
+                const event = new Event('change', { bubbles: true });
+                levelSelect.dispatchEvent(event);
+            }
+            
+            // Mark the row as changed
+            newRow.classList.add('row-changed');
+            
+            // Expand the week if it was collapsed
+            if (weekContainer.classList.contains('collapsed')) {
+                weekContainer.classList.remove('collapsed');
+            }
+            
+            // ... Add logging to help debug team dropdowns
+            if (levelSelect) {
+                console.log("Adding change event listener to new level select");
+                levelSelect.addEventListener('change', function() {
+                    console.log("Level changed to:", this.value);
+                    updateTeamDropdowns(newRow, this.value);
+                });
+            }
+        });
+    });
+    // --- END NEW: Add Game Button functionality ---
+
+    // Update form submission to include new games and confirmation
     form.addEventListener('submit', async function(event) {
         event.preventDefault();
 
-        // --- Validation Check Before Collecting Data (Keep this) ---
-        let allRowsValid = true;
-        const allGameRows = form.querySelectorAll('tbody tr[data-game-id]');
-        // ... validation loop using isGameRowValid ...
-        if (!allRowsValid) {
-            // ... alert and return ...
-        }
-        // --- END VALIDATION CHECK ---
-
-
-        // --- MODIFIED: Collect data from ALL valid game rows, including ID ---
+        const allGameRows = form.querySelectorAll('.schedule-table-body tr[data-game-id]');
         const allGamesData = [];
+        let isValid = true;
+        let modifiedRowCount = 0;
+        let newRowCount = 0;
+
         allGameRows.forEach(row => {
-             // We already validated the row above, so just collect the data
+            if (!isGameRowValid(row)) {
+                isValid = false;
+                console.error("Invalid game row found:", row);
+            }
+
+            // --- Count changes for confirmation ---
+            if (row.classList.contains('row-changed')) {
+                 // Only count as modified if it's NOT new (new rows always start as 'changed')
+                if (row.dataset.isNew !== "true") {
+                    modifiedRowCount++;
+                }
+            }
+            if (row.dataset.isNew === "true") {
+                newRowCount++;
+            }
+            // --- End counting ---
+
             const gameId = row.dataset.gameId;
+            const isNew = row.dataset.isNew === "true";
             const gameData = {
-                id: gameId, // Re-added ID for comparison purposes
+                id: gameId,
+                is_new: isNew,
                 week: row.closest('.week-container')?.dataset?.weekId || null,
                 datetime: row.querySelector(`[name="datetime_${gameId}"]`).value || null,
                 court: row.querySelector(`[name="court_${gameId}"]`).value || null,
@@ -568,190 +778,160 @@ document.addEventListener('DOMContentLoaded', function() {
                 score1: row.querySelector(`[name="score1_${gameId}"]`).value || null,
                 score2: row.querySelector(`[name="score2_${gameId}"]`).value || null,
             };
-             // Add week validation
-             if (!gameData.week) {
-                // ... error handling ...
-             }
             allGamesData.push(gameData);
         });
 
-        // ... re-check validation for week ...
-        // ... checks for empty allGamesData ...
-        // --- END MODIFIED DATA COLLECTION ---
-
-
-        // --- REINSTATED: Comparison Logic ---
-        if (Object.keys(originalGameData).length === 0) {
-             alert("Original data hasn't loaded yet for comparison. Please wait and try again.");
-             // Optionally try fetching again if not disabled
-             if (!submitButton.disabled){
-                 fetchOriginalGameData();
-             }
+        if (!isValid) {
+             alert("Please fix the errors in the highlighted rows before saving.");
+             if (submitButton) submitButton.disabled = false; // Re-enable button on validation failure
              return;
         }
 
-        let matchupChanges = 0;
-        let refChanges = 0;
-        let scoreUpdates = 0;
-        let dateTimeCourtChanges = 0;
-        let actualRowsChanged = 0; // Count rows with *any* detected change
-
-        allGamesData.forEach(newGame => {
-            const original = originalGameData[newGame.id];
-            if (!original) {
-                console.warn(`Original data not found for game ID ${newGame.id}, cannot compare.`);
-                // Consider how to handle this - maybe treat as "other change"?
-                // For now, skip comparison for this game if original is missing
-                return; // Skip to next game
-            }
-
-            let gameChanged = false; // Track if *this specific game* changed
-
-            // Compare Level, Team1, Team2 for matchup changes
-            // Use String() comparison to handle potential type differences (e.g., ID as number vs string)
-            if (String(original.level) !== String(newGame.level) ||
-                String(original.team1) !== String(newGame.team1) ||
-                String(original.team2) !== String(newGame.team2)) {
-                matchupChanges++;
-                gameChanged = true;
-            }
-
-            // Compare Referee
-            const originalRef = original.referee !== null ? String(original.referee) : ""; // Handle null original value
-            const newRef = newGame.referee !== null ? String(newGame.referee) : "";
-            if (originalRef !== newRef) {
-                 refChanges++;
-                 if (!gameChanged) gameChanged = true; // Mark game as changed if only ref changed
-            }
-
-            // Compare Scores (handle null/empty string consistently)
-            const originalScore1 = original.score1 !== null ? String(original.score1) : "";
-            const originalScore2 = original.score2 !== null ? String(original.score2) : "";
-            const newScore1 = newGame.score1 !== null ? String(newGame.score1) : "";
-            const newScore2 = newGame.score2 !== null ? String(newGame.score2) : "";
-            if (originalScore1 !== newScore1 || originalScore2 !== newScore2) {
-                scoreUpdates++;
-                if (!gameChanged) gameChanged = true; // Mark game as changed if only score changed
-            }
-
-            // Compare DateTime and Court
-            const originalDt = original.datetime || "";
-            const newDt = newGame.datetime || "";
-            const originalCourt = original.court || "";
-            const newCourt = newGame.court || "";
-            if (originalDt !== newDt || originalCourt !== newCourt) {
-                 dateTimeCourtChanges++;
-                 if (!gameChanged) gameChanged = true; // Mark game as changed if only date/court changed
-            }
-
-            if (gameChanged) {
-                actualRowsChanged++; // Increment if any change was detected for this row
-            }
-        });
-
-        // Check if any changes were actually detected by comparison
-        if (actualRowsChanged === 0) {
-            alert("No changes detected compared to the last saved state.");
-            return;
+        // --- ADD CONFIRMATION DIALOG ---
+        const totalChanges = modifiedRowCount + newRowCount;
+        if (totalChanges === 0) {
+            alert("No changes detected to save.");
+             if (submitButton) submitButton.disabled = false; // Re-enable button
+            return; // Don't proceed if nothing changed
         }
-        // --- END REINSTATED COMPARISON ---
 
-
-        // --- Confirmation Message based on Comparison ---
-        let confirmationMessage = "Summary of detected changes:\n";
-        if (matchupChanges > 0) confirmationMessage += `- ${matchupChanges} Matchup(s) (Level/Teams)\n`;
-        if (refChanges > 0) confirmationMessage += `- ${refChanges} Referee assignment(s)\n`;
-        if (scoreUpdates > 0) confirmationMessage += `- ${scoreUpdates} Score(s)\n`;
-        if (dateTimeCourtChanges > 0) confirmationMessage += `- ${dateTimeCourtChanges} Date/Time or Court change(s)\n`;
-        // Add a line if some changes didn't fit categories (e.g., only ID changed, though unlikely)
-        if (actualRowsChanged > (matchupChanges + refChanges + scoreUpdates + dateTimeCourtChanges)) {
-             confirmationMessage += `- Other miscellaneous changes\n`;
+        let confirmationMessage = `You are about to save changes:\n`;
+        if (newRowCount > 0) {
+            confirmationMessage += `- ${newRowCount} new game(s) will be added.\n`;
         }
-        confirmationMessage += `\nFound changes in ${actualRowsChanged} row(s) overall.`
-        confirmationMessage += "\n\nProceed with saving these changes?";
+        if (modifiedRowCount > 0) {
+            confirmationMessage += `- ${modifiedRowCount} existing game(s) will be updated.\n`;
+        }
+        confirmationMessage += `(Games removed from the table will be deleted upon saving).\n\nProceed?`;
+
+        if (!confirm(confirmationMessage)) {
+            console.log("Save cancelled by user.");
+            if (submitButton) submitButton.disabled = false; // Re-enable button on cancel
+            return; // Stop submission if user cancels
+        }
+        // --- END CONFIRMATION DIALOG ---
 
 
-        if (confirm(confirmationMessage)) {
-            // console.log("Confirmed. Sending data:", allGamesData);
+        // Disable submit button to prevent multiple submissions *after* confirmation
+        if (submitButton) submitButton.disabled = true;
 
-            submitButton.disabled = true;
-            submitButton.textContent = 'Saving...';
+        console.log("Submitting data:", allGamesData);
 
-            // Send ALL game data to the update endpoint
-            fetch(`/scheduler/schedule/${seasonId}/update/`, {
+        // --- Send data to the backend ---
+        try {
+            const response = await fetch(`/scheduler/schedule/${seasonId}/update/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrftoken
                 },
-                body: JSON.stringify({ games: allGamesData }) // Send the complete list
-            })
-            .then(/* ... existing response handling ... */)
-            .then(({ ok, status, data }) => {
-                if (ok) {
-                    alert(data.message || 'Schedule updated successfully!'); // Backend message preferred
-                    fetchOriginalGameData(); // Refresh data and highlights
-                } else {
-                    // ... existing error handling ...
+                body: JSON.stringify({ games: allGamesData })
+            });
+
+            if (!response.ok) {
+                // Attempt to parse JSON error detail
+                let errorMessage = 'Failed to save schedule'; // Default error message
+                try {
+                    const errorData = await response.json();
+                    // --- MODIFICATION START: Access 'details' array ---
+                    if (errorData.details && Array.isArray(errorData.details) && errorData.details.length > 0) {
+                        // Join array elements for a more complete message, or just take the first one
+                        errorMessage = errorData.details.join('; '); // Join multiple errors with '; '
+                        // Alternatively, just show the first error: errorMessage = errorData.details[0];
+                    } else if (errorData.error) {
+                         // Fallback to the top-level 'error' key if 'details' is not informative
+                         errorMessage = errorData.error;
+                    }
+                    // --- MODIFICATION END ---
+                } catch (parseError) {
+                    // If JSON parsing fails entirely, use a generic message
+                    errorMessage = 'Could not parse error response from server.';
+                    console.error("Failed to parse error JSON:", parseError);
                 }
-            })
-            .catch(/* ... existing error handling ... */)
-            .finally(/* ... existing finally block ... */);
-        } else {
-            // console.log("Save cancelled by user.");
+                 // Construct a meaningful error message including the status and the extracted message
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorMessage}`);
+            }
+
+            const result = await response.json();
+            console.log('Save successful:', result);
+            alert('Schedule updated successfully!');
+
+            // --- IMPORTANT: Update original data after successful save ---
+            fetchOriginalGameData();
+
+
+        } catch (error) { // This catch block handles errors thrown above or network errors
+            console.error('Error saving schedule:', error);
+             // The alert uses error.message, which should now contain the detail we extracted correctly
+            alert(`Failed to save schedule: ${error.message}`);
+        } finally {
+            // Re-enable submit button regardless of success or failure
+            // (Button is already re-enabled earlier if validation fails or user cancels)
+             if (submitButton) submitButton.disabled = false;
         }
-    }); // End form submit listener
+    });
 
     // Function to reset all highlights
     function resetHighlights() {
          document.querySelectorAll('.schedule-table-body tr.row-changed').forEach(row => {
             row.classList.remove('row-changed');
         });
-    }
-
-    // Function to reset form fields to original values
-    function resetFormChanges() {
-        if (!originalGameData || Object.keys(originalGameData).length === 0) {
-            alert("Original data not loaded. Cannot reset.");
-            return;
-        }
-
-        document.querySelectorAll('tbody tr[data-game-id]').forEach(row => {
-            const gameId = row.dataset.gameId;
-            const original = originalGameData[gameId];
-
-            if (original) {
-                 row.querySelectorAll('.schedule-input').forEach(input => {
-                    const originalValue = input.dataset.originalValue || '';
-                    input.value = originalValue;
-
-                    // Special handling for level dropdown to trigger team updates
-                    if (input.classList.contains('level-select')) {
-                         // Create and dispatch a change event
-                         const event = new Event('change', { bubbles: true });
-                         input.dispatchEvent(event);
-                    }
-                });
-                // After resetting values, remove highlight
-                row.classList.remove('row-changed');
-            } else {
-                console.warn(`Original data not found for game ID ${gameId} during reset.`);
-            }
+        // Also remove validation error highlights
+        document.querySelectorAll('.schedule-table-body tr.table-danger').forEach(row => {
+            row.classList.remove('table-danger');
         });
-        alert("Changes have been reset to the last saved state.");
-    }
-
-    // Add event listener for the new Reset button
-    const resetBtn = document.getElementById('resetChangesBtn');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', resetFormChanges);
     }
 
     // --- NEW: Setup collapsible functionality ---
     setupCollapsibleWeeks();
 
+    // --- REMOVED the second call to fetchOriginalGameData ---
     // Fetch original data when the page loads
-    fetchOriginalGameData(); // This now also triggers the initial pre-collapse check via its .then()
+    // fetchOriginalGameData(); // This now also triggers the initial pre-collapse check via its .then()
+
+    const scheduleForm = document.getElementById('scheduleEditForm');
+    const scheduleEditToggle = document.getElementById('enableScheduleEditToggle');
+
+    // --- NEW: Function to toggle editing state ---
+    function toggleScheduleEditing(isEnabled) {
+        console.log(`Toggling schedule editing: ${isEnabled}`); // For debugging
+
+        // Select all relevant inputs/buttons *within the form*
+        // Exclude score inputs from the general disabling selector
+        scheduleForm.querySelectorAll('.schedule-input:not([name^="score1_"]):not([name^="score2_"]), .delete-game-btn, .add-game-btn')
+            .forEach(element => {
+                element.disabled = !isEnabled;
+            });
+
+        // Ensure score inputs are *always* enabled (in case they were somehow disabled)
+        scheduleForm.querySelectorAll('input[name^="score1_"], input[name^="score2_"]')
+            .forEach(scoreInput => {
+                scoreInput.disabled = false;
+            });
+
+        // Optional: Add/remove a class to the form for global styling changes
+        if (isEnabled) {
+            scheduleForm.classList.remove('editing-disabled');
+            scheduleForm.classList.add('editing-enabled');
+        } else {
+            scheduleForm.classList.add('editing-disabled');
+            scheduleForm.classList.remove('editing-enabled');
+        }
+    }
+    // --- END NEW FUNCTION ---
+
+    // --- Initial setup ---
+    if (scheduleEditToggle) {
+        // Set initial state based on toggle (should be unchecked/false by default)
+        toggleScheduleEditing(scheduleEditToggle.checked);
+
+        // Add event listener to the toggle
+        scheduleEditToggle.addEventListener('change', function() {
+            toggleScheduleEditing(this.checked);
+        });
+    } else {
+        console.error("Schedule edit toggle switch not found!");
+    }
 
 }); // End DOMContentLoaded
 </script>
