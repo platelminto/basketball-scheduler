@@ -97,8 +97,13 @@ class Game(models.Model):
     team2 = models.ForeignKey(
         Team, related_name="games_as_team2", on_delete=models.PROTECT
     )
+
     referee_team = models.ForeignKey(
-        Team, related_name="games_as_referee", on_delete=models.PROTECT
+        Team,
+        related_name="games_as_referee",
+        on_delete=models.SET_NULL,  # Changed from PROTECT
+        null=True,  # Allow null in DB
+        blank=True,  # Allow blank in forms/admin
     )
 
     date_time = models.DateTimeField(null=True, blank=True)
@@ -110,7 +115,9 @@ class Game(models.Model):
         ordering = ["week", "level"]
 
     def __str__(self):
-        return f"Week {self.week}: {self.level.name}: {self.team1.name} vs {self.team2.name} (Ref: {self.referee_team.name})"
+        # Handle potential None value for referee_team
+        ref_name = self.referee_team.name if self.referee_team else "N/A"
+        return f"Week {self.week}: {self.level.name}: {self.team1.name} vs {self.team2.name} (Ref: {ref_name})"
 
     @classmethod
     def get_active_season_games(cls):

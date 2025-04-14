@@ -96,8 +96,8 @@ class GameAdmin(admin.ModelAdmin):
         "-level__season__is_active",
         "level__season__name",
         "week",
-        "level__name",
         "date_time",
+        "level__name",
     )
     list_select_related = (
         "level",

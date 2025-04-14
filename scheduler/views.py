@@ -1,11 +1,15 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse, HttpRequest
 import json
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.db import transaction, IntegrityError
 from datetime import datetime
 from scheduler.models import Season, Level, Team, Game
+from collections import defaultdict
+from django.utils.dateparse import parse_datetime
+from django.utils.timezone import make_aware, get_current_timezone
+from django.conf import settings
 
 from tests import (
     pairing_tests,
@@ -17,8 +21,10 @@ from utils import get_config_from_schedule_creator
 
 
 def schedule_viewer(request):
-    """Main schedule viewing page"""
-    return render(request, "scheduler/schedule_viewer.html")
+    """View for the main schedule page - potentially list seasons."""
+    # TODO: List available seasons to navigate to schedule_view_edit
+    seasons = Season.objects.all().order_by("-is_active", "-created_at")
+    return render(request, "scheduler/schedule_viewer.html", {"seasons": seasons})
 
 
 def create_schedule(request):
@@ -298,4 +304,270 @@ def save_schedule(request: HttpRequest):
         return JsonResponse(
             {"status": "error", "message": f"An unexpected error occurred: {e}"},
             status=500,
+        )
+
+
+def schedule_edit(request, season_id):
+    """View for displaying the schedule edit form."""
+    season = get_object_or_404(Season, pk=season_id)
+
+    # Fetch all games for this season, related data upfront for efficiency
+    games = (
+        Game.objects.filter(level__season=season)
+        .select_related("level", "team1", "team2", "referee_team")
+        .order_by("week", "date_time", "level__name")
+    )
+
+    # Fetch all levels and teams for this season
+    levels = (
+        Level.objects.filter(season=season).prefetch_related("teams").order_by("name")
+    )
+
+    # Create the original dict with model instances (useful for template loops)
+    teams_by_level_objects = {
+        level.id: list(level.teams.all().order_by("name")) for level in levels
+    }
+
+    # --- Create a JSON-serializable version for json_script ---
+    teams_by_level_serializable = {
+        str(level_id): [{"id": team.id, "name": team.name} for team in team_list]
+        for level_id, team_list in teams_by_level_objects.items()
+    }
+    # ----------------------------------------------------------
+
+    # --- Create serializable levels data for JS name lookup ---
+    levels_data_for_js = [{"id": level.id, "name": level.name} for level in levels]
+    # -------------------------------------------------------
+
+    # Get distinct court names used in this season's games
+    courts = list(games.values_list("court", flat=True).distinct().order_by("court"))
+    courts = [court for court in courts if court]
+
+    # Group games by week number
+    games_by_week = defaultdict(list)
+    for game in games:
+        games_by_week[game.week].append(game)
+
+    context = {
+        "season": season,
+        "games_by_week": dict(games_by_week),
+        "levels": levels,  # Pass Level objects for level dropdown
+        # Pass the dictionary with Team objects for initial dropdown population
+        "teams_by_level_objects": teams_by_level_objects,
+        # Pass the serializable dict specifically for json_script
+        "teams_data_for_js": teams_by_level_serializable,
+        "levels_data_for_js": levels_data_for_js,  # Add levels data
+        "courts": courts,
+    }
+
+    return render(request, "scheduler/schedule_view_edit.html", context)
+
+
+@require_GET
+def get_season_schedule_data(request: HttpRequest, season_id: int):
+    """API endpoint to fetch current data for all games in a season."""
+    # Basic permission check (optional, enhance as needed)
+    # if not request.user.is_staff:
+    #     return JsonResponse({"error": "Permission denied"}, status=403)
+
+    season = get_object_or_404(Season, pk=season_id)
+    games = Game.objects.filter(level__season=season).select_related(
+        "level", "team1", "team2", "referee_team"
+    )
+
+    game_data = []
+    for game in games:
+        # Format datetime consistently for comparison (ISO format without timezone)
+        datetime_str = (
+            game.date_time.strftime("%Y-%m-%dT%H:%M") if game.date_time else None
+        )
+        game_data.append(
+            {
+                "id": str(game.id),  # Use string IDs for consistency with JS
+                "datetime": datetime_str,
+                "court": game.court or "",  # Ensure consistent type (string)
+                "level": str(game.level_id),
+                "team1": str(game.team1_id),
+                "team2": str(game.team2_id),
+                "referee": str(game.referee_team_id) if game.referee_team else "",
+                "score1": str(game.team1_score) if game.team1_score is not None else "",
+                "score2": str(game.team2_score) if game.team2_score is not None else "",
+            }
+        )
+
+    return JsonResponse({"games": game_data})
+
+
+@require_POST
+@transaction.atomic
+def update_schedule(request: HttpRequest, season_id: int):
+    """
+    API endpoint to replace all games in a specific season.
+    Deletes existing games for the season and creates new ones based on payload.
+    """
+    # Basic permission check (enhance as needed)
+    # if not request.user.is_staff:
+    #     return JsonResponse({"error": "Permission denied"}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        new_games_data = data.get("games", [])
+        if not isinstance(new_games_data, list):
+            raise ValueError("'games' data must be a list.")
+    except (json.JSONDecodeError, ValueError) as e:
+        return JsonResponse({"error": f"Invalid JSON or data format: {e}"}, status=400)
+
+    # --- 1. Get Season and related data ---
+    season = get_object_or_404(Season, pk=season_id)
+    # Fetch valid levels and teams for this season ONCE for efficient lookup
+    valid_levels = {
+        str(level.id): level for level in Level.objects.filter(season=season)
+    }
+    valid_teams = {
+        str(team.id): team for team in Team.objects.filter(level__season=season)
+    }
+
+    # --- 2. Delete existing games for this season ---
+    # Note: This assumes Levels and Teams are NOT deleted/recreated here, only Games.
+    deleted_count, _ = Game.objects.filter(level__season=season).delete()
+    # Log deletion if desired: print(f"Deleted {deleted_count} existing games for season {season_id}")
+
+    # --- 3. Create new games from payload ---
+    created_count = 0
+    errors = []
+
+    for idx, game_data in enumerate(new_games_data):
+        try:
+            # Extract data (ensure keys exist and handle potential None)
+            week_str = game_data.get("week")
+            level_id_str = game_data.get("level")
+            team1_id_str = game_data.get("team1")
+            team2_id_str = game_data.get("team2")
+            referee_id_str = game_data.get("referee")  # Can be None or ""
+            datetime_str = game_data.get("datetime")  # Can be None or ""
+            court = game_data.get("court")  # Can be None or ""
+            score1_str = game_data.get("score1")  # Can be None or ""
+            score2_str = game_data.get("score2")  # Can be None or ""
+
+            # --- Basic Validation ---
+            if not all([week_str, level_id_str, team1_id_str, team2_id_str]):
+                raise ValueError("Missing required fields (week, level, team1, team2)")
+
+            # --- Find Model Instances ---
+            level_obj = valid_levels.get(str(level_id_str))
+            if not level_obj:
+                raise ValueError(f"Invalid Level ID: {level_id_str}")
+
+            team1_obj = valid_teams.get(str(team1_id_str))
+            if not team1_obj or team1_obj.level_id != level_obj.id:
+                raise ValueError(
+                    f"Invalid Team 1 ID: {team1_id_str} for Level {level_obj.name}"
+                )
+
+            team2_obj = valid_teams.get(str(team2_id_str))
+            if not team2_obj or team2_obj.level_id != level_obj.id:
+                raise ValueError(
+                    f"Invalid Team 2 ID: {team2_id_str} for Level {level_obj.name}"
+                )
+
+            referee_obj = None
+            if referee_id_str:  # Only look up if provided
+                referee_obj = valid_teams.get(str(referee_id_str))
+                if not referee_obj or referee_obj.level_id != level_obj.id:
+                    raise ValueError(
+                        f"Invalid Referee ID: {referee_id_str} for Level {level_obj.name}"
+                    )
+
+            # --- Business Logic Validation ---
+            if team1_obj.id == team2_obj.id:
+                raise ValueError(
+                    f"Team 1 and Team 2 cannot be the same (Team ID: {team1_obj.id})"
+                )
+
+            if referee_obj and (
+                referee_obj.id == team1_obj.id or referee_obj.id == team2_obj.id
+            ):
+                raise ValueError(
+                    f"Team cannot referee its own game (Team ID: {referee_obj.id})"
+                )
+
+            # --- Parse Week ---
+            try:
+                week = int(week_str)
+                if week <= 0:
+                    raise ValueError()
+            except (ValueError, TypeError):
+                raise ValueError(f"Invalid week number: {week_str}")
+
+            # --- Parse DateTime ---
+            game_datetime = None
+            if datetime_str:
+                parsed_dt = parse_datetime(
+                    datetime_str
+                )  # Handles ISO format like "YYYY-MM-DDTHH:MM"
+                if parsed_dt:
+                    if settings.USE_TZ:
+                        game_datetime = make_aware(parsed_dt, get_current_timezone())
+                    else:
+                        game_datetime = parsed_dt
+                else:
+                    raise ValueError(f"Invalid datetime format: {datetime_str}")
+
+            # --- Parse Scores ---
+            team1_score = (
+                int(score1_str)
+                if isinstance(score1_str, str) and score1_str.isdigit()
+                else None
+            )
+            team2_score = (
+                int(score2_str)
+                if isinstance(score2_str, str) and score2_str.isdigit()
+                else None
+            )
+
+            # --- Create Game ---
+            Game.objects.create(
+                level=level_obj,
+                week=week,
+                team1=team1_obj,
+                team2=team2_obj,
+                referee_team=referee_obj,  # Assign None if not found/provided
+                date_time=game_datetime,
+                court=court or None,  # Ensure empty string becomes None
+                team1_score=team1_score,
+                team2_score=team2_score,
+            )
+            created_count += 1
+
+        except (ValueError, IntegrityError, TypeError) as e:
+            # Catch validation errors, potential DB errors, or type errors
+            errors.append(
+                f"Error processing game at index {idx}: {e} | Data: {game_data}"
+            )
+        except Exception as e:  # Catch unexpected errors
+            errors.append(
+                f"Unexpected error processing game at index {idx}: {e} | Data: {game_data}"
+            )
+
+    # --- 4. Return Response ---
+    if errors:
+        # If any errors occurred, report them (transaction will rollback)
+        return JsonResponse(
+            {
+                "error": "Failed to update schedule due to errors.",
+                "details": errors,
+                "created_count": created_count,
+                "deleted_count": deleted_count,  # Include deleted count for context
+            },
+            status=400,  # Bad request due to data errors
+        )
+    else:
+        # Success
+        return JsonResponse(
+            {
+                "message": f"Schedule for season {season_id} updated successfully.",
+                "created_count": created_count,
+                "deleted_count": deleted_count,
+            },
+            status=200,
         )

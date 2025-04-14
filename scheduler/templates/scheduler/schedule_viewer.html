@@ -5,7 +5,21 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Schedule Viewer</h2>
-    <p>Schedule viewing functionality coming soon...</p>
+
+    {% if seasons %}
+        <div class="list-group">
+            {% for season in seasons %}
+                <a href="{% url 'scheduler:schedule_edit' season.id %}" class="list-group-item list-group-item-action {% if season.is_active %}active{% endif %}">
+                    {{ season.name }} {% if season.is_active %}(Active){% endif %}
+                    <small class="text-muted d-block">Created: {{ season.created_at|date:"Y-m-d" }}</small>
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No seasons found.</p>
+    {% endif %}
+
+    <hr>
     <a href="{% url 'scheduler:create_schedule' %}" class="btn btn-primary">Create New Schedule</a>
 </div>
 {% endblock %} 

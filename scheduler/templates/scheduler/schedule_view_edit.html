@@ -1,0 +1,758 @@
+{% extends 'base.html' %}
+{% load tz %} {% comment %} Load timezone filters {% endcomment %}
+{% load scheduler_extras %} {% comment %} ADD OR ENSURE THIS LINE IS PRESENT {% endcomment %}
+
+{% block title %}Edit Schedule: {{ season.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .score-input {
+        width: 60px;
+        display: inline-block;
+        margin: 0 5px;
+    }
+    .vs-separator {
+        display: inline-block;
+        width: 20px;
+        text-align: center;
+    }
+    .form-control-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: .875rem;
+        min-width: 100px; /* Prevent dropdowns from becoming too small */
+    }
+    th, td {
+        vertical-align: middle;
+    }
+    .datetime-input {
+        min-width: 180px; /* Adjust as needed */
+    }
+    .row-changed {
+        background-color: #fff3cd !important; /* Light yellow background for changed rows */
+    }
+
+    /* --- NEW Collapsible Week Styles --- */
+    .week-container {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 1.5rem; /* Add space between weeks */
+        overflow: hidden; /* Ensure content hides properly */
+    }
+
+    .week-header {
+        background-color: #f8f9fa; /* Light background for header */
+        padding: 0.75rem 1.25rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .week-header h3 {
+        margin-bottom: 0; /* Remove default margin */
+        font-size: 1.25rem; /* Adjust size as needed */
+    }
+
+    .week-header:hover {
+        background-color: #e9ecef; /* Slightly darker on hover */
+    }
+
+    .week-header::before {
+        content: '▼'; /* Down arrow for expanded */
+        font-size: 1rem;
+        margin-right: 0.75rem;
+        color: #6c757d; /* Muted color */
+    }
+
+    .week-container.collapsed .week-header::before {
+        content: '►'; /* Right arrow for collapsed */
+    }
+
+    .week-content {
+        padding: 1rem; /* Add padding around the table */
+        /* Transition can be added for smoother collapse/expand */
+        /* transition: all 0.3s ease-in-out; */
+    }
+
+    .week-container.collapsed .week-content {
+        display: none;
+    }
+    /* --- END NEW Collapsible Week Styles --- */
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid mt-4"> {% comment %} Use container-fluid for wider tables {% endcomment %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Edit Schedule: {{ season.name }}</h2>
+        <div class="d-flex gap-2"> {# Group for top buttons #}
+            <a href="{% url 'scheduler:schedule' %}" class="btn btn-secondary">Back to Seasons List</a>
+            <button type="button" id="resetChangesBtn" class="btn btn-warning">Reset Changes</button> {# Added Reset Button #}
+            <button type="submit" form="scheduleEditForm" class="btn btn-success">Save All Changes</button> {# Moved Save Button (uses form attribute) #}
+        </div>
+    </div>
+
+
+    {% if not games_by_week %}
+        <p class="alert alert-info">No games found for this season.</p>
+    {% else %}
+        <form id="scheduleEditForm" method="post" action=""> {% comment %} Action URL TBD - will point to update view {% endcomment %}
+            {% csrf_token %}
+
+            {% for week, games_in_week in games_by_week.items %}
+                {# --- NEW: Week Container --- #}
+                <div class="week-container" data-week-id="{{ week }}">
+                    <div class="week-header"> {# --- NEW: Clickable Header --- #}
+                        <h3>Week {{ week }}</h3>
+                        {# Arrow will be added via CSS ::before #}
+                    </div>
+                    <div class="week-content"> {# --- NEW: Content Wrapper --- #}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Court</th>
+                                        <th>Level</th>
+                                        <th>Team 1</th>
+                                        <th>Score</th>
+                                        <th>Team 2</th>
+                                        <th>Referee</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="schedule-table-body">
+                                    {% for game in games_in_week %}
+                                        <tr data-game-id="{{ game.id }}">
+                                            {# Date/Time - Always editable #}
+                                            <td>
+                                                <input type="datetime-local" name="datetime_{{ game.id }}"
+                                                       value="{{ game.date_time|date:'Y-m-d\TH:i' }}"
+                                                       class="form-control form-control-sm datetime-input schedule-input"
+                                                       data-original-value="{{ game.date_time|date:'Y-m-d\TH:i'|default:'' }}">
+                                            </td>
+                                            {# Court - Always editable #}
+                                            <td>
+                                                <select name="court_{{ game.id }}" class="form-select form-select-sm schedule-input"
+                                                        data-original-value="{{ game.court|default:'' }}">
+                                                    <option value="">---------</option>
+                                                    {% for court_name in courts %}
+                                                        <option value="{{ court_name }}" {% if game.court == court_name %}selected{% endif %}>
+                                                            {{ court_name }}
+                                                        </option>
+                                                    {% endfor %}
+                                                    {% if game.court and game.court not in courts %}
+                                                    <option value="{{ game.court }}" selected>(!) {{ game.court }}</option>
+                                                    {% endif %}
+                                                </select>
+                                            </td>
+                                            {# Level - Always editable #}
+                                            <td>
+                                                <select name="level_{{ game.id }}" class="form-select form-select-sm level-select schedule-input"
+                                                        data-original-value="{{ game.level.id }}">
+                                                    <option value="">---------</option>
+                                                    {% for level_obj in levels %}
+                                                        <option value="{{ level_obj.id }}" {% if game.level.id == level_obj.id %}selected{% endif %}>
+                                                            {{ level_obj.name }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </td>
+                                            {# Team 1 - Use teams_by_level_objects #}
+                                            <td>
+                                                <select name="team1_{{ game.id }}" class="form-select form-select-sm team-select team1-select schedule-input"
+                                                        data-original-value="{{ game.team1_id }}">
+                                                    <option value="">---------</option>
+                                                    {% for team in teams_by_level_objects|lookup:game.level.id %}
+                                                         <option value="{{ team.id }}" {% if game.team1_id == team.id %}selected{% endif %}>
+                                                            {{ team.name }}
+                                                        </option>
+                                                    {% empty %}
+                                                        <option value="" disabled>No teams in level</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </td>
+                                            {# Score - Always editable #}
+                                            <td class="text-center">
+                                                <input type="number" name="score1_{{ game.id }}" value="{{ game.team1_score }}"
+                                                       class="form-control form-control-sm score-input schedule-input" min="0" placeholder="S1"
+                                                       data-original-value="{{ game.team1_score|default:'' }}">
+                                                <span class="vs-separator">-</span>
+                                                <input type="number" name="score2_{{ game.id }}" value="{{ game.team2_score }}"
+                                                       class="form-control form-control-sm score-input schedule-input" min="0" placeholder="S2"
+                                                       data-original-value="{{ game.team2_score|default:'' }}">
+                                            </td>
+                                             {# Team 2 - Use teams_by_level_objects #}
+                                            <td>
+                                                <select name="team2_{{ game.id }}" class="form-select form-select-sm team-select team2-select schedule-input"
+                                                        data-original-value="{{ game.team2_id }}">
+                                                    <option value="">---------</option>
+                                                    {% for team in teams_by_level_objects|lookup:game.level.id %}
+                                                         <option value="{{ team.id }}" {% if game.team2_id == team.id %}selected{% endif %}>
+                                                            {{ team.name }}
+                                                        </option>
+                                                    {% empty %}
+                                                         <option value="" disabled>No teams in level</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </td>
+                                            {# Referee - Use teams_by_level_objects #}
+                                            <td>
+                                                <select name="referee_{{ game.id }}" class="form-select form-select-sm team-select ref-select schedule-input"
+                                                        data-original-value="{{ game.referee_team_id|default:'' }}">
+                                                    <option value="">---------</option>
+                                                     {% for team in teams_by_level_objects|lookup:game.level.id %}
+                                                         <option value="{{ team.id }}" {% if game.referee_team_id == team.id %}selected{% endif %}>
+                                                            {{ team.name }}
+                                                        </option>
+                                                    {% empty %}
+                                                         <option value="" disabled>No teams in level</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div> {# --- END: Content Wrapper --- #}
+                </div> {# --- END: Week Container --- #}
+            {% endfor %}
+
+            {# Save button is always present in edit view #}
+            {# <div class="form-actions mt-4 mb-4 text-end"> #}
+                {# <button type="submit" class="btn btn-success">Save All Changes</button> #}
+                {# {% comment %} TODO: Add "Add Game" button? {% endcomment %} #}
+            {# </div> #} {# Removed original Save button container #}
+        </form>
+    {% endif %}
+
+</div>
+
+{# Pass JSON-serializable teams data to JavaScript - Use the new variable #}
+{{ teams_data_for_js|json_script:"teams-by-level-data" }}
+{# Add json_script for levels data #}
+{{ levels_data_for_js|json_script:"levels-data" }}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+// Get season ID from URL
+const seasonId = window.location.pathname.split('/')[3];
+
+// --- NEW: Function to handle week collapsing ---
+function setupCollapsibleWeeks() {
+    document.querySelectorAll('.week-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const weekContainer = this.closest('.week-container');
+            if (weekContainer) {
+                weekContainer.classList.toggle('collapsed');
+            }
+        });
+    });
+}
+
+// --- NEW: Function to check scores and pre-collapse weeks ---
+function preCollapseCompletedWeeks() {
+    document.querySelectorAll('.week-container').forEach(weekContainer => {
+        let allScoresEntered = true;
+        const gameRows = weekContainer.querySelectorAll('.schedule-table-body tr[data-game-id]');
+
+        if (gameRows.length === 0) {
+            allScoresEntered = false; // Don't collapse weeks with no games
+        }
+
+        gameRows.forEach(row => {
+            const score1Input = row.querySelector('input[name^="score1_"]');
+            const score2Input = row.querySelector('input[name^="score2_"]');
+
+            // Check if either score input exists and is empty
+            if (!score1Input || score1Input.value.trim() === '' || !score2Input || score2Input.value.trim() === '') {
+                allScoresEntered = false;
+            }
+        });
+
+        if (allScoresEntered) {
+            weekContainer.classList.add('collapsed');
+        } else {
+             weekContainer.classList.remove('collapsed'); // Ensure it's expanded if not complete
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // console.log("Schedule edit page loaded."); // Keep or remove as desired
+
+    const teamsByLevelDataElement = document.getElementById('teams-by-level-data');
+    if (!teamsByLevelDataElement) {
+        console.error("Fatal: Script tag with ID 'teams-by-level-data' not found!");
+        return;
+    }
+
+    let teamsByLevelData;
+    try {
+        // Parse the JSON - Removed debugging logs around here
+        teamsByLevelData = JSON.parse(teamsByLevelDataElement.textContent);
+    } catch (e) {
+        console.error("Fatal: Failed to parse teamsByLevelData JSON!", e);
+        alert("Error loading team data. Editing may not work correctly.");
+        teamsByLevelData = {}; // Assign empty object on error
+    }
+
+    let originalGameData = {};
+
+    // Function to fetch original data on page load
+    function fetchOriginalGameData() {
+        fetch(`/scheduler/schedule/${seasonId}/data/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+             })
+            .then(data => {
+                originalGameData = data.games.reduce((acc, game) => {
+                    acc[game.id] = game;
+                    return acc;
+                }, {});
+                // console.log("Original game data fetched:", originalGameData); // Keep or remove as desired
+
+                // ** NEW: Update original values in data attributes after fetch **
+                document.querySelectorAll('tbody tr[data-game-id]').forEach(row => {
+                    const gameId = row.dataset.gameId;
+                    const original = originalGameData[gameId];
+                    if (original) {
+                        row.querySelectorAll('.schedule-input').forEach(input => {
+                            const name = input.name.split('_')[0]; // e.g., 'datetime', 'court', 'level', 'team1', 'score1' etc.
+                            let originalValue = '';
+                            switch (name) {
+                                case 'datetime': originalValue = original.datetime || ''; break;
+                                case 'court': originalValue = original.court || ''; break;
+                                case 'level': originalValue = original.level || ''; break;
+                                case 'team1': originalValue = original.team1 || ''; break;
+                                case 'score1': originalValue = original.score1 || ''; break;
+                                case 'team2': originalValue = original.team2 || ''; break;
+                                case 'score2': originalValue = original.score2 || ''; break;
+                                case 'referee': originalValue = original.referee || ''; break;
+                                // Add more cases if other fields are added
+                            }
+                            // Ensure consistent type for comparison later if needed, though direct set should work
+                            input.dataset.originalValue = String(originalValue !== null ? originalValue : '');
+                        });
+                    }
+                });
+                // ** END NEW SECTION **
+
+                // Reset highlights after fetching new baseline data
+                resetHighlights();
+
+                 // --- NEW: Pre-collapse weeks after data might be loaded/updated ---
+                 preCollapseCompletedWeeks();
+
+            })
+            .catch(error => {
+                console.error("Error fetching original game data:", error);
+                alert("Could not load original game data for comparison. Saving is disabled.");
+                const saveButton = document.querySelector('#scheduleEditForm button[type="submit"]');
+                if (saveButton) saveButton.disabled = true;
+            });
+    }
+
+    // --- ADD isGameRowValid function definition here ---
+    function isGameRowValid(rowElement) {
+        if (!rowElement) return false; // Guard against null rows
+        const levelSelect = rowElement.querySelector('.level-select');
+        const team1Select = rowElement.querySelector('.team1-select');
+        const team2Select = rowElement.querySelector('.team2-select');
+
+        // Check if required fields are selected
+        const isValid = levelSelect && levelSelect.value &&
+                        team1Select && team1Select.value &&
+                        team2Select && team2Select.value;
+
+        // Add/remove visual indication
+        if (!isValid) {
+            rowElement.classList.add('table-danger'); // Use Bootstrap's danger color
+            console.warn(`Game row (ID: ${rowElement.dataset.gameId || 'NEW'}) is invalid: Missing Level, Team1, or Team2.`);
+        } else {
+            rowElement.classList.remove('table-danger');
+        }
+        return isValid;
+    }
+    // --- END ADDED function definition ---
+
+    // Fetch original data when the page loads
+    fetchOriginalGameData();
+
+    // Function to check if a row has changed and apply highlighting
+    function checkAndHighlightRow(rowElement) {
+        if (!rowElement) return;
+        let hasChanged = false;
+        const inputs = rowElement.querySelectorAll('.schedule-input'); // Select elements by common class
+
+        inputs.forEach(input => {
+            const currentValue = (input.type === 'number' && input.value === '') ? '' : input.value; // Treat empty number as empty string for comparison
+            const originalValue = input.dataset.originalValue || ''; // Default original to empty string if not set
+
+            // Handle potential type differences for comparison (e.g., number vs string)
+            if (String(currentValue) !== String(originalValue)) {
+                 hasChanged = true;
+            }
+        });
+
+        if (hasChanged) {
+            rowElement.classList.add('row-changed');
+        } else {
+            rowElement.classList.remove('row-changed');
+        }
+        return hasChanged; // Return whether the row changed
+    }
+
+    // Add event listener using delegation on table bodies
+    document.querySelectorAll('.schedule-table-body').forEach(tbody => {
+        tbody.addEventListener('change', function(event) {
+            if (event.target.classList.contains('schedule-input')) {
+                const row = event.target.closest('tr');
+                checkAndHighlightRow(row);
+                 // Also remove validation error highlight on change
+                 if (row.classList.contains('table-danger')) {
+                      isGameRowValid(row); // Re-validate to potentially clear error style
+                 }
+            }
+        });
+         // Also listen for 'input' on text/number fields for faster feedback
+         tbody.addEventListener('input', function(event) {
+            if (event.target.matches('input.schedule-input[type="number"], input.schedule-input[type="datetime-local"]')) {
+                 const row = event.target.closest('tr');
+                 checkAndHighlightRow(row);
+                  // Also remove validation error highlight on input
+                  if (row.classList.contains('table-danger')) {
+                      isGameRowValid(row); // Re-validate
+                  }
+            }
+         });
+
+        // --- Listener for Delete Buttons ---
+        // NOTE: This was added previously, ensure it's still here
+        tbody.addEventListener('click', function(event) {
+            if (event.target.classList.contains('delete-game-btn')) {
+                // ... existing delete logic ...
+                 alert(`Deletion for Game ID ${gameId} needs backend implementation.\nRow will NOT be removed yet.`);
+                 // ... commented out fetch DELETE ...
+            }
+        });
+        // --- END Delete Button Listener ---
+    });
+
+    // Function to update team dropdowns
+    function updateTeamDropdowns(gameRow, levelId) {
+        const levelIdStr = String(levelId);
+        // console.log(`Updating dropdowns for levelIdStr: "${levelIdStr}"`); // Removed log
+
+        if (!teamsByLevelData || typeof teamsByLevelData !== 'object' || teamsByLevelData === null) {
+             console.error("teamsByLevelData is not available or not an object!");
+             return;
+        }
+
+        const teamsForLevel = teamsByLevelData[levelIdStr];
+
+        // Removed detailed debugging logs for teamsForLevel
+        // console.log(`Value found for teamsByLevelData["${levelIdStr}"]:`, teamsForLevel);
+        // console.log(`Is teamsForLevel an array? ${Array.isArray(teamsForLevel)}`);
+
+        const teams = Array.isArray(teamsForLevel) ? teamsForLevel : [];
+
+        // Removed check for 'teams' variable type as Array.isArray handles it
+        // if (!Array.isArray(teams)) { ... }
+
+        const teamSelects = gameRow.querySelectorAll('.team-select');
+
+        teamSelects.forEach(select => {
+            const currentSelectedValue = select.value;
+            select.innerHTML = '<option value="">---------</option>';
+
+            try {
+                 teams.forEach(team => {
+                     const option = document.createElement('option');
+                     option.value = team.id;
+                     option.textContent = team.name;
+                     if (String(team.id) === String(currentSelectedValue)) {
+                         option.selected = true;
+                     }
+                     select.appendChild(option);
+                 });
+            } catch(e) {
+                 console.error("Error during teams.forEach loop:", e); // Keep error log
+                 // console.error("The 'teams' variable causing the error:", teams); // Removed detailed log
+            }
+
+            if (teams.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "No teams available";
+                option.disabled = true;
+                select.appendChild(option);
+            }
+        });
+        // ---- Trigger highlight check after dropdown update ----
+        checkAndHighlightRow(gameRow);
+        // ------------------------------------------------------
+    }
+
+    // Add event listeners to all level dropdowns
+    document.querySelectorAll('.level-select').forEach(select => {
+        select.addEventListener('change', function(event) {
+            const gameRow = event.target.closest('tr');
+            const gameId = gameRow.dataset.gameId;
+            const selectedLevelId = event.target.value;
+            // console.log(`Level changed for game ${gameId} to ${selectedLevelId}`); // Keep or remove as desired
+            updateTeamDropdowns(gameRow, selectedLevelId);
+        });
+    });
+
+    // Handle form submission
+    const form = document.getElementById('scheduleEditForm');
+    const submitButton = document.querySelector('button[type="submit"][form="scheduleEditForm"]');
+
+    if (!submitButton) {
+        console.error("Fatal: Save button with form='scheduleEditForm' not found!");
+        // Optionally disable the form or show an error message
+        return;
+    }
+
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        // --- Validation Check Before Collecting Data (Keep this) ---
+        let allRowsValid = true;
+        const allGameRows = form.querySelectorAll('tbody tr[data-game-id]');
+        // ... validation loop using isGameRowValid ...
+        if (!allRowsValid) {
+            // ... alert and return ...
+        }
+        // --- END VALIDATION CHECK ---
+
+
+        // --- MODIFIED: Collect data from ALL valid game rows, including ID ---
+        const allGamesData = [];
+        allGameRows.forEach(row => {
+             // We already validated the row above, so just collect the data
+            const gameId = row.dataset.gameId;
+            const gameData = {
+                id: gameId, // Re-added ID for comparison purposes
+                week: row.closest('.week-container')?.dataset?.weekId || null,
+                datetime: row.querySelector(`[name="datetime_${gameId}"]`).value || null,
+                court: row.querySelector(`[name="court_${gameId}"]`).value || null,
+                level: row.querySelector(`[name="level_${gameId}"]`).value,
+                team1: row.querySelector(`[name="team1_${gameId}"]`).value,
+                team2: row.querySelector(`[name="team2_${gameId}"]`).value,
+                referee: row.querySelector(`[name="referee_${gameId}"]`).value || null,
+                score1: row.querySelector(`[name="score1_${gameId}"]`).value || null,
+                score2: row.querySelector(`[name="score2_${gameId}"]`).value || null,
+            };
+             // Add week validation
+             if (!gameData.week) {
+                // ... error handling ...
+             }
+            allGamesData.push(gameData);
+        });
+
+        // ... re-check validation for week ...
+        // ... checks for empty allGamesData ...
+        // --- END MODIFIED DATA COLLECTION ---
+
+
+        // --- REINSTATED: Comparison Logic ---
+        if (Object.keys(originalGameData).length === 0) {
+             alert("Original data hasn't loaded yet for comparison. Please wait and try again.");
+             // Optionally try fetching again if not disabled
+             if (!submitButton.disabled){
+                 fetchOriginalGameData();
+             }
+             return;
+        }
+
+        let matchupChanges = 0;
+        let refChanges = 0;
+        let scoreUpdates = 0;
+        let dateTimeCourtChanges = 0;
+        let actualRowsChanged = 0; // Count rows with *any* detected change
+
+        allGamesData.forEach(newGame => {
+            const original = originalGameData[newGame.id];
+            if (!original) {
+                console.warn(`Original data not found for game ID ${newGame.id}, cannot compare.`);
+                // Consider how to handle this - maybe treat as "other change"?
+                // For now, skip comparison for this game if original is missing
+                return; // Skip to next game
+            }
+
+            let gameChanged = false; // Track if *this specific game* changed
+
+            // Compare Level, Team1, Team2 for matchup changes
+            // Use String() comparison to handle potential type differences (e.g., ID as number vs string)
+            if (String(original.level) !== String(newGame.level) ||
+                String(original.team1) !== String(newGame.team1) ||
+                String(original.team2) !== String(newGame.team2)) {
+                matchupChanges++;
+                gameChanged = true;
+            }
+
+            // Compare Referee
+            const originalRef = original.referee !== null ? String(original.referee) : ""; // Handle null original value
+            const newRef = newGame.referee !== null ? String(newGame.referee) : "";
+            if (originalRef !== newRef) {
+                 refChanges++;
+                 if (!gameChanged) gameChanged = true; // Mark game as changed if only ref changed
+            }
+
+            // Compare Scores (handle null/empty string consistently)
+            const originalScore1 = original.score1 !== null ? String(original.score1) : "";
+            const originalScore2 = original.score2 !== null ? String(original.score2) : "";
+            const newScore1 = newGame.score1 !== null ? String(newGame.score1) : "";
+            const newScore2 = newGame.score2 !== null ? String(newGame.score2) : "";
+            if (originalScore1 !== newScore1 || originalScore2 !== newScore2) {
+                scoreUpdates++;
+                if (!gameChanged) gameChanged = true; // Mark game as changed if only score changed
+            }
+
+            // Compare DateTime and Court
+            const originalDt = original.datetime || "";
+            const newDt = newGame.datetime || "";
+            const originalCourt = original.court || "";
+            const newCourt = newGame.court || "";
+            if (originalDt !== newDt || originalCourt !== newCourt) {
+                 dateTimeCourtChanges++;
+                 if (!gameChanged) gameChanged = true; // Mark game as changed if only date/court changed
+            }
+
+            if (gameChanged) {
+                actualRowsChanged++; // Increment if any change was detected for this row
+            }
+        });
+
+        // Check if any changes were actually detected by comparison
+        if (actualRowsChanged === 0) {
+            alert("No changes detected compared to the last saved state.");
+            return;
+        }
+        // --- END REINSTATED COMPARISON ---
+
+
+        // --- Confirmation Message based on Comparison ---
+        let confirmationMessage = "Summary of detected changes:\n";
+        if (matchupChanges > 0) confirmationMessage += `- ${matchupChanges} Matchup(s) (Level/Teams)\n`;
+        if (refChanges > 0) confirmationMessage += `- ${refChanges} Referee assignment(s)\n`;
+        if (scoreUpdates > 0) confirmationMessage += `- ${scoreUpdates} Score(s)\n`;
+        if (dateTimeCourtChanges > 0) confirmationMessage += `- ${dateTimeCourtChanges} Date/Time or Court change(s)\n`;
+        // Add a line if some changes didn't fit categories (e.g., only ID changed, though unlikely)
+        if (actualRowsChanged > (matchupChanges + refChanges + scoreUpdates + dateTimeCourtChanges)) {
+             confirmationMessage += `- Other miscellaneous changes\n`;
+        }
+        confirmationMessage += `\nFound changes in ${actualRowsChanged} row(s) overall.`
+        confirmationMessage += "\n\nProceed with saving these changes?";
+
+
+        if (confirm(confirmationMessage)) {
+            // console.log("Confirmed. Sending data:", allGamesData);
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Saving...';
+
+            // Send ALL game data to the update endpoint
+            fetch(`/scheduler/schedule/${seasonId}/update/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ games: allGamesData }) // Send the complete list
+            })
+            .then(/* ... existing response handling ... */)
+            .then(({ ok, status, data }) => {
+                if (ok) {
+                    alert(data.message || 'Schedule updated successfully!'); // Backend message preferred
+                    fetchOriginalGameData(); // Refresh data and highlights
+                } else {
+                    // ... existing error handling ...
+                }
+            })
+            .catch(/* ... existing error handling ... */)
+            .finally(/* ... existing finally block ... */);
+        } else {
+            // console.log("Save cancelled by user.");
+        }
+    }); // End form submit listener
+
+    // Function to reset all highlights
+    function resetHighlights() {
+         document.querySelectorAll('.schedule-table-body tr.row-changed').forEach(row => {
+            row.classList.remove('row-changed');
+        });
+    }
+
+    // Function to reset form fields to original values
+    function resetFormChanges() {
+        if (!originalGameData || Object.keys(originalGameData).length === 0) {
+            alert("Original data not loaded. Cannot reset.");
+            return;
+        }
+
+        document.querySelectorAll('tbody tr[data-game-id]').forEach(row => {
+            const gameId = row.dataset.gameId;
+            const original = originalGameData[gameId];
+
+            if (original) {
+                 row.querySelectorAll('.schedule-input').forEach(input => {
+                    const originalValue = input.dataset.originalValue || '';
+                    input.value = originalValue;
+
+                    // Special handling for level dropdown to trigger team updates
+                    if (input.classList.contains('level-select')) {
+                         // Create and dispatch a change event
+                         const event = new Event('change', { bubbles: true });
+                         input.dispatchEvent(event);
+                    }
+                });
+                // After resetting values, remove highlight
+                row.classList.remove('row-changed');
+            } else {
+                console.warn(`Original data not found for game ID ${gameId} during reset.`);
+            }
+        });
+        alert("Changes have been reset to the last saved state.");
+    }
+
+    // Add event listener for the new Reset button
+    const resetBtn = document.getElementById('resetChangesBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetFormChanges);
+    }
+
+    // --- NEW: Setup collapsible functionality ---
+    setupCollapsibleWeeks();
+
+    // Fetch original data when the page loads
+    fetchOriginalGameData(); // This now also triggers the initial pre-collapse check via its .then()
+
+}); // End DOMContentLoaded
+</script>
+{% endblock %} 
