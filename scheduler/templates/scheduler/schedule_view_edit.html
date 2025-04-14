@@ -100,7 +100,7 @@
 {% block content %}
 <div class="container-fluid mt-4"> {% comment %} Use container-fluid for wider tables {% endcomment %}
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2"> {# Added flex-wrap and gap #}
-        <h2>Edit Schedule: {{ season.name }}</h2>
+        <h2>Edit Schedule/Scores: {{ season.name }}</h2> {# Updated Title #}
         {# --- ADDED: Toggle Switch --- #}
         <div class="form-check form-switch align-self-center"> {# Align switch vertically #}
             <input class="form-check-input" type="checkbox" role="switch" id="enableScheduleEditToggle">
@@ -108,7 +108,8 @@
         </div>
         {# --- END ADDED --- #}
         <div class="d-flex gap-2"> {# Group for top buttons #}
-            <a href="{% url 'scheduler:schedule' %}" class="btn btn-secondary">Back to Seasons List</a>
+            {# Updated link to go back to the main seasons list page #}
+            <a href="{% url 'scheduler:season_list' %}" class="btn btn-secondary">Back to Seasons List</a>
             <button type="submit" form="scheduleEditForm" class="btn btn-success">Save All Changes</button> {# Moved Save Button (uses form attribute) #}
         </div>
     </div>
@@ -802,7 +803,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modifiedRowCount > 0) {
             confirmationMessage += `- ${modifiedRowCount} existing game(s) will be updated.\n`;
         }
-        confirmationMessage += `(Games removed from the table will be deleted upon saving).\n\nProceed?`;
+        confirmationMessage += `\nProceed?`;
 
         if (!confirm(confirmationMessage)) {
             console.log("Save cancelled by user.");

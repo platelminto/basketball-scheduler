@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Create Schedule{% endblock %}
+{% block title %}Create Season{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -111,7 +111,7 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Create Schedule</h2>
+    <h2>Create Season</h2>
     <form id="scheduleForm" class="mt-4">
         <div id="weeksContainer">
             <!-- Weeks will be added here -->
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(data);
         
         // Forward to the team setup page with the schedule data
-        window.location.href = `/scheduler/team_setup/?scheduleData=${encodeURIComponent(JSON.stringify(data))}`;
+        window.location.href = `/team_setup/?scheduleData=${encodeURIComponent(JSON.stringify(data))}`;
     });
 
     function createWeekElement() {

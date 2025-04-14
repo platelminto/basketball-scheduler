@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(combinedData);
         
         // Redirect to game assignment page with data
-        window.location.href = `/scheduler/game_assignment/?setupData=${encodeURIComponent(JSON.stringify(combinedData))}`;
+        window.location.href = `/game_assignment/?setupData=${encodeURIComponent(JSON.stringify(combinedData))}`;
     });
     
     // Helper function to add a level column

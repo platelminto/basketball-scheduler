@@ -51,7 +51,7 @@
         {% endfor %}
     </div>
     
-    <form action="/scheduler/game_assignment/" method="post" class="mt-4">
+    <form action="/game_assignment/" method="post" class="mt-4">
         {% csrf_token %}
         <input type="hidden" name="schedule_data" value="{{ schedule_data }}">
         

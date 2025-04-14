@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpRequest
 import json
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
@@ -10,6 +10,7 @@ from collections import defaultdict
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import make_aware, get_current_timezone
 from django.conf import settings
+from django.contrib import messages
 
 from tests import (
     pairing_tests,
@@ -20,16 +21,20 @@ from tests import (
 from utils import get_config_from_schedule_creator
 
 
-def schedule_viewer(request):
-    """View for the main schedule page - potentially list seasons."""
-    # TODO: List available seasons to navigate to schedule_view_edit
-    seasons = Season.objects.all().order_by("-is_active", "-created_at")
-    return render(request, "scheduler/schedule_viewer.html", {"seasons": seasons})
+def season_list(request):
+    """View to list all available Seasons with their levels and teams for inline expansion."""
+    seasons = (
+        Season.objects.all()
+        .prefetch_related("levels__teams")  # Prefetch levels and their teams
+        .order_by("-is_active", "-created_at")
+    )
+    context = {"seasons": seasons}
+    return render(request, "scheduler/season_list.html", context)
 
 
-def create_schedule(request):
-    """View to start creating a new schedule"""
-    return render(request, "scheduler/create_schedule.html")
+def create_season(request):
+    """View to start creating a new season"""
+    return render(request, "scheduler/create_season.html")
 
 
 def team_setup(request):
@@ -571,3 +576,36 @@ def update_schedule(request: HttpRequest, season_id: int):
             },
             status=200,
         )
+
+
+@require_POST
+def activate_season(request, season_id):
+    """Sets the specified season as active."""
+    season_to_activate = get_object_or_404(Season, pk=season_id)
+    if not season_to_activate.is_active:
+        season_to_activate.is_active = True
+        try:
+            season_to_activate.save()
+            messages.success(
+                request, f"Season '{season_to_activate.name}' is now active."
+            )
+        except Exception as e:
+            messages.error(request, f"Could not activate season: {e}")
+
+    return redirect("scheduler:season_list")
+
+
+# Placeholder for the new view to edit season structure (Levels/Teams)
+def edit_season_structure(request, season_id):
+    # TODO: Implement view to edit levels and teams for an existing season
+    season = get_object_or_404(Season, pk=season_id)
+    # For now, just redirect back to the detail page or render a simple placeholder
+    # Example: Render a placeholder template
+    return render(
+        request,
+        "scheduler/edit_season_structure_placeholder.html",
+        {"season": season},
+    )
+    # Or redirect:
+    # from django.shortcuts import redirect
+    # return redirect('scheduler:season_detail', season_id=season_id)
