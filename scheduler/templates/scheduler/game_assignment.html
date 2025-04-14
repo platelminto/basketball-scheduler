@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         const minimalConfig = { levels: levels, teams_per_level: teams_per_level };
 
-        fetch('/validate_schedule/', {
+        fetch('/scheduler/validate_schedule/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1142,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading indicator or message
         console.log('Generating schedule, please wait...');
         
-        fetch('/auto_generate_schedule/', {
+        fetch('/scheduler/auto_generate_schedule/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1371,7 +1371,7 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
         
         // Send the data to the server
-        fetch('/save_schedule/', {
+        fetch('/scheduler/save_schedule/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

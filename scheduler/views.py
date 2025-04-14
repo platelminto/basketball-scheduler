@@ -136,7 +136,7 @@ def auto_generate_schedule(request):
 
             # Generate the schedule
             schedule, _ = scheduler.find_schedule(
-                num_cores=14, use_saved_schedule=False, max_attempts=30000
+                num_cores=2, use_saved_schedule=False, max_attempts=30000
             )
 
             return JsonResponse({"config": scheduler.config, "schedule": schedule})
@@ -365,7 +365,7 @@ def schedule_edit(request, season_id):
         "courts": courts,
     }
 
-    return render(request, "scheduler/schedule_view_edit.html", context)
+    return render(request, "scheduler/schedule_edit.html", context)
 
 
 @require_GET

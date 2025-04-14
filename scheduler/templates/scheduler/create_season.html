@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(data);
         
         // Forward to the team setup page with the schedule data
-        window.location.href = `/team_setup/?scheduleData=${encodeURIComponent(JSON.stringify(data))}`;
+        window.location.href = `/scheduler/team_setup/?scheduleData=${encodeURIComponent(JSON.stringify(data))}`;
     });
 
     function createWeekElement() {
