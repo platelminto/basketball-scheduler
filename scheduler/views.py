@@ -183,11 +183,14 @@ def save_schedule(request: HttpRequest):
         # Get or create the season. If it exists, delete its children first.
         season, created = Season.objects.get_or_create(name=season_name)
         if not created:
-            # If season already existed, clear its previous levels, teams, and games
-            # Cascading delete handles Teams and Games when Level is deleted
-            season.levels.all().delete()
-            # Re-fetch the season instance after potential deletion side-effects if needed,
-            # though get_or_create should return the correct instance.
+            # If season already existed, return an error instead of overwriting
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": f"A season with the name '{season_name}' already exists. Please choose a different name.",
+                },
+                status=409,  # Conflict status code
+            )
 
         # --- 2. Create Levels and Teams ---
         level_instances = {}  # Map level name -> Level object
