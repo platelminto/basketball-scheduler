@@ -315,20 +315,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const courtSelect = gameEntry.querySelector('.court-select');
             const courtOtherInput = gameEntry.querySelector('.court-other-input');
             
-            // Skip incomplete entries
-            if (!levelSelect.value || !team1Select.value || !team2Select.value || !refSelect.value || !courtSelect.value) {
-                return;
-            }
+            // No longer skip incomplete entries - send all data to backend for validation
             
             // Get the ref value (either from select or other input)
-            let referee = refSelect.value;
+            let referee = refSelect?.value || "";
             if (referee === 'other') {
                 // If it's "other", use the input value if present, otherwise just use "External Referee"
                 referee = refOtherInput?.value.trim() || 'External Referee';
             }
             
             // Get the court value (either from select or other input)
-            let court = courtSelect.value;
+            let court = courtSelect?.value || "";
             if (court === 'other' && courtOtherInput) {
                 court = courtOtherInput.value.trim() || 'Other Court';
             }
@@ -338,9 +335,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 date: date,
                 time: time,
                 gameIndex: parseInt(gameIndex),
-                level: levelSelect.value,
-                team1: team1Select.value,
-                team2: team2Select.value,
+                level: levelSelect?.value || "",
+                team1: team1Select?.value || "",
+                team2: team2Select?.value || "",
                 referee: referee,
                 court: court
             });
@@ -1380,12 +1377,14 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify(payload)
         })
         .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.message || 'Failed to save schedule');
-                });
-            }
-            return response.json();
+            return response.json().then(data => {
+                if (!response.ok) {
+                    // Keep the full data object with errors array to throw
+                    data.status = response.status;
+                    throw data;
+                }
+                return data;
+            });
         })
         .then(data => {
             console.log('Save response:', data);
@@ -1429,12 +1428,31 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Show error message
             const validationResults = document.getElementById('validationResults');
-            validationResults.innerHTML = `
-                <div class="alert alert-danger">
-                    <h5><i class="fas fa-times-circle"></i> Error Saving Schedule</h5>
-                    <p>${escapeHTML(error.message || 'An unexpected error occurred')}</p>
-                </div>
-            `;
+            
+            // Check if we have specific validation errors
+            if (error.errors && Array.isArray(error.errors) && error.errors.length > 0) {
+                // Display validation errors
+                validationResults.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-times-circle"></i> Schedule Could Not Be Saved</h5>
+                        <p>${escapeHTML(error.message || 'The schedule had validation errors and was not saved.')}</p>
+                        <p>Please fix the following issues:</p>
+                        <ul class="small">
+                            ${error.errors.slice(0, 10).map(err => `<li>${escapeHTML(err)}</li>`).join('')}
+                            ${error.errors.length > 10 ? `<li>...and ${error.errors.length - 10} more errors</li>` : ''}
+                        </ul>
+                    </div>
+                `;
+            } else {
+                // Generic error message
+                validationResults.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-times-circle"></i> Error Saving Schedule</h5>
+                        <p>${escapeHTML(error.message || 'An unexpected error occurred')}</p>
+                    </div>
+                `;
+            }
+            
             validationResults.style.display = 'block';
             
             // Scroll to show the message

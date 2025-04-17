@@ -149,13 +149,12 @@ def auto_generate_schedule(request):
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 
-@csrf_exempt
 @require_POST
 @transaction.atomic
 def save_schedule(request: HttpRequest):
     """
     Receives schedule data via POST, creates/updates Season, Level, Team, Game objects.
-    Replaces existing data for a Season if the name matches.
+    Aborts the entire transaction if any errors are found.
     """
     try:
         data = json.loads(request.body)
@@ -217,33 +216,64 @@ def save_schedule(request: HttpRequest):
             court_name = assignment.get("court")  # Assuming court name is passed
 
             # Validate basic data presence - referee can be null
-            if not all(
-                [level_name, team1_name, team2_name, week is not None]
-            ):
-                errors.append(f"Skipping game due to missing data: {assignment}")
+            missing_fields = []
+            if not level_name:
+                missing_fields.append("level")
+            if not team1_name:
+                missing_fields.append("team1")
+            if not team2_name:
+                missing_fields.append("team2")
+            if week is None:
+                missing_fields.append("week")
+
+            if missing_fields:
+                # Create a clear error message listing the missing fields
+                game_identifier = f"Week {assignment.get('week', '?')}, {date_str or '?'} at {time_str or '?'}"
+                error_msg = f"Game in {game_identifier} is missing required fields: {', '.join(missing_fields)}"
+                errors.append(error_msg)
                 continue
 
             # Find corresponding model instances
             level_obj = level_instances.get(level_name)
             if not level_obj:
                 errors.append(
-                    f"Skipping game: Level '{level_name}' not found for assignment: {assignment}"
+                    f"Level '{level_name}' not found for game in Week {week}, {date_str} at {time_str}"
                 )
                 continue
 
             team1_obj = team_instances.get(level_name, {}).get(team1_name)
             team2_obj = team_instances.get(level_name, {}).get(team2_name)
             ref_obj = None
-            
+
             # Handle referee - could be a team object or a string
             if ref_name:
                 # First try to get ref as team object
                 ref_obj = team_instances.get(level_name, {}).get(ref_name)
                 # If not found, it's okay since the referee can be null or a string name
 
-            if not all([team1_obj, team2_obj]):
+            # Validate teams exist in the level
+            validation_errors = []
+            if not team1_obj:
+                validation_errors.append(
+                    f"Team '{team1_name}' not found in level '{level_name}'"
+                )
+            if not team2_obj:
+                validation_errors.append(
+                    f"Team '{team2_name}' not found in level '{level_name}'"
+                )
+
+            if validation_errors:
+                # Create a clear context for the error
+                game_identifier = f"Week {week}, {date_str or '?'} at {time_str or '?'}"
                 errors.append(
-                    f"Skipping game: One or more teams ('{team1_name}', '{team2_name}') not found in level '{level_name}' for assignment: {assignment}"
+                    f"Game in {game_identifier}: {'; '.join(validation_errors)}"
+                )
+                continue
+
+            # Business logic validations
+            if team1_name == team2_name:
+                errors.append(
+                    f"Week {week}, {date_str} at {time_str}: Team 1 and Team 2 cannot be the same ('{team1_name}')"
                 )
                 continue
 
@@ -257,18 +287,18 @@ def save_schedule(request: HttpRequest):
                     )
                 except ValueError:
                     errors.append(
-                        f"Skipping game: Invalid date/time format ('{date_str} {time_str}') for assignment: {assignment}"
+                        f"Week {week}: Invalid date/time format ('{date_str} {time_str}')"
                     )
                     continue  # Skip if date/time format is wrong
 
             try:
                 # Determine if we have a team ref or a string ref
                 referee_name = None
-                
+
                 # If ref_obj is None but ref_name exists, it's an external ref
                 if ref_obj is None and ref_name:
                     referee_name = ref_name
-                
+
                 Game.objects.create(
                     level=level_obj,
                     week=week,
@@ -282,24 +312,17 @@ def save_schedule(request: HttpRequest):
                 created_games_count += 1
             except IntegrityError as e:
                 errors.append(
-                    f"Database error creating game for assignment {assignment}: {e}"
+                    f"Week {week}, {date_str} at {time_str}: Database error creating game - {e}"
                 )
             except Exception as e:  # Catch other potential errors during game creation
                 errors.append(
-                    f"Unexpected error creating game for assignment {assignment}: {e}"
+                    f"Week {week}, {date_str} at {time_str}: Unexpected error - {e}"
                 )
 
+        # If there are any errors, raise an exception to roll back the transaction
         if errors:
-            return JsonResponse(
-                {
-                    "status": "warning",
-                    "message": f"Schedule partially saved for season '{season_name}' with {len(errors)} errors.",
-                    "season_id": season.id,
-                    "games_created": created_games_count,
-                    "errors": errors,
-                },
-                status=207,
-            )  # Multi-Status response
+            # Raise a custom exception to trigger rollback, capturing all errors to report
+            raise ValueError(f"Schedule has {len(errors)} validation errors")
 
         return JsonResponse(
             {
@@ -318,6 +341,21 @@ def save_schedule(request: HttpRequest):
         # e.g., if Season name constraint fails unexpectedly, though get_or_create handles it.
         return JsonResponse(
             {"status": "error", "message": f"Database integrity error: {e}"}, status=400
+        )
+    except ValueError as e:
+        # Handle the specific case where we raised an exception due to validation errors
+        if "validation errors" in str(e):
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": f"Schedule had validation errors and was not saved. Please fix all errors and try again.",
+                    "errors": errors,
+                },
+                status=400,
+            )
+        # Handle other ValueError cases
+        return JsonResponse(
+            {"status": "error", "message": f"Validation error: {e}"}, status=400
         )
     except Exception as e:
         # Catch-all for other unexpected errors
@@ -409,7 +447,7 @@ def get_season_schedule_data(request: HttpRequest, season_id: int):
         elif game.referee_name:
             # Add a prefix to indicate this is a string name, not an ID
             referee_value = "name:" + game.referee_name
-            
+
         game_data.append(
             {
                 "id": str(game.id),  # Use string IDs for consistency with JS
@@ -502,7 +540,7 @@ def update_schedule(request: HttpRequest, season_id: int):
             # Handle referee - could be a team ID or a string name (prefixed with "name:")
             referee_obj = None
             referee_name = None
-            
+
             if referee_id_str:  # Only process if provided
                 if referee_id_str.startswith("name:"):
                     # This is a string referee name, not a team ID
@@ -510,7 +548,11 @@ def update_schedule(request: HttpRequest, season_id: int):
                 else:
                     # This is a team ID
                     referee_obj = valid_teams.get(str(referee_id_str))
-                    if referee_id_str and referee_obj and referee_obj.level_id != level_obj.id:
+                    if (
+                        referee_id_str
+                        and referee_obj
+                        and referee_obj.level_id != level_obj.id
+                    ):
                         raise ValueError(
                             f"Invalid Referee ID: {referee_id_str} for Level {level_obj.name}"
                         )

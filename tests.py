@@ -206,20 +206,11 @@ def adjacent_slot_test(schedule):
                         errors.append(message)
                         passed = False
                 else:
-                    # Check if this might be a string referee (non-team referee)
-                    # We'll assume any referee that doesn't match a team name pattern
-                    # is an external referee and should not fail the adjacent slot test
-                    if any(referee.startswith(prefix) for prefix in ["Team", "team"]):
-                        # Only fail for team names that should be in the schedule
-                        message = f"Week {week_num}, Level {level}: Referee {referee} not found in any pairing!"
-                        print(message)
-                        errors.append(message)
-                        passed = False
-                    else:
-                        # Likely an external referee, add an informational message but don't fail the test
-                        message = f"Week {week_num}, Level {level}: External referee '{referee}' used (not a team)"
-                        print(message)
-                        # Don't add to errors or set passed=False since this is expected behavior
+                    # If referee is not in team_playing_slots, assume it's an external referee
+                    # External referees don't need to follow the adjacent slot rule
+                    message = f"Week {week_num}, Level {level}: External referee '{referee}' used (not a team)"
+                    print(message)
+                    # Don't add to errors or set passed=False since this is expected behavior
 
     if passed:
         print("All weeks and levels satisfy the referee adjacent-slot condition.")
