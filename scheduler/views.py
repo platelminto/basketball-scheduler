@@ -180,7 +180,6 @@ def save_schedule(request: HttpRequest):
             )
 
         # --- 1. Handle Season ---
-        # Get or create the season. If it exists, delete its children first.
         season, created = Season.objects.get_or_create(name=season_name)
         if not created:
             # If season already existed, return an error instead of overwriting
@@ -217,9 +216,9 @@ def save_schedule(request: HttpRequest):
             time_str = assignment.get("time")
             court_name = assignment.get("court")  # Assuming court name is passed
 
-            # Validate basic data presence
+            # Validate basic data presence - referee can be null
             if not all(
-                [level_name, team1_name, team2_name, ref_name, week is not None]
+                [level_name, team1_name, team2_name, week is not None]
             ):
                 errors.append(f"Skipping game due to missing data: {assignment}")
                 continue
@@ -234,11 +233,17 @@ def save_schedule(request: HttpRequest):
 
             team1_obj = team_instances.get(level_name, {}).get(team1_name)
             team2_obj = team_instances.get(level_name, {}).get(team2_name)
-            ref_obj = team_instances.get(level_name, {}).get(ref_name)
+            ref_obj = None
+            
+            # Handle referee - could be a team object or a string
+            if ref_name:
+                # First try to get ref as team object
+                ref_obj = team_instances.get(level_name, {}).get(ref_name)
+                # If not found, it's okay since the referee can be null or a string name
 
-            if not all([team1_obj, team2_obj, ref_obj]):
+            if not all([team1_obj, team2_obj]):
                 errors.append(
-                    f"Skipping game: One or more teams ('{team1_name}', '{team2_name}', Ref: '{ref_name}') not found in level '{level_name}' for assignment: {assignment}"
+                    f"Skipping game: One or more teams ('{team1_name}', '{team2_name}') not found in level '{level_name}' for assignment: {assignment}"
                 )
                 continue
 
@@ -257,12 +262,20 @@ def save_schedule(request: HttpRequest):
                     continue  # Skip if date/time format is wrong
 
             try:
+                # Determine if we have a team ref or a string ref
+                referee_name = None
+                
+                # If ref_obj is None but ref_name exists, it's an external ref
+                if ref_obj is None and ref_name:
+                    referee_name = ref_name
+                
                 Game.objects.create(
                     level=level_obj,
                     week=week,
                     team1=team1_obj,
                     team2=team2_obj,
-                    referee_team=ref_obj,
+                    referee_team=ref_obj,  # Can be None
+                    referee_name=referee_name,  # Set the string ref name if applicable
                     date_time=game_datetime,
                     court=court_name,
                 )
@@ -389,6 +402,14 @@ def get_season_schedule_data(request: HttpRequest, season_id: int):
         datetime_str = (
             game.date_time.strftime("%Y-%m-%dT%H:%M") if game.date_time else None
         )
+        # Handle referee (team or string name)
+        referee_value = ""
+        if game.referee_team:
+            referee_value = str(game.referee_team_id)
+        elif game.referee_name:
+            # Add a prefix to indicate this is a string name, not an ID
+            referee_value = "name:" + game.referee_name
+            
         game_data.append(
             {
                 "id": str(game.id),  # Use string IDs for consistency with JS
@@ -397,7 +418,7 @@ def get_season_schedule_data(request: HttpRequest, season_id: int):
                 "level": str(game.level_id),
                 "team1": str(game.team1_id),
                 "team2": str(game.team2_id),
-                "referee": str(game.referee_team_id) if game.referee_team else "",
+                "referee": referee_value,
                 "score1": str(game.team1_score) if game.team1_score is not None else "",
                 "score2": str(game.team2_score) if game.team2_score is not None else "",
             }
@@ -478,13 +499,21 @@ def update_schedule(request: HttpRequest, season_id: int):
                     f"Invalid Team 2 ID: {team2_id_str} for Level {level_obj.name}"
                 )
 
+            # Handle referee - could be a team ID or a string name (prefixed with "name:")
             referee_obj = None
-            if referee_id_str:  # Only look up if provided
-                referee_obj = valid_teams.get(str(referee_id_str))
-                if not referee_obj or referee_obj.level_id != level_obj.id:
-                    raise ValueError(
-                        f"Invalid Referee ID: {referee_id_str} for Level {level_obj.name}"
-                    )
+            referee_name = None
+            
+            if referee_id_str:  # Only process if provided
+                if referee_id_str.startswith("name:"):
+                    # This is a string referee name, not a team ID
+                    referee_name = referee_id_str[5:]  # Remove the "name:" prefix
+                else:
+                    # This is a team ID
+                    referee_obj = valid_teams.get(str(referee_id_str))
+                    if referee_id_str and referee_obj and referee_obj.level_id != level_obj.id:
+                        raise ValueError(
+                            f"Invalid Referee ID: {referee_id_str} for Level {level_obj.name}"
+                        )
 
             # --- Business Logic Validation ---
             if team1_obj.id == team2_obj.id:
@@ -539,7 +568,8 @@ def update_schedule(request: HttpRequest, season_id: int):
                 week=week,
                 team1=team1_obj,
                 team2=team2_obj,
-                referee_team=referee_obj,  # Assign None if not found/provided
+                referee_team=referee_obj,  # Can be None
+                referee_name=referee_name,  # String referee (can be None)
                 date_time=game_datetime,
                 court=court or None,  # Ensure empty string becomes None
                 team1_score=team1_score,

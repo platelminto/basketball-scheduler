@@ -218,19 +218,27 @@
                                                     {% endfor %}
                                                 </select>
                                             </td>
-                                            {# Referee - Use teams_by_level_objects #}
+                                            {# Referee - Use teams_by_level_objects, but also handle string referees #}
                                             <td>
                                                 <select name="referee_{{ game.id }}" class="form-select form-select-sm team-select ref-select schedule-input"
-                                                        data-original-value="{{ game.referee_team_id|default:'' }}">
+                                                        data-original-value="{{ game.referee_team_id|default:'' }}"
+                                                        onchange="handleRefereeChange(this)">
                                                     <option value="">---------</option>
-                                                     {% for team in teams_by_level_objects|lookup:game.level.id %}
-                                                         <option value="{{ team.id }}" {% if game.referee_team_id == team.id %}selected{% endif %}>
+                                                    {% for team in teams_by_level_objects|lookup:game.level.id %}
+                                                        <option value="{{ team.id }}" {% if game.referee_team_id == team.id %}selected{% endif %}>
                                                             {{ team.name }}
                                                         </option>
                                                     {% empty %}
-                                                         <option value="" disabled>No teams in level</option>
+                                                        <option value="" disabled>No teams in level</option>
                                                     {% endfor %}
+                                                    <option value="other" {% if not game.referee_team_id and game.referee_name %}selected{% endif %}>Other...</option>
                                                 </select>
+                                                <input type="text" 
+                                                       name="referee_name_{{ game.id }}" 
+                                                       class="form-control form-control-sm mt-1 ref-other-input schedule-input" 
+                                                       value="{{ game.referee_name|default:'' }}" 
+                                                       placeholder="Enter referee name"
+                                                       style="display: {% if not game.referee_team_id and game.referee_name %}block{% else %}none{% endif %};">
                                             </td>
                                             {# --- ADDED: Delete Button Cell --- #}
                                             <td class="text-center">
@@ -277,6 +285,21 @@
 
 {% block extra_js %}
 <script>
+// Function to handle referee dropdown change
+function handleRefereeChange(select) {
+    const row = select.closest('tr');
+    const gameId = row.dataset.gameId;
+    const refOtherInput = row.querySelector(`.ref-other-input`);
+    
+    if (select.value === 'other') {
+        refOtherInput.style.display = 'block';
+    } else {
+        refOtherInput.style.display = 'none';
+        // Clear the input when not using "Other"
+        refOtherInput.value = '';
+    }
+}
+
 // Helper function to get CSRF token
 function getCookie(name) {
     let cookieValue = null;
@@ -580,6 +603,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 option.disabled = true;
                 select.appendChild(option);
             }
+            
+            // Add "Other" option for referee dropdowns
+            if (select.classList.contains('ref-select')) {
+                const otherOption = document.createElement('option');
+                otherOption.value = "other";
+                otherOption.textContent = "Other...";
+                // Preserve the selection of "Other" if it was already selected
+                if (currentSelectedValue === "other") {
+                    otherOption.selected = true;
+                }
+                select.appendChild(otherOption);
+            }
         });
         // ---- Trigger highlight check after dropdown update ----
         checkAndHighlightRow(gameRow);
@@ -692,9 +727,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 </td>
                 <td>
                     <select name="referee_${tempGameId}" class="form-select form-select-sm team-select ref-select schedule-input"
-                            data-original-value="">
+                            data-original-value="" onchange="handleRefereeChange(this)">
                         <option value="">---------</option>
+                        <option value="other">Other...</option>
                     </select>
+                    <input type="text" 
+                           name="referee_name_${tempGameId}" 
+                           class="form-control form-control-sm mt-1 ref-other-input schedule-input" 
+                           value="" 
+                           placeholder="Enter referee name"
+                           style="display: none;">
                 </td>
                 {# --- ADDED: Delete Button Cell for New Rows --- #}
                 <td class="text-center">
@@ -766,6 +808,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const gameId = row.dataset.gameId;
             const isNew = row.dataset.isNew === "true";
+            // Handle the referee selection (could be a team or "other" with a string name)
+            const refereeSelect = row.querySelector(`[name="referee_${gameId}"]`);
+            const refereeValue = refereeSelect ? refereeSelect.value : null;
+            let refereeParam = null;
+            
+            if (refereeValue === 'other') {
+                // Use the string referee name with a prefix to indicate it's a name
+                const refNameInput = row.querySelector(`[name="referee_name_${gameId}"]`);
+                const refName = refNameInput ? refNameInput.value.trim() : '';
+                if (refName) {
+                    refereeParam = `name:${refName}`;
+                }
+            } else {
+                // Use the team ID directly
+                refereeParam = refereeValue || null;
+            }
+            
             const gameData = {
                 id: gameId,
                 is_new: isNew,
@@ -775,7 +834,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 level: row.querySelector(`[name="level_${gameId}"]`).value,
                 team1: row.querySelector(`[name="team1_${gameId}"]`).value,
                 team2: row.querySelector(`[name="team2_${gameId}"]`).value,
-                referee: row.querySelector(`[name="referee_${gameId}"]`).value || null,
+                referee: refereeParam,
                 score1: row.querySelector(`[name="score1_${gameId}"]`).value || null,
                 score2: row.querySelector(`[name="score2_${gameId}"]`).value || null,
             };

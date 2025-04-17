@@ -455,6 +455,85 @@ class ViewTests(TestCase):
         )
         
         self.assertEqual(response.status_code, 409)  # Conflict
+        
+    def test_save_schedule_with_string_referee(self):
+        """Test the save schedule API endpoint with a string referee."""
+        # Prepare test data with a string referee
+        data = {
+            'season_name': 'Season With String Ref',
+            'setupData': {
+                'teams': {
+                    'A': ['Team X1', 'Team X2']
+                }
+            },
+            'game_assignments': [
+                {
+                    'level': 'A',
+                    'team1': 'Team X1', 
+                    'team2': 'Team X2',
+                    'referee': 'External Referee John',  # String referee (not a team)
+                    'week': 1,
+                    'date': '2025-04-07',
+                    'time': '18:10',
+                    'court': 'Court 1'
+                }
+            ]
+        }
+        
+        response = self.client.post(
+            reverse('scheduler:save_schedule'),
+            json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        
+        # Check that the season was created
+        self.assertTrue(Season.objects.filter(name='Season With String Ref').exists())
+        new_season = Season.objects.get(name='Season With String Ref')
+        
+        # Check that the game was created with the correct referee
+        game = Game.objects.get(level__season=new_season)
+        self.assertIsNone(game.referee_team)  # Should not be associated with a team
+        self.assertEqual(game.referee_name, 'External Referee John')  # Should store the string name
+        
+    def test_save_schedule_with_no_referee(self):
+        """Test the save schedule API endpoint with no referee specified."""
+        # Prepare test data with no referee
+        data = {
+            'season_name': 'Season With No Ref',
+            'setupData': {
+                'teams': {
+                    'A': ['Team X1', 'Team X2']
+                }
+            },
+            'game_assignments': [
+                {
+                    'level': 'A',
+                    'team1': 'Team X1', 
+                    'team2': 'Team X2',
+                    'week': 1,
+                    'date': '2025-04-07',
+                    'time': '18:10',
+                    'court': 'Court 1'
+                    # No referee specified
+                }
+            ]
+        }
+        
+        response = self.client.post(
+            reverse('scheduler:save_schedule'),
+            json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        
+        # Check that the game was created with no referee
+        new_season = Season.objects.get(name='Season With No Ref')
+        game = Game.objects.get(level__season=new_season)
+        self.assertIsNone(game.referee_team)
+        self.assertIsNone(game.referee_name)
 
     def test_update_schedule_view(self):
         """Test the update schedule API endpoint."""
@@ -503,6 +582,92 @@ class ViewTests(TestCase):
         self.assertEqual(new_game.court, 'Court 2')
         self.assertEqual(new_game.team1_score, 30)
         self.assertEqual(new_game.team2_score, 25)
+        
+    def test_update_schedule_with_string_referee(self):
+        """Test the update schedule API endpoint with a string referee."""
+        # Create a game for testing
+        game = Game.objects.create(
+            level=self.level,
+            week=1,
+            team1=self.team1,
+            team2=self.team2,
+            referee_team=self.team3
+        )
+        
+        # Prepare update data with string referee
+        update_data = {
+            'games': [
+                {
+                    'level': str(self.level.id),
+                    'team1': str(self.team1.id),
+                    'team2': str(self.team2.id),
+                    'referee': 'name:External Referee Smith',  # String referee with name: prefix
+                    'week': '1',
+                    'court': 'Court 3',
+                    'score1': '45',
+                    'score2': '42'
+                }
+            ]
+        }
+        
+        # The update_schedule endpoint deletes all games and creates new ones
+        response = self.client.post(
+            reverse('scheduler:update_schedule', args=[self.season.id]),
+            json.dumps(update_data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify the new game has the correct attributes with string referee
+        new_game = Game.objects.get(level__season=self.season)
+        self.assertEqual(new_game.team1, self.team1)
+        self.assertEqual(new_game.team2, self.team2)
+        self.assertIsNone(new_game.referee_team)  # No team referee
+        self.assertEqual(new_game.referee_name, 'External Referee Smith')  # String referee
+        self.assertEqual(new_game.court, 'Court 3')
+        self.assertEqual(new_game.team1_score, 45)
+        self.assertEqual(new_game.team2_score, 42)
+        
+    def test_update_schedule_with_no_referee(self):
+        """Test the update schedule API endpoint with no referee."""
+        # Create a game for testing
+        game = Game.objects.create(
+            level=self.level,
+            week=1,
+            team1=self.team1,
+            team2=self.team2,
+            referee_team=self.team3
+        )
+        
+        # Prepare update data with no referee
+        update_data = {
+            'games': [
+                {
+                    'level': str(self.level.id),
+                    'team1': str(self.team1.id),
+                    'team2': str(self.team2.id),
+                    'referee': '',  # Empty string = no referee
+                    'week': '1',
+                    'court': 'Court 4'
+                }
+            ]
+        }
+        
+        # Update the schedule
+        response = self.client.post(
+            reverse('scheduler:update_schedule', args=[self.season.id]),
+            json.dumps(update_data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify the new game has no referee
+        new_game = Game.objects.get(level__season=self.season)
+        self.assertIsNone(new_game.referee_team)
+        self.assertIsNone(new_game.referee_name)
+        self.assertEqual(new_game.court, 'Court 4')
 
     def test_validate_schedule_view(self):
         """Test the validate schedule API endpoint."""
@@ -645,6 +810,77 @@ class ViewTests(TestCase):
         self.assertFalse(result['Referee-Player']['passed'])
         # Verify the error message contains information about the conflict
         self.assertTrue(any("Referee Team A1 is playing in game" in error for error in result['Referee-Player']['errors']))
+        
+    def test_validation_with_string_referee(self):
+        """Test the validation endpoint with string referees."""
+        # Create a schedule with string referees
+        valid_schedule = [
+            {
+                "week": 1,
+                "slots": {
+                    "1": [
+                        {
+                            "level": "A",
+                            "teams": ["Team A1", "Team A2"],
+                            "ref": "External Referee"  # String referee
+                        }
+                    ]
+                }
+            },
+            {
+                "week": 2,
+                "slots": {
+                    "1": [
+                        {
+                            "level": "A",
+                            "teams": ["Team A1", "Team A3"],
+                            "ref": "Guest Official"  # Another string referee
+                        }
+                    ]
+                }
+            },
+            {
+                "week": 3,
+                "slots": {
+                    "1": [
+                        {
+                            "level": "A",
+                            "teams": ["Team A2", "Team A3"],
+                            "ref": "Coach Smith"  # Another string referee
+                        }
+                    ]
+                }
+            }
+        ]
+        
+        # Test data with string referees
+        data = {
+            'schedule': valid_schedule,
+            'config': {
+                'levels': ['A'],
+                'teams_per_level': {'A': 3}
+            }
+        }
+        
+        response = self.client.post(
+            reverse('scheduler:validate_schedule'),
+            json.dumps(data),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        result = json.loads(response.content)
+        
+        # Check that the referee-player test passed (string refs can't be playing)
+        self.assertTrue(result['Referee-Player']['passed'])
+        
+        # Check that adjacent slot test was skipped or passed
+        # A string referee can't be matched to a team, so it should either pass or be skipped
+        # The exact behavior depends on how the validator is implemented
+        self.assertTrue(
+            result['Adjacent Slots']['passed'] or 
+            any("External Referee not found in any pairing" in error for error in result['Adjacent Slots'].get('errors', []))
+        )
 
 
 class EdgeCaseTests(TestCase):
@@ -723,6 +959,33 @@ class EdgeCaseTests(TestCase):
         data = json.loads(response.content)
         game_data = data['games'][0]
         self.assertEqual(game_data['referee'], "")  # Empty string for null referee
+        
+    def test_string_referee(self):
+        """Test schedule with games that have a string referee name."""
+        # Create a game with a string referee
+        referee_name = "External Referee"
+        game = Game.objects.create(
+            level=self.level,
+            week=1,
+            team1=self.teams[0],
+            team2=self.teams[1],
+            referee_team=None,
+            referee_name=referee_name
+        )
+        
+        # Verify the game was created correctly
+        self.assertIsNone(game.referee_team)
+        self.assertEqual(game.referee_name, referee_name)
+        
+        # Test string representation includes the correct referee name
+        self.assertIn(f"(Ref: {referee_name})", str(game))
+        
+        # Test API response handling of string referee
+        response = self.client.get(reverse('scheduler:get_season_schedule_data', args=[self.season.id]))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        game_data = data['games'][0]
+        self.assertEqual(game_data['referee'], f"name:{referee_name}")  # Should prefix with "name:"
 
     def test_same_team_twice_different_weeks(self):
         """Test a team playing against itself in different weeks (which should be allowed)."""

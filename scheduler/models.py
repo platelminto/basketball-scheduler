@@ -105,6 +105,9 @@ class Game(models.Model):
         null=True,  # Allow null in DB
         blank=True,  # Allow blank in forms/admin
     )
+    
+    # Allow for external referees (non-team referees)
+    referee_name = models.CharField(max_length=100, null=True, blank=True)
 
     date_time = models.DateTimeField(null=True, blank=True)
     court = models.CharField(max_length=100, null=True, blank=True)
@@ -115,8 +118,14 @@ class Game(models.Model):
         ordering = ["week", "level"]
 
     def __str__(self):
-        # Handle potential None value for referee_team
-        ref_name = self.referee_team.name if self.referee_team else "N/A"
+        # Handle potential None value for referee (either team or name)
+        if self.referee_team:
+            ref_name = self.referee_team.name
+        elif self.referee_name:
+            ref_name = self.referee_name
+        else:
+            ref_name = "N/A"
+            
         return f"Week {self.week}: {self.level.name}: {self.team1.name} vs {self.team2.name} (Ref: {ref_name})"
 
     @classmethod
