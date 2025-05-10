@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from django.db import models
 from django.db.models import Q  # Import Q for complex lookups
 
@@ -84,11 +85,38 @@ class Team(models.Model):
         return cls.objects.none()
 
 
+class Week(models.Model):
+    """Represents a week of games in a season."""
+
+    season = models.ForeignKey(Season, related_name="weeks", on_delete=models.CASCADE)
+    week_number = models.PositiveIntegerField()
+    monday_date = models.DateField()
+    
+    class Meta:
+        unique_together = ("season", "week_number")
+    
+    def __str__(self):
+        return f"{self.week_number}"
+
+
+class OffWeek(models.Model):
+    """Represents an off week in a season."""
+
+    season = models.ForeignKey(Season, related_name="off_weeks", on_delete=models.CASCADE)
+    monday_date = models.DateField()
+    
+    class Meta:
+        unique_together = ("season", "monday_date")
+    
+    def __str__(self):
+        return f"Off Week: {self.monday_date}"
+
+
 class Game(models.Model):
     """Represents a single game scheduled within a season."""
 
     level = models.ForeignKey(Level, related_name="games", on_delete=models.CASCADE)
-    week = models.PositiveIntegerField()
+    week = models.ForeignKey(Week, related_name="games", on_delete=models.CASCADE)
 
     # Team relationships
     team1 = models.ForeignKey(
@@ -108,8 +136,8 @@ class Game(models.Model):
     
     # Allow for external referees (non-team referees)
     referee_name = models.CharField(max_length=100, null=True, blank=True)
-
-    date_time = models.DateTimeField(null=True, blank=True)
+    day_of_week = models.PositiveIntegerField(null=True, blank=True)
+    time = models.TimeField(null=True, blank=True)
     court = models.CharField(max_length=100, null=True, blank=True)
     team1_score = models.PositiveIntegerField(null=True, blank=True)
     team2_score = models.PositiveIntegerField(null=True, blank=True)
@@ -135,3 +163,10 @@ class Game(models.Model):
         if active_season:
             return cls.objects.filter(level__season=active_season)
         return cls.objects.none()
+
+    @property
+    def date_time(self):
+        if self.time and self.day_of_week is not None:
+            return datetime.combine(self.week.monday_date + timedelta(days=self.day_of_week), self.time)
+
+        return None

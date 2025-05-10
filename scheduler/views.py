@@ -5,7 +5,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from django.db import transaction, IntegrityError
 from datetime import datetime
-from scheduler.models import Season, Level, Team, Game
+from scheduler.models import OffWeek, Season, Level, Team, Game, Week
 from collections import defaultdict
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import make_aware, get_current_timezone
@@ -202,7 +202,22 @@ def save_schedule(request: HttpRequest):
                 team_obj = Team.objects.create(level=level_obj, name=team_name)
                 team_instances[level_name][team_name] = team_obj
 
-        # --- 3. Create Games ---
+        # --- 3. Create Weeks ---
+        week_count = 0
+        for week_info in setup_data["schedule"]["weeks"]:
+            if week_info["isOffWeek"]:
+                OffWeek.objects.create(
+                    season=season, monday_date=week_info["weekStartDate"]
+                )
+            else:
+                week_count += 1
+                Week.objects.create(
+                    season=season,
+                    week_number=week_count,
+                    monday_date=week_info["weekStartDate"],
+                )
+
+        # --- 4. Create Games ---
         created_games_count = 0
         errors = []
         for assignment in game_assignments:
@@ -210,8 +225,8 @@ def save_schedule(request: HttpRequest):
             team1_name = assignment.get("team1")
             team2_name = assignment.get("team2")
             ref_name = assignment.get("referee")
-            week = assignment.get("week")
-            date_str = assignment.get("date")
+            week_number = assignment.get("week")
+            day_of_week_str = assignment.get("dayOfWeek")
             time_str = assignment.get("time")
             court_name = assignment.get("court")  # Assuming court name is passed
 
@@ -223,12 +238,12 @@ def save_schedule(request: HttpRequest):
                 missing_fields.append("team1")
             if not team2_name:
                 missing_fields.append("team2")
-            if week is None:
+            if week_number is None:
                 missing_fields.append("week")
 
             if missing_fields:
                 # Create a clear error message listing the missing fields
-                game_identifier = f"Week {assignment.get('week', '?')}, {date_str or '?'} at {time_str or '?'}"
+                game_identifier = f"Week {assignment.get('week', '?')}, day {day_of_week_str or '?'} at {time_str or '?'}"
                 error_msg = f"Game in {game_identifier} is missing required fields: {', '.join(missing_fields)}"
                 errors.append(error_msg)
                 continue
@@ -237,7 +252,7 @@ def save_schedule(request: HttpRequest):
             level_obj = level_instances.get(level_name)
             if not level_obj:
                 errors.append(
-                    f"Level '{level_name}' not found for game in Week {week}, {date_str} at {time_str}"
+                    f"Level '{level_name}' not found for game in Week {week_number}, day {day_of_week_str} at {time_str}"
                 )
                 continue
 
@@ -264,7 +279,7 @@ def save_schedule(request: HttpRequest):
 
             if validation_errors:
                 # Create a clear context for the error
-                game_identifier = f"Week {week}, {date_str or '?'} at {time_str or '?'}"
+                game_identifier = f"Week {week_number}, day {day_of_week_str or '?'} at {time_str or '?'}"
                 errors.append(
                     f"Game in {game_identifier}: {'; '.join(validation_errors)}"
                 )
@@ -273,23 +288,24 @@ def save_schedule(request: HttpRequest):
             # Business logic validations
             if team1_name == team2_name:
                 errors.append(
-                    f"Week {week}, {date_str} at {time_str}: Team 1 and Team 2 cannot be the same ('{team1_name}')"
+                    f"Week {week_number}, day {day_of_week_str} at {time_str}: Team 1 and Team 2 cannot be the same ('{team1_name}')"
                 )
                 continue
 
             # Combine date and time
-            game_datetime = None
-            if date_str and time_str:
+            game_time = None
+            if time_str:
                 try:
-                    # Assuming YYYY-MM-DD and HH:MM format from the frontend
-                    game_datetime = datetime.strptime(
-                        f"{date_str} {time_str}", "%Y-%m-%d %H:%M"
-                    )
+                    # Parse just the time component (HH:MM)
+                    from datetime import datetime as dt
+
+                    time_obj = dt.strptime(time_str, "%H:%M").time()
+                    game_time = time_obj
                 except ValueError:
                     errors.append(
-                        f"Week {week}: Invalid date/time format ('{date_str} {time_str}')"
+                        f"Week {week_number}: Invalid time format ('{time_str}')"
                     )
-                    continue  # Skip if date/time format is wrong
+                    continue  # Skip if time format is wrong
 
             try:
                 # Determine if we have a team ref or a string ref
@@ -299,24 +315,28 @@ def save_schedule(request: HttpRequest):
                 if ref_obj is None and ref_name:
                     referee_name = ref_name
 
+                # Get the week object
+                week_obj = Week.objects.get(season=season, week_number=week_number)
+
                 Game.objects.create(
                     level=level_obj,
-                    week=week,
+                    week=week_obj,
                     team1=team1_obj,
                     team2=team2_obj,
                     referee_team=ref_obj,  # Can be None
                     referee_name=referee_name,  # Set the string ref name if applicable
-                    date_time=game_datetime,
+                    time=game_time,
+                    day_of_week=int(day_of_week_str),
                     court=court_name,
                 )
                 created_games_count += 1
             except IntegrityError as e:
                 errors.append(
-                    f"Week {week}, {date_str} at {time_str}: Database error creating game - {e}"
+                    f"Week {week_number}, day {day_of_week_str} at {time_str}: Database error creating game - {e}"
                 )
             except Exception as e:  # Catch other potential errors during game creation
                 errors.append(
-                    f"Week {week}, {date_str} at {time_str}: Unexpected error - {e}"
+                    f"Week {week_number}, day {day_of_week_str} at {time_str}: Unexpected error - {e}"
                 )
 
         # If there are any errors, raise an exception to roll back the transaction
@@ -373,8 +393,8 @@ def schedule_edit(request, season_id):
     # Fetch all games for this season, related data upfront for efficiency
     games = (
         Game.objects.filter(level__season=season)
-        .select_related("level", "team1", "team2", "referee_team")
-        .order_by("week", "date_time", "level__name")
+        .select_related("level", "team1", "team2", "referee_team", "week")
+        .order_by("week__week_number", "day_of_week", "time", "level__name")
     )
 
     # Fetch all levels and teams for this season
@@ -402,14 +422,16 @@ def schedule_edit(request, season_id):
     courts = list(games.values_list("court", flat=True).distinct().order_by("court"))
     courts = [court for court in courts if court]
 
-    # Group games by week number
-    games_by_week = defaultdict(list)
+    # Group games by week
+    games_by_week = {}
     for game in games:
+        if game.week not in games_by_week:
+            games_by_week[game.week] = []
         games_by_week[game.week].append(game)
 
     context = {
         "season": season,
-        "games_by_week": dict(games_by_week),
+        "games_by_week": games_by_week,
         "levels": levels,  # Pass Level objects for level dropdown
         # Pass the dictionary with Team objects for initial dropdown population
         "teams_by_level_objects": teams_by_level_objects,
@@ -431,19 +453,15 @@ def get_season_schedule_data(request: HttpRequest, season_id: int):
 
     season = get_object_or_404(Season, pk=season_id)
     games = Game.objects.filter(level__season=season).select_related(
-        "level", "team1", "team2", "referee_team"
+        "level", "team1", "team2", "referee_team", "week"
     )
 
     game_data = []
     for game in games:
-        # Format datetime consistently for comparison (ISO format without timezone)
-        datetime_str = (
-            game.date_time.strftime("%Y-%m-%dT%H:%M") if game.date_time else None
-        )
         # Handle referee (team or string name)
         referee_value = ""
         if game.referee_team:
-            referee_value = str(game.referee_team_id)
+            referee_value = str(game.referee_team.id)
         elif game.referee_name:
             # Add a prefix to indicate this is a string name, not an ID
             referee_value = "name:" + game.referee_name
@@ -451,11 +469,13 @@ def get_season_schedule_data(request: HttpRequest, season_id: int):
         game_data.append(
             {
                 "id": str(game.id),  # Use string IDs for consistency with JS
-                "datetime": datetime_str,
+                "week": str(game.week.week_number),
+                "day": str(game.day_of_week) if game.day_of_week is not None else "",
+                "time": game.time.strftime("%H:%M") if game.time else "",
                 "court": game.court or "",  # Ensure consistent type (string)
-                "level": str(game.level_id),
-                "team1": str(game.team1_id),
-                "team2": str(game.team2_id),
+                "level": str(game.level.id),
+                "team1": str(game.team1.id),
+                "team2": str(game.team2.id),
                 "referee": referee_value,
                 "score1": str(game.team1_score) if game.team1_score is not None else "",
                 "score2": str(game.team2_score) if game.team2_score is not None else "",
@@ -471,6 +491,8 @@ def update_schedule(request: HttpRequest, season_id: int):
     """
     API endpoint to replace all games in a specific season.
     Deletes existing games for the season and creates new ones based on payload.
+    Also updates week dates if week_dates is provided in the payload.
+    Complete transaction will be rolled back if any game fails.
     """
     # Basic permission check (enhance as needed)
     # if not request.user.is_staff:
@@ -479,177 +501,249 @@ def update_schedule(request: HttpRequest, season_id: int):
     try:
         data = json.loads(request.body)
         new_games_data = data.get("games", [])
+        week_dates_data = data.get("week_dates", [])
+
         if not isinstance(new_games_data, list):
             raise ValueError("'games' data must be a list.")
+        if week_dates_data and not isinstance(week_dates_data, list):
+            raise ValueError("'week_dates' data must be a list.")
     except (json.JSONDecodeError, ValueError) as e:
         return JsonResponse({"error": f"Invalid JSON or data format: {e}"}, status=400)
 
-    # --- 1. Get Season and related data ---
-    season = get_object_or_404(Season, pk=season_id)
-    # Fetch valid levels and teams for this season ONCE for efficient lookup
-    valid_levels = {
-        str(level.id): level for level in Level.objects.filter(season=season)
-    }
-    valid_teams = {
-        str(team.id): team for team in Team.objects.filter(level__season=season)
-    }
+    # Create a transaction savepoint that we can roll back to if needed
+    try:
+        # --- 1. Get Season and related data ---
+        season = get_object_or_404(Season, pk=season_id)
+        # Fetch valid levels and teams for this season ONCE for efficient lookup
+        valid_levels = {
+            str(level.id): level for level in Level.objects.filter(season=season)
+        }
+        valid_teams = {
+            str(team.id): team for team in Team.objects.filter(level__season=season)
+        }
+        # Fetch valid weeks for this season
+        weeks = Week.objects.filter(season=season)
+        valid_weeks = {str(week.week_number): week for week in weeks}
+        week_ids = {str(week.id): week for week in weeks}
 
-    # --- 2. Delete existing games for this season ---
-    # Note: This assumes Levels and Teams are NOT deleted/recreated here, only Games.
-    deleted_count, _ = Game.objects.filter(level__season=season).delete()
-    # Log deletion if desired: print(f"Deleted {deleted_count} existing games for season {season_id}")
+        # --- 2. Process week date changes ---
+        if week_dates_data:
+            for week_date in week_dates_data:
+                week_id = week_date.get("id")
+                new_date = week_date.get("date")
 
-    # --- 3. Create new games from payload ---
-    created_count = 0
-    errors = []
+                if not week_id or not new_date:
+                    continue
 
-    for idx, game_data in enumerate(new_games_data):
-        try:
-            # Extract data (ensure keys exist and handle potential None)
-            week_str = game_data.get("week")
-            level_id_str = game_data.get("level")
-            team1_id_str = game_data.get("team1")
-            team2_id_str = game_data.get("team2")
-            referee_id_str = game_data.get("referee")  # Can be None or ""
-            datetime_str = game_data.get("datetime")  # Can be None or ""
-            court = game_data.get("court")  # Can be None or ""
-            score1_str = game_data.get("score1")  # Can be None or ""
-            score2_str = game_data.get("score2")  # Can be None or ""
+                try:
+                    # Find the week by ID
+                    week = week_ids.get(str(week_id))
+                    if not week:
+                        raise ValueError(f"Invalid week ID: {week_id}")
 
-            # --- Basic Validation ---
-            if not all([week_str, level_id_str, team1_id_str, team2_id_str]):
-                raise ValueError("Missing required fields (week, level, team1, team2)")
+                    # Parse and update the date
+                    from datetime import datetime
 
-            # --- Find Model Instances ---
-            level_obj = valid_levels.get(str(level_id_str))
-            if not level_obj:
-                raise ValueError(f"Invalid Level ID: {level_id_str}")
-
-            team1_obj = valid_teams.get(str(team1_id_str))
-            if not team1_obj or team1_obj.level_id != level_obj.id:
-                raise ValueError(
-                    f"Invalid Team 1 ID: {team1_id_str} for Level {level_obj.name}"
-                )
-
-            team2_obj = valid_teams.get(str(team2_id_str))
-            if not team2_obj or team2_obj.level_id != level_obj.id:
-                raise ValueError(
-                    f"Invalid Team 2 ID: {team2_id_str} for Level {level_obj.name}"
-                )
-
-            # Handle referee - could be a team ID or a string name (prefixed with "name:")
-            referee_obj = None
-            referee_name = None
-
-            if referee_id_str:  # Only process if provided
-                if referee_id_str.startswith("name:"):
-                    # This is a string referee name, not a team ID
-                    referee_name = referee_id_str[5:]  # Remove the "name:" prefix
-                else:
-                    # This is a team ID
-                    referee_obj = valid_teams.get(str(referee_id_str))
-                    if (
-                        referee_id_str
-                        and referee_obj
-                        and referee_obj.level_id != level_obj.id
-                    ):
+                    try:
+                        parsed_date = datetime.strptime(new_date, "%Y-%m-%d").date()
+                        week.monday_date = parsed_date
+                        week.save()
+                    except ValueError:
                         raise ValueError(
-                            f"Invalid Referee ID: {referee_id_str} for Level {level_obj.name}"
+                            f"Invalid date format for week {week_id}: {new_date}"
+                        )
+                except Exception as e:
+                    # Record the error for this week
+                    errors = []
+                    error_msg = f"Error updating week {week_id}: {str(e)}"
+                    errors.append(error_msg)
+                    # Break early to trigger rollback
+                    if errors:
+                        transaction.set_rollback(True)
+                        return JsonResponse(
+                            {"status": "error", "error": "\n".join(errors)}, status=400
                         )
 
-            # --- Business Logic Validation ---
-            if team1_obj.id == team2_obj.id:
-                raise ValueError(
-                    f"Team 1 and Team 2 cannot be the same (Team ID: {team1_obj.id})"
-                )
+        # --- 3. Delete existing games for this season ---
+        # Note: This assumes Levels and Teams are NOT deleted/recreated here, only Games.
+        deleted_count, _ = Game.objects.filter(level__season=season).delete()
+        # Log deletion if desired: print(f"Deleted {deleted_count} existing games for season {season_id}")
 
-            if referee_obj and (
-                referee_obj.id == team1_obj.id or referee_obj.id == team2_obj.id
-            ):
-                raise ValueError(
-                    f"Team cannot referee its own game (Team ID: {referee_obj.id})"
-                )
+        # --- 4. Create new games from payload ---
+        created_count = 0
+        errors = []
 
-            # --- Parse Week ---
+        for idx, game_data in enumerate(new_games_data):
             try:
-                week = int(week_str)
-                if week <= 0:
-                    raise ValueError()
-            except (ValueError, TypeError):
-                raise ValueError(f"Invalid week number: {week_str}")
+                # Extract data (ensure keys exist and handle potential None)
+                week_str = game_data.get("week")
+                level_id_str = game_data.get("level")
+                team1_id_str = game_data.get("team1")
+                team2_id_str = game_data.get("team2")
+                referee_id_str = game_data.get("referee")  # Can be None or ""
+                day_of_week_str = game_data.get("day")  # New: day of week (0-6)
+                time_str = game_data.get("time")  # New: time (HH:MM format)
+                court = game_data.get("court")  # Can be None or ""
+                score1_str = game_data.get("score1")  # Can be None or ""
+                score2_str = game_data.get("score2")  # Can be None or ""
 
-            # --- Parse DateTime ---
-            game_datetime = None
-            if datetime_str:
-                parsed_dt = parse_datetime(
-                    datetime_str
-                )  # Handles ISO format like "YYYY-MM-DDTHH:MM"
-                if parsed_dt:
-                    if settings.USE_TZ:
-                        game_datetime = make_aware(parsed_dt, get_current_timezone())
+                # --- Basic Validation ---
+                if not all(
+                    [
+                        week_str,
+                        level_id_str,
+                        team1_id_str,
+                        team2_id_str,
+                        day_of_week_str,
+                        time_str,
+                    ]
+                ):
+                    raise ValueError(
+                        "Missing required fields (check week, level, team1, team2, day of week, time)"
+                    )
+
+                # --- Find Model Instances ---
+                level_obj = valid_levels.get(str(level_id_str))
+                if not level_obj:
+                    raise ValueError(f"Invalid Level ID: {level_id_str}")
+
+                team1_obj = valid_teams.get(str(team1_id_str))
+                if not team1_obj or team1_obj.level_id != level_obj.id:
+                    raise ValueError(
+                        f"Invalid Team 1 ID: {team1_id_str} for Level {level_obj.name}"
+                    )
+
+                team2_obj = valid_teams.get(str(team2_id_str))
+                if not team2_obj or team2_obj.level_id != level_obj.id:
+                    raise ValueError(
+                        f"Invalid Team 2 ID: {team2_id_str} for Level {level_obj.name}"
+                    )
+
+                # Handle referee - could be a team ID or a string name (prefixed with "name:")
+                referee_obj = None
+                referee_name = None
+
+                if referee_id_str:  # Only process if provided
+                    if referee_id_str.startswith("name:"):
+                        # This is a string referee name, not a team ID
+                        referee_name = referee_id_str[5:]  # Remove the "name:" prefix
                     else:
-                        game_datetime = parsed_dt
-                else:
-                    raise ValueError(f"Invalid datetime format: {datetime_str}")
+                        # This is a team ID
+                        referee_obj = valid_teams.get(str(referee_id_str))
+                        if (
+                            referee_id_str
+                            and referee_obj
+                            and referee_obj.level_id != level_obj.id
+                        ):
+                            raise ValueError(
+                                f"Invalid Referee ID: {referee_id_str} for Level {level_obj.name}"
+                            )
 
-            # --- Parse Scores ---
-            team1_score = (
-                int(score1_str)
-                if isinstance(score1_str, str) and score1_str.isdigit()
-                else None
-            )
-            team2_score = (
-                int(score2_str)
-                if isinstance(score2_str, str) and score2_str.isdigit()
-                else None
-            )
+                # --- Business Logic Validation ---
+                if team1_obj.id == team2_obj.id:
+                    raise ValueError(
+                        f"Team 1 and Team 2 cannot be the same (Team ID: {team1_obj.id})"
+                    )
 
-            # --- Create Game ---
-            Game.objects.create(
-                level=level_obj,
-                week=week,
-                team1=team1_obj,
-                team2=team2_obj,
-                referee_team=referee_obj,  # Can be None
-                referee_name=referee_name,  # String referee (can be None)
-                date_time=game_datetime,
-                court=court or None,  # Ensure empty string becomes None
-                team1_score=team1_score,
-                team2_score=team2_score,
-            )
-            created_count += 1
+                if referee_obj and (
+                    referee_obj.id == team1_obj.id or referee_obj.id == team2_obj.id
+                ):
+                    raise ValueError(
+                        f"Team cannot referee its own game (Team ID: {referee_obj.id})"
+                    )
 
-        except (ValueError, IntegrityError, TypeError) as e:
-            # Catch validation errors, potential DB errors, or type errors
-            errors.append(
-                f"Error processing game at index {idx}: {e} | Data: {game_data}"
-            )
-        except Exception as e:  # Catch unexpected errors
-            errors.append(
-                f"Unexpected error processing game at index {idx}: {e} | Data: {game_data}"
-            )
+                # --- Parse Week ---
+                try:
+                    week_number = int(week_str)
+                    if week_number <= 0:
+                        raise ValueError()
 
-    # --- 4. Return Response ---
-    if errors:
-        # If any errors occurred, report them (transaction will rollback)
+                    # Get the Week object
+                    week_obj = valid_weeks.get(str(week_number))
+                    if not week_obj:
+                        raise ValueError(f"Invalid week number: {week_number}")
+                except (ValueError, TypeError):
+                    raise ValueError(f"Invalid week number: {week_str}")
+
+                # --- Parse Day of Week ---
+                day_of_week = None
+                if day_of_week_str:
+                    try:
+                        day_of_week = int(day_of_week_str)
+                        if day_of_week < 0 or day_of_week > 6:
+                            raise ValueError()
+                    except (ValueError, TypeError):
+                        raise ValueError(f"Invalid day of week: {day_of_week_str}")
+
+                # --- Parse Time ---
+                time_obj = None
+                if time_str:
+                    try:
+                        from datetime import datetime
+
+                        time_obj = datetime.strptime(time_str, "%H:%M").time()
+                    except (ValueError, TypeError):
+                        raise ValueError(f"Invalid time format: {time_str}")
+
+                # --- Parse Scores ---
+                team1_score = (
+                    int(score1_str)
+                    if isinstance(score1_str, str) and score1_str.isdigit()
+                    else None
+                )
+                team2_score = (
+                    int(score2_str)
+                    if isinstance(score2_str, str) and score2_str.isdigit()
+                    else None
+                )
+
+                # --- Create Game ---
+                Game.objects.create(
+                    level=level_obj,
+                    week=week_obj,
+                    team1=team1_obj,
+                    team2=team2_obj,
+                    referee_team=referee_obj,  # Can be None
+                    referee_name=referee_name,  # String referee (can be None)
+                    day_of_week=day_of_week,
+                    time=time_obj,
+                    court=court,
+                    team1_score=team1_score,
+                    team2_score=team2_score,
+                )
+                created_count += 1
+
+            except Exception as e:
+                # Record the error for this game
+                error_msg = f"Error processing game #{idx+1}: {str(e)}"
+                errors.append(error_msg)
+                # No longer continuing - we'll raise an exception at the end to trigger rollback
+
+        # Instead of raising an exception, check for errors and manually trigger a rollback if needed
+        if errors:
+            # Prepare error message
+            error_summary = (
+                f"Failed to update schedule: {len(errors)} game(s) had errors:\n"
+                + "\n".join(errors)
+            )
+            # Manually roll back the transaction and return error JSON
+            transaction.set_rollback(True)
+            return JsonResponse({"status": "error", "error": error_summary}, status=400)
+
+        # Only return success if there were no errors (transaction will commit)
         return JsonResponse(
             {
-                "error": "Failed to update schedule due to errors.",
-                "details": errors,
-                "created_count": created_count,
-                "deleted_count": deleted_count,  # Include deleted count for context
-            },
-            status=400,  # Bad request due to data errors
-        )
-    else:
-        # Success
-        return JsonResponse(
-            {
-                "message": f"Schedule for season {season_id} updated successfully.",
-                "created_count": created_count,
+                "status": "success",
                 "deleted_count": deleted_count,
-            },
-            status=200,
+                "created_count": created_count,
+                "message": f"Successfully updated schedule with {created_count} games.",
+            }
+        )
+    except Exception as e:
+        # Catch any other unexpected errors and return as JSON
+        transaction.set_rollback(True)
+        return JsonResponse(
+            {"status": "error", "error": f"Unexpected error: {str(e)}"}, status=500
         )
 
 

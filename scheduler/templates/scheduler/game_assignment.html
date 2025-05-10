@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.querySelectorAll('.game-entry').forEach(gameEntry => {
             const weekNum = gameEntry.dataset.week;
-            const date = gameEntry.dataset.date;
+            const dayOfWeek = gameEntry.dataset.dayOfWeek;
             const time = gameEntry.dataset.time;
             const gameIndex = gameEntry.dataset.gameIndex;
             
@@ -314,25 +314,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const refOtherInput = gameEntry.querySelector('.ref-other-input');
             const courtSelect = gameEntry.querySelector('.court-select');
             const courtOtherInput = gameEntry.querySelector('.court-other-input');
-            
-            // No longer skip incomplete entries - send all data to backend for validation
-            
+                        
             // Get the ref value (either from select or other input)
             let referee = refSelect?.value || "";
             if (referee === 'other') {
                 // If it's "other", use the input value if present, otherwise just use "External Referee"
-                referee = refOtherInput?.value.trim() || 'External Referee';
+                referee = refOtherInput?.value.trim();
             }
             
             // Get the court value (either from select or other input)
             let court = courtSelect?.value || "";
             if (court === 'other' && courtOtherInput) {
-                court = courtOtherInput.value.trim() || 'Other Court';
+                court = courtOtherInput.value.trim();
             }
             
             gameAssignments.push({
                 week: parseInt(weekNum),
-                date: date,
+                dayOfWeek: dayOfWeek,
                 time: time,
                 gameIndex: parseInt(gameIndex),
                 level: levelSelect?.value || "",
@@ -805,6 +803,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             defaultCourt,
                             currentWeekNum,
                             day.date,
+                            day.dayOfWeek,
                             timeSlot.time,
                             i
                         );
@@ -882,11 +881,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Helper function to create a game entry element
-    function createGameEntryElement(teams, courts, defaultCourt, weekNum, date, time, gameIndex) {
+    function createGameEntryElement(teams, courts, defaultCourt, weekNum, date, dayOfWeek, time, gameIndex) {
         const gameEntry = document.createElement('div');
         gameEntry.className = 'game-entry';
         gameEntry.dataset.week = weekNum;
         gameEntry.dataset.date = date;
+        gameEntry.dataset.dayOfWeek = dayOfWeek;
         gameEntry.dataset.time = time;
         gameEntry.dataset.gameIndex = gameIndex;
         

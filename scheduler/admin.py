@@ -2,7 +2,14 @@ from django.contrib import admin
 from django.utils.translation import (
     gettext_lazy as _,
 )  # For internationalization if needed
-from scheduler.models import Season, Level, Team, Game  # Use full path import
+from scheduler.models import (
+    Season,
+    Level,
+    Team,
+    Game,
+    Week,
+    OffWeek,
+)
 from django.db.models import (
     Count,
 )  # Import Count for distinct value optimization if needed
@@ -56,6 +63,22 @@ class LevelAdmin(admin.ModelAdmin):
     ordering = ("-season__is_active", "season__name", "name")
 
 
+@admin.register(Week)
+class WeekAdmin(admin.ModelAdmin):
+    list_display = ("week_number", "monday_date", "season")
+    list_filter = ("season",)
+    search_fields = ("week_number", "season__name")
+    ordering = ("-season__is_active", "season__name", "week_number")
+
+
+@admin.register(OffWeek)
+class OffWeekAdmin(admin.ModelAdmin):
+    list_display = ("monday_date", "season")
+    list_filter = ("season",)
+    search_fields = ("monday_date", "season__name")
+    ordering = ("-season__is_active", "season__name", "monday_date")
+
+
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
     list_display = ("name", "level", "get_season")
@@ -96,7 +119,8 @@ class GameAdmin(admin.ModelAdmin):
         "-level__season__is_active",
         "level__season__name",
         "week",
-        "date_time",
+        "day_of_week",
+        "time",
         "level__name",
     )
     list_select_related = (
