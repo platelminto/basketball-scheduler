@@ -404,7 +404,7 @@ function validateDateInput(input) {
             if (parts.length === 3) {
                 // Adjust month (0-based in JS Date)
                 selectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
-            } else {
+    } else {
                 // If all else fails, use today
                 selectedDate = new Date();
                 console.warn("Could not parse date input, using current date");
@@ -1099,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Handle referee (team or name)
                 if (refSelect.value === 'other' && refNameInput.value) {
                     game.referee = 'name:' + refNameInput.value;
-                } else {
+        } else {
                     game.referee = refSelect.value;
                 }
                 
@@ -1184,7 +1184,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- Initial Setup ---
     setupLevelChangeHandlers();
-    setupDeleteButtons();
     setupInputTracking();
     setupEventHandlers(document);
     
