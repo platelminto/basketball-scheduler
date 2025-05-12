@@ -568,7 +568,6 @@ def update_schedule(request: HttpRequest, season_id: int):
         # --- 3. Delete existing games for this season ---
         # Note: This assumes Levels and Teams are NOT deleted/recreated here, only Games.
         deleted_count, _ = Game.objects.filter(level__season=season).delete()
-        # Log deletion if desired: print(f"Deleted {deleted_count} existing games for season {season_id}")
 
         # --- 4. Create new games from payload ---
         created_count = 0

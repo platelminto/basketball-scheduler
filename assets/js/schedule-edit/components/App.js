@@ -38,10 +38,15 @@ const ScheduleEditor = ({ seasonId }) => {
   
   const handleSaveChanges = async () => {
     // If nothing has changed, show alert and return
+    // Check if any games are marked as deleted
+    const hasDeletedGames = Object.values(state.weeks).some(week =>
+      week.games.some(game => game.isDeleted)
+    );
+
     if (
-      state.changedGames.size === 0 && 
-      state.newGames.size === 0 && 
-      state.deletedGames.size === 0 &&
+      state.changedGames.size === 0 &&
+      state.newGames.size === 0 &&
+      !hasDeletedGames &&
       state.changedWeeks.size === 0
     ) {
       alert('No changes detected. Form not submitted.');
@@ -57,7 +62,7 @@ const ScheduleEditor = ({ seasonId }) => {
 
       weekData.games.forEach(game => {
         // Skip games that are marked for deletion
-        if (state.deletedGames.has(game.id)) {
+        if (game.isDeleted) {
           return;
         }
 
@@ -128,7 +133,7 @@ const ScheduleEditor = ({ seasonId }) => {
 
       weekData.games.forEach(game => {
         // Skip games that are marked for deletion
-        if (state.deletedGames.has(game.id)) {
+        if (game.isDeleted) {
           return;
         }
 
@@ -185,7 +190,6 @@ const ScheduleEditor = ({ seasonId }) => {
       // Log the data being sent
       console.log('Sending data to server:', {
         games,
-        delete_game_ids: Array.from(state.deletedGames),
         week_dates: weekDateChanges
       });
 
@@ -197,7 +201,6 @@ const ScheduleEditor = ({ seasonId }) => {
         },
         body: JSON.stringify({
           games: games,
-          delete_game_ids: Array.from(state.deletedGames),
           week_dates: weekDateChanges
         })
       });

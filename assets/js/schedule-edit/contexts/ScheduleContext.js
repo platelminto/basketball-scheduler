@@ -22,7 +22,6 @@ const initialState = {
   editingEnabled: false,
   changedGames: new Set(),
   newGames: new Set(),
-  deletedGames: new Set(),
   changedWeeks: new Set(),
   isLoading: true,
   error: null
@@ -32,10 +31,27 @@ const initialState = {
 const scheduleReducer = (state, action) => {
   switch (action.type) {
     case SET_SCHEDULE_DATA:
+      // Initialize the weeks data with isDeleted=false for all games
+      const initializedWeeks = {};
+
+      for (const weekId in action.payload.weeks) {
+        const week = action.payload.weeks[weekId];
+        // Initialize games with isDeleted flag
+        const initializedGames = week.games.map(game => ({
+          ...game,
+          isDeleted: false
+        }));
+
+        initializedWeeks[weekId] = {
+          ...week,
+          games: initializedGames
+        };
+      }
+
       return {
         ...state,
         season: action.payload.season,
-        weeks: action.payload.weeks,
+        weeks: initializedWeeks,
         levels: action.payload.levels,
         teamsByLevel: action.payload.teams_by_level,
         courts: action.payload.courts,
@@ -123,45 +139,67 @@ const scheduleReducer = (state, action) => {
     
     case DELETE_GAME: {
       const { gameId, weekId } = action.payload;
+      const updatedWeeks = { ...state.weeks };
+      const weekData = updatedWeeks[weekId];
 
-      // Add the game ID to deletedGames set - don't remove from UI yet
-      // This will be handled on save
-      if (!state.newGames.has(gameId)) {
-        const deletedGames = new Set(state.deletedGames);
-        deletedGames.add(gameId);
+      if (weekData) {
+        const gameIndex = weekData.games.findIndex(g => g.id === gameId);
 
-        // Remove from changedGames if it was there
-        const changedGames = new Set(state.changedGames);
-        changedGames.delete(gameId);
+        if (gameIndex !== -1) {
+          // If it's a new game that hasn't been saved yet, we can just remove it completely
+          if (state.newGames.has(gameId)) {
+            // Remove the game from newGames set
+            const newGames = new Set(state.newGames);
+            newGames.delete(gameId);
 
-        return {
-          ...state,
-          deletedGames,
-          changedGames
-        };
-      } else {
-        // If it's a new game, remove it from newGames
-        const newGames = new Set(state.newGames);
-        newGames.delete(gameId);
+            // Remove the game from the week's games array
+            updatedWeeks[weekId] = {
+              ...weekData,
+              games: weekData.games.filter(g => g.id !== gameId)
+            };
 
-        // For new games that haven't been saved yet, we can safely remove them from UI
-        const updatedWeeks = { ...state.weeks };
-        const weekData = updatedWeeks[weekId];
+            return {
+              ...state,
+              weeks: updatedWeeks,
+              newGames
+            };
+          } else {
+            // For existing games, toggle the isDeleted flag
+            const updatedGame = {
+              ...weekData.games[gameIndex],
+              isDeleted: !weekData.games[gameIndex].isDeleted
+            };
 
-        if (weekData) {
-          // Remove the game from the games array
-          updatedWeeks[weekId] = {
-            ...weekData,
-            games: weekData.games.filter(g => g.id !== gameId)
-          };
+            // Update changedGames based on whether we're deleting or restoring
+            const changedGames = new Set(state.changedGames);
+            if (updatedGame.isDeleted) {
+              // If we're deleting, remove from changedGames
+              changedGames.delete(gameId);
+            } else {
+              // If we're restoring, add to changedGames
+              changedGames.add(gameId);
+            }
+
+            // Create a new games array with the updated game
+            const updatedGames = [...weekData.games];
+            updatedGames[gameIndex] = updatedGame;
+
+            // Update the week with the new games array
+            updatedWeeks[weekId] = {
+              ...weekData,
+              games: updatedGames
+            };
+
+            return {
+              ...state,
+              weeks: updatedWeeks,
+              changedGames
+            };
+          }
         }
-
-        return {
-          ...state,
-          weeks: updatedWeeks,
-          newGames
-        };
       }
+
+      return state;
     }
     
     case UPDATE_WEEK_DATE: {

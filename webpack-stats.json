@@ -1,14 +1,14 @@
 {
   "status": "done",
   "assets": {
-    "scheduleEdit-0ee248e3b5262a252034.js": {
-      "name": "scheduleEdit-0ee248e3b5262a252034.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleEdit-0ee248e3b5262a252034.js"
+    "scheduleEdit-f4abf3d1658af9367a1c.js": {
+      "name": "scheduleEdit-f4abf3d1658af9367a1c.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleEdit-f4abf3d1658af9367a1c.js"
     }
   },
   "chunks": {
     "scheduleEdit": [
-      "scheduleEdit-0ee248e3b5262a252034.js"
+      "scheduleEdit-f4abf3d1658af9367a1c.js"
     ]
   }
 }

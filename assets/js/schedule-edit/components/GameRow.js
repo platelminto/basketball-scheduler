@@ -61,24 +61,16 @@ const GameRow = ({ game, weekId }) => {
     }
   };
   
-  const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this game?')) {
-      // Mark the row as deleted visually
-      const row = document.querySelector(`tr[data-game-id="${game.id}"]`);
-      if (row) {
-        row.classList.add('row-deleted');
-      }
-
-      // Add to deletedGames set (to be processed on save)
-      dispatch({
-        type: DELETE_GAME,
-        payload: { gameId: game.id, weekId }
-      });
-    }
+  const handleToggleDelete = () => {
+    // Toggle isDeleted flag (handled in reducer)
+    dispatch({
+      type: DELETE_GAME,
+      payload: { gameId: game.id, weekId }
+    });
   };
-  
-  // Apply row-deleted class if this game is in deletedGames
-  const isDeleted = state.deletedGames.has(game.id);
+
+  // Check if the game is marked as deleted
+  const isDeleted = game.isDeleted;
   const rowClass = isDeleted ? 'row-deleted' : (isChanged ? 'row-changed' : '');
 
   return (
@@ -261,16 +253,17 @@ const GameRow = ({ game, weekId }) => {
         )}
       </td>
       
-      {/* Delete Button */}
+      {/* Delete/Restore Button */}
       <td className="text-center">
         {state.editingEnabled && (
-          <button 
+          <button
             type="button"
-            className="btn btn-sm btn-danger delete-game-btn"
-            title="Delete Game"
-            onClick={handleDelete}
+            className={`btn btn-sm ${isDeleted ? 'btn-success' : 'btn-danger'}`}
+            title={isDeleted ? "Restore Game" : "Delete Game"}
+            onClick={handleToggleDelete}
           >
-            <i className="fas fa-times"></i>
+            <i className={`fas ${isDeleted ? 'fa-undo' : 'fa-times'}`}></i>
+            {isDeleted ? ' Restore' : ''}
           </button>
         )}
       </td>
