@@ -1,0 +1,97 @@
+/* Score inputs */
+.score-input {
+  width: 60px;
+  display: inline-block;
+  margin: 0 5px;
+}
+
+.vs-separator {
+  display: inline-block;
+  width: 20px;
+  text-align: center;
+}
+
+/* Form controls */
+.form-control-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: .875rem;
+  min-width: 100px; /* Prevent dropdowns from becoming too small */
+}
+
+th, td {
+  vertical-align: middle;
+}
+
+.datetime-input {
+  min-width: 180px; /* Adjust as needed */
+}
+
+/* Changed row highlighting */
+.row-changed {
+  background-color: #fff3cd !important; /* Light yellow background for changed rows */
+}
+
+/* Deleted row highlighting */
+.row-deleted {
+  background-color: #f8d7da !important; /* Light red background for deleted rows */
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Collapsible Week Styles */
+.week-container {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-bottom: 1.5rem; /* Add space between weeks */
+  overflow: hidden; /* Ensure content hides properly */
+}
+
+.week-header {
+  background-color: #f8f9fa; /* Light background for header */
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.week-header h3 {
+  margin-bottom: 0; /* Remove default margin */
+  font-size: 1.25rem; /* Adjust size as needed */
+}
+
+.week-header:hover {
+  background-color: #e9ecef; /* Slightly darker on hover */
+}
+
+.week-header::before {
+  content: '▼'; /* Down arrow for expanded */
+  font-size: 1rem;
+  margin-right: 0.75rem;
+  color: #6c757d; /* Muted color */
+}
+
+.week-container.collapsed .week-header::before {
+  content: '►'; /* Right arrow for collapsed */
+}
+
+.week-content {
+  padding: 1rem; /* Add padding around the table */
+}
+
+.week-container.collapsed .week-content {
+  display: none;
+}
+
+/* Disabled state styling */
+.schedule-input:disabled,
+.delete-game-btn:disabled,
+.add-game-btn:disabled {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-label {
+  cursor: pointer; /* Make label clickable */
+  padding-left: 0.5em; /* Add space between switch and label */
+}

@@ -33,6 +33,12 @@ urlpatterns = [
         views.schedule_edit,
         name="schedule_edit",
     ),
+    # React version of the schedule edit page
+    path(
+        "season/<int:season_id>/edit_schedule/react/",
+        views.schedule_edit_react,
+        name="schedule_edit_react",
+    ),
     # Data endpoint URL needs updating to match structure if desired, but keeping for now
     path(
         "schedule/<int:season_id>/data/",
@@ -45,4 +51,7 @@ urlpatterns = [
         views.update_schedule,
         name="update_schedule",
     ),
+
+    # API endpoints for React - the full URL will be /scheduler/api/schedule/<season_id>/
+    path("api/schedule/<int:season_id>/", views.schedule_data, name="schedule_data"),
 ]

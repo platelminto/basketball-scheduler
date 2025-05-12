@@ -1,0 +1,14 @@
+{
+  "status": "done",
+  "assets": {
+    "scheduleEdit-0ee248e3b5262a252034.js": {
+      "name": "scheduleEdit-0ee248e3b5262a252034.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleEdit-0ee248e3b5262a252034.js"
+    }
+  },
+  "chunks": {
+    "scheduleEdit": [
+      "scheduleEdit-0ee248e3b5262a252034.js"
+    ]
+  }
+}
