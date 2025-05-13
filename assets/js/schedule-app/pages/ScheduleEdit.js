@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { ScheduleProvider } from '../contexts/ScheduleContext';
+import React, { useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
-import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE } from '../contexts/ScheduleContext';
-import WeekContainer from './WeekContainer';
+import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE, SET_LOADING, SET_ERROR } from '../contexts/ScheduleContext';
+import WeekContainer from '../components/schedule-edit/WeekContainer';
 
-// This is the inner component that uses the context
-const ScheduleEditor = ({ seasonId }) => {
+const ScheduleEdit = () => {
+  // Get seasonId from Router params
+  const { seasonId } = useParams();
+  const navigate = useNavigate();
   const { state, dispatch } = useSchedule();
-  
+
   useEffect(() => {
     // Fetch schedule data when component mounts
     const fetchScheduleData = async () => {
+      dispatch({ type: SET_LOADING, payload: true });
+
       try {
         console.log(`Fetching data from: /scheduler/api/schedule/${seasonId}/`);
         const response = await fetch(`/scheduler/api/schedule/${seasonId}/`);
@@ -25,17 +29,19 @@ const ScheduleEditor = ({ seasonId }) => {
         dispatch({ type: SET_SCHEDULE_DATA, payload: data });
       } catch (error) {
         console.error('Error fetching schedule data:', error);
-        // TODO: Handle error state better
+        dispatch({ type: SET_ERROR, payload: 'Failed to load schedule data. Please try again.' });
       }
     };
 
-    fetchScheduleData();
+    if (seasonId) {
+      fetchScheduleData();
+    }
   }, [seasonId, dispatch]);
-  
+
   const handleEditToggle = (enabled) => {
     dispatch({ type: TOGGLE_EDIT_MODE, payload: enabled });
   };
-  
+
   const handleSaveChanges = async () => {
     // If nothing has changed, show alert and return
     // Check if any games are marked as deleted
@@ -52,7 +58,7 @@ const ScheduleEditor = ({ seasonId }) => {
       alert('No changes detected. Form not submitted.');
       return;
     }
-    
+
     // Validate all games first
     const invalidGames = [];
 
@@ -66,16 +72,6 @@ const ScheduleEditor = ({ seasonId }) => {
           return;
         }
 
-        // Log more details about the game for debugging
-        console.log('Validating game:', {
-          id: game.id,
-          level_id: game.level_id,
-          team1_id: game.team1_id,
-          team2_id: game.team2_id,
-          day_of_week: game.day_of_week,
-          time: game.time
-        });
-
         // Validate required fields - be more lenient with types
         const hasLevel = Boolean(game.level_id);
         const hasTeam1 = Boolean(game.team1_id);
@@ -84,17 +80,6 @@ const ScheduleEditor = ({ seasonId }) => {
         const hasTime = Boolean(game.time);
 
         if (!hasLevel || !hasTeam1 || !hasTeam2 || !hasDay || !hasTime) {
-          console.warn('Invalid game found:', {
-            id: game.id,
-            hasLevel,
-            hasTeam1,
-            hasTeam2,
-            hasDay,
-            hasTime,
-            day_of_week: game.day_of_week,
-            time: game.time
-          });
-
           invalidGames.push({
             week: weekData.week_number,
             game: game
@@ -140,17 +125,6 @@ const ScheduleEditor = ({ seasonId }) => {
         // For new games, use null ID
         const gameId = state.newGames.has(game.id) ? null : game.id;
 
-        // Log the game object to see what score data we're getting
-        if (game.team1_score || game.team2_score) {
-          console.log('Game with scores:', {
-            id: game.id,
-            team1: game.team1_name,
-            team2: game.team2_name,
-            score1: game.team1_score,
-            score2: game.team2_score
-          });
-        }
-
         games.push({
           id: gameId,
           week: weekData.week_number,
@@ -167,12 +141,12 @@ const ScheduleEditor = ({ seasonId }) => {
         });
       });
     }
-    
+
     // Prepare week date changes
     const weekDateChanges = [];
     Array.from(state.changedWeeks).forEach(weekId => {
       const weekData = state.weeks[weekId];
-      
+
       if (weekData) {
         weekDateChanges.push({
           id: weekData.id,
@@ -180,12 +154,9 @@ const ScheduleEditor = ({ seasonId }) => {
         });
       }
     });
-    
-    // Get CSRF token
-    function getCsrfToken() {
-      return document.querySelector('[name=csrfmiddlewaretoken]').value;
-    }
-    
+
+    // Use our getCsrfToken function
+
     try {
       // Log the data being sent
       console.log('Sending data to server:', {
@@ -204,9 +175,9 @@ const ScheduleEditor = ({ seasonId }) => {
           week_dates: weekDateChanges
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.status === 'success') {
         alert(data.message);
         window.location.reload();
@@ -219,21 +190,42 @@ const ScheduleEditor = ({ seasonId }) => {
       console.error('Error:', error);
     }
   };
-  
+
   if (state.isLoading) {
     return <div className="container mt-5">Loading schedule data...</div>;
   }
-  
+
+  if (state.error) {
+    return (
+      <div className="container mt-4">
+        <div className="alert alert-danger" role="alert">
+          {state.error}
+          <button
+            className="btn btn-outline-primary ms-3"
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Get CSRF token for form submissions
+  const getCsrfToken = () => {
+    return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+  };
+
   return (
     <div className="container-fluid mt-4">
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h2>Edit Schedule/Scores: {state.season?.name}</h2>
-        
+
         <div className="form-check form-switch align-self-center">
-          <input 
-            className="form-check-input" 
-            type="checkbox" 
-            role="switch" 
+          <input
+            className="form-check-input"
+            type="checkbox"
+            role="switch"
             id="enableScheduleEditToggle"
             checked={state.editingEnabled}
             onChange={(e) => handleEditToggle(e.target.checked)}
@@ -242,13 +234,13 @@ const ScheduleEditor = ({ seasonId }) => {
             Enable Schedule Editing
           </label>
         </div>
-        
+
         <div className="d-flex gap-2">
-          <a href="/scheduler/season_list/" className="btn btn-secondary">
+          <Link to="/" className="btn btn-secondary">
             Back to Seasons List
-          </a>
-          <button 
-            type="button" 
+          </Link>
+          <button
+            type="button"
             className="btn btn-success"
             onClick={handleSaveChanges}
           >
@@ -268,13 +260,4 @@ const ScheduleEditor = ({ seasonId }) => {
   );
 };
 
-// This is the wrapper component that provides the context
-const App = ({ seasonId }) => {
-  return (
-    <ScheduleProvider>
-      <ScheduleEditor seasonId={seasonId} />
-    </ScheduleProvider>
-  );
-};
-
-export default App;
+export default ScheduleEdit;

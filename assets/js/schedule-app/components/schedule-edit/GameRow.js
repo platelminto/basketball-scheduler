@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useSchedule } from '../hooks/useSchedule';
-import { UPDATE_GAME, MARK_CHANGED, DELETE_GAME } from '../contexts/ScheduleContext';
+import { useSchedule } from '../../hooks/useSchedule';
+import { UPDATE_GAME, MARK_CHANGED, DELETE_GAME } from '../../contexts/ScheduleContext';
 
 // Day of week options
 const DAYS_OF_WEEK = [
@@ -20,7 +20,8 @@ const GameRow = ({ game, weekId }) => {
   );
   
   // Check if this game has been changed
-  const isChanged = state.changedGames.has(game.id) || state.newGames.has(game.id);
+  const isChanged = state.changedGames && state.changedGames.has(game.id) || 
+                   (state.newGames && state.newGames.has(game.id));
   
   const handleChange = (field, value) => {
     // Update the game in the state
@@ -30,7 +31,7 @@ const GameRow = ({ game, weekId }) => {
     });
     
     // Mark the game as changed (if it's not a new game, which is already tracked)
-    if (!state.newGames.has(game.id)) {
+    if (state.newGames && !state.newGames.has(game.id)) {
       dispatch({
         type: MARK_CHANGED,
         payload: game.id
@@ -117,12 +118,12 @@ const GameRow = ({ game, weekId }) => {
           disabled={!state.editingEnabled}
         >
           <option value="">---------</option>
-          {state.courts.map(court => (
+          {state.courts && state.courts.map(court => (
             <option key={court} value={court}>
               {court}
             </option>
           ))}
-          {game.court && !state.courts.includes(game.court) && (
+          {game.court && state.courts && !state.courts.includes(game.court) && (
             <option value={game.court}>(!) {game.court}</option>
           )}
         </select>
@@ -138,7 +139,7 @@ const GameRow = ({ game, weekId }) => {
           disabled={!state.editingEnabled}
         >
           <option value="">---------</option>
-          {state.levels.map(level => (
+          {state.levels && state.levels.map(level => (
             <option key={level.id} value={level.id}>
               {level.name}
             </option>
@@ -156,7 +157,7 @@ const GameRow = ({ game, weekId }) => {
           disabled={!state.editingEnabled}
         >
           <option value="">---------</option>
-          {game.level_id && state.teamsByLevel[game.level_id] ? (
+          {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
             state.teamsByLevel[game.level_id].map(team => (
               <option key={team.id} value={team.id}>
                 {team.name}
@@ -203,7 +204,7 @@ const GameRow = ({ game, weekId }) => {
           disabled={!state.editingEnabled}
         >
           <option value="">---------</option>
-          {game.level_id && state.teamsByLevel[game.level_id] ? (
+          {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
             state.teamsByLevel[game.level_id].map(team => (
               <option key={team.id} value={team.id}>
                 {team.name}
@@ -227,7 +228,7 @@ const GameRow = ({ game, weekId }) => {
           disabled={!state.editingEnabled}
         >
           <option value="">---------</option>
-          {game.level_id && state.teamsByLevel[game.level_id] ? (
+          {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
             state.teamsByLevel[game.level_id].map(team => (
               <option key={team.id} value={team.id}>
                 {team.name}

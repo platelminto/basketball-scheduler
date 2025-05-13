@@ -1,14 +1,21 @@
 {
   "status": "done",
   "assets": {
-    "scheduleEdit-f4abf3d1658af9367a1c.js": {
-      "name": "scheduleEdit-f4abf3d1658af9367a1c.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleEdit-f4abf3d1658af9367a1c.js"
+    "scheduleApp-3bcdea38a44b2a4ee3af.js": {
+      "name": "scheduleApp-3bcdea38a44b2a4ee3af.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3bcdea38a44b2a4ee3af.js",
+      "publicPath": "/static/bundles/scheduleApp-3bcdea38a44b2a4ee3af.js"
+    },
+    "scheduleApp-3bcdea38a44b2a4ee3af.js.LICENSE.txt": {
+      "name": "scheduleApp-3bcdea38a44b2a4ee3af.js.LICENSE.txt",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3bcdea38a44b2a4ee3af.js.LICENSE.txt",
+      "publicPath": "/static/bundles/scheduleApp-3bcdea38a44b2a4ee3af.js.LICENSE.txt"
     }
   },
   "chunks": {
-    "scheduleEdit": [
-      "scheduleEdit-f4abf3d1658af9367a1c.js"
+    "scheduleApp": [
+      "scheduleApp-3bcdea38a44b2a4ee3af.js"
     ]
-  }
+  },
+  "publicPath": "/static/bundles/"
 }

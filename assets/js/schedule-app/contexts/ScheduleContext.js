@@ -4,8 +4,16 @@ import React, { createContext, useReducer } from 'react';
 export const ScheduleContext = createContext();
 
 // Action types
-export const TOGGLE_EDIT_MODE = 'TOGGLE_EDIT_MODE';
+export const SET_SEASON_LIST = 'SET_SEASON_LIST';
+export const SET_CURRENT_SEASON = 'SET_CURRENT_SEASON';
 export const SET_SCHEDULE_DATA = 'SET_SCHEDULE_DATA';
+export const SET_TEAMS_DATA = 'SET_TEAMS_DATA';
+export const UPDATE_SCHEDULE_DATA = 'UPDATE_SCHEDULE_DATA';
+export const SET_LOADING = 'SET_LOADING';
+export const SET_ERROR = 'SET_ERROR';
+
+// Schedule Edit actions
+export const TOGGLE_EDIT_MODE = 'TOGGLE_EDIT_MODE';
 export const UPDATE_GAME = 'UPDATE_GAME';
 export const ADD_GAME = 'ADD_GAME';
 export const DELETE_GAME = 'DELETE_GAME';
@@ -14,6 +22,14 @@ export const MARK_CHANGED = 'MARK_CHANGED';
 
 // Initial state
 const initialState = {
+  seasons: [],
+  currentSeason: null,
+  scheduleData: null,
+  teamsData: null,
+  isLoading: false,
+  error: null,
+
+  // Schedule edit properties
   season: null,
   weeks: {},
   levels: [],
@@ -22,121 +38,173 @@ const initialState = {
   editingEnabled: false,
   changedGames: new Set(),
   newGames: new Set(),
-  changedWeeks: new Set(),
-  isLoading: true,
-  error: null
+  changedWeeks: new Set()
 };
 
 // Reducer function
 const scheduleReducer = (state, action) => {
   switch (action.type) {
+    case SET_SEASON_LIST:
+      return {
+        ...state,
+        seasons: action.payload,
+        isLoading: false
+      };
+
+    case SET_CURRENT_SEASON:
+      return {
+        ...state,
+        currentSeason: action.payload,
+        isLoading: false
+      };
+
     case SET_SCHEDULE_DATA:
-      // Initialize the weeks data with isDeleted=false for all games
-      const initializedWeeks = {};
+      // For schedule edit functionality
+      if (action.payload.season && action.payload.weeks) {
+        // Initialize the weeks data with isDeleted=false for all games
+        const initializedWeeks = {};
 
-      for (const weekId in action.payload.weeks) {
-        const week = action.payload.weeks[weekId];
-        // Initialize games with isDeleted flag
-        const initializedGames = week.games.map(game => ({
-          ...game,
-          isDeleted: false
-        }));
+        for (const weekId in action.payload.weeks) {
+          const week = action.payload.weeks[weekId];
+          // Initialize games with isDeleted flag
+          const initializedGames = week.games.map(game => ({
+            ...game,
+            isDeleted: false
+          }));
 
-        initializedWeeks[weekId] = {
-          ...week,
-          games: initializedGames
+          initializedWeeks[weekId] = {
+            ...week,
+            games: initializedGames
+          };
+        }
+
+        return {
+          ...state,
+          season: action.payload.season,
+          weeks: initializedWeeks,
+          levels: action.payload.levels,
+          teamsByLevel: action.payload.teams_by_level,
+          courts: action.payload.courts,
+          isLoading: false
         };
       }
 
+      // For general schedule data
       return {
         ...state,
-        season: action.payload.season,
-        weeks: initializedWeeks,
-        levels: action.payload.levels,
-        teamsByLevel: action.payload.teams_by_level,
-        courts: action.payload.courts,
+        scheduleData: action.payload,
         isLoading: false
       };
-      
+
+    case SET_TEAMS_DATA:
+      return {
+        ...state,
+        teamsData: action.payload,
+        isLoading: false
+      };
+
+    case UPDATE_SCHEDULE_DATA:
+      return {
+        ...state,
+        scheduleData: {
+          ...state.scheduleData,
+          ...action.payload
+        },
+        isLoading: false
+      };
+
+    case SET_LOADING:
+      return {
+        ...state,
+        isLoading: action.payload
+      };
+
+    case SET_ERROR:
+      return {
+        ...state,
+        error: action.payload,
+        isLoading: false
+      };
+
     case TOGGLE_EDIT_MODE:
       return {
         ...state,
         editingEnabled: action.payload
       };
-      
+
     case UPDATE_GAME: {
       const { gameId, field, value } = action.payload;
       const updatedWeeks = { ...state.weeks };
-      
+
       // Find the week that contains this game
       for (const weekNum in updatedWeeks) {
         const weekData = updatedWeeks[weekNum];
         const gameIndex = weekData.games.findIndex(g => g.id === gameId);
-        
+
         if (gameIndex !== -1) {
           // Create a new game object with the updated field
           const updatedGame = {
             ...weekData.games[gameIndex],
             [field]: value
           };
-          
+
           // Create a new games array with the updated game
           const updatedGames = [...weekData.games];
           updatedGames[gameIndex] = updatedGame;
-          
+
           // Update the week with the updated games array
           updatedWeeks[weekNum] = {
             ...weekData,
             games: updatedGames
           };
-          
+
           break;
         }
       }
-      
+
       return {
         ...state,
         weeks: updatedWeeks
       };
     }
-    
+
     case MARK_CHANGED: {
       const gameId = action.payload;
       const changedGames = new Set(state.changedGames);
       changedGames.add(gameId);
-      
+
       return {
         ...state,
         changedGames
       };
     }
-    
+
     case ADD_GAME: {
       const { weekId, game } = action.payload;
       const updatedWeeks = { ...state.weeks };
       const weekData = updatedWeeks[weekId];
-      
+
       if (weekData) {
         // Add the new game to the games array
         updatedWeeks[weekId] = {
           ...weekData,
           games: [...weekData.games, game]
         };
-        
+
         // Add the game ID to newGames set
         const newGames = new Set(state.newGames);
         newGames.add(game.id);
-        
+
         return {
           ...state,
           weeks: updatedWeeks,
           newGames
         };
       }
-      
+
       return state;
     }
-    
+
     case DELETE_GAME: {
       const { gameId, weekId } = action.payload;
       const updatedWeeks = { ...state.weeks };
@@ -201,32 +269,32 @@ const scheduleReducer = (state, action) => {
 
       return state;
     }
-    
+
     case UPDATE_WEEK_DATE: {
       const { weekId, date } = action.payload;
       const updatedWeeks = { ...state.weeks };
-      
+
       if (updatedWeeks[weekId]) {
         // Update the week's date
         updatedWeeks[weekId] = {
           ...updatedWeeks[weekId],
           monday_date: date
         };
-        
+
         // Mark the week as changed
         const changedWeeks = new Set(state.changedWeeks);
         changedWeeks.add(weekId);
-        
+
         return {
           ...state,
           weeks: updatedWeeks,
           changedWeeks
         };
       }
-      
+
       return state;
     }
-    
+
     default:
       return state;
   }
@@ -235,7 +303,7 @@ const scheduleReducer = (state, action) => {
 // Provider component
 export const ScheduleProvider = ({ children }) => {
   const [state, dispatch] = useReducer(scheduleReducer, initialState);
-  
+
   return (
     <ScheduleContext.Provider value={{ state, dispatch }}>
       {children}

@@ -3,11 +3,12 @@ const BundleTracker = require('webpack-bundle-tracker');
 
 module.exports = {
   entry: {
-    scheduleEdit: './assets/js/schedule-edit/index.js',
+    scheduleApp: './assets/js/schedule-app/index.js',
   },
   output: {
     path: path.resolve('./static/bundles/'),
     filename: "[name]-[hash].js",
+    publicPath: '/static/bundles/',
   },
   module: {
     rules: [

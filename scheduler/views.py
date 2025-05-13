@@ -48,6 +48,71 @@ def game_assignment(request):
     return render(request, "scheduler/game_assignment.html")
 
 
+def schedule_app(request, path=None):
+    """View for the unified React SPA
+
+    The path parameter is used for the catch-all route and is ignored since
+    all routes are handled by React Router on the client side.
+    """
+    return render(request, "scheduler/schedule_app_standalone.html")
+
+
+def seasons_api(request):
+    """API endpoint to get all seasons with their levels and teams."""
+    seasons = Season.objects.all().prefetch_related("levels__teams").order_by("-is_active", "-created_at")
+
+    seasons_data = []
+    for season in seasons:
+        levels_data = []
+        for level in season.levels.all():
+            teams_data = [{"id": team.id, "name": team.name} for team in level.teams.all()]
+            levels_data.append({
+                "id": level.id,
+                "name": level.name,
+                "teams": teams_data
+            })
+
+        seasons_data.append({
+            "id": season.id,
+            "name": season.name,
+            "is_active": season.is_active,
+            "created_at": season.created_at.isoformat(),
+            "levels": levels_data
+        })
+
+    return JsonResponse(seasons_data, safe=False)
+
+
+def activate_season_api(request, season_id):
+    """API endpoint to activate a season."""
+    if request.method != 'POST':
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    season_to_activate = get_object_or_404(Season, pk=season_id)
+
+    try:
+        # Deactivate all other seasons first
+        Season.objects.filter(is_active=True).update(is_active=False)
+
+        # Activate the selected season
+        season_to_activate.is_active = True
+        season_to_activate.save()
+
+        return JsonResponse({
+            'success': True,
+            'season': {
+                'id': season_to_activate.id,
+                'name': season_to_activate.name,
+                'is_active': True
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
 @ensure_csrf_cookie
 def validate_schedule(request):
     if request.method == "POST":
@@ -772,11 +837,10 @@ def edit_season_structure(request, season_id):
 
 
 def schedule_edit_react(request, season_id):
-    """Schedule edit view that loads React app"""
-    season = get_object_or_404(Season, pk=season_id)
-    return render(request, "scheduler/schedule_edit_react.html", {
-        'season': season,
-    })
+    """Schedule edit view that redirects to the unified React SPA"""
+    from django.shortcuts import redirect
+    # Redirect to the SPA with the correct route
+    return redirect(f'/scheduler/app/schedule/{season_id}/edit')
 
 
 @ensure_csrf_cookie

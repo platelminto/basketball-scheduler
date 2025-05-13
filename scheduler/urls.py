@@ -52,6 +52,13 @@ urlpatterns = [
         name="update_schedule",
     ),
 
-    # API endpoints for React - the full URL will be /scheduler/api/schedule/<season_id>/
+    # API endpoints for React
+    path("api/seasons/", views.seasons_api, name="seasons_api"),
+    path("api/seasons/<int:season_id>/activate/", views.activate_season_api, name="activate_season_api"),
     path("api/schedule/<int:season_id>/", views.schedule_data, name="schedule_data"),
+
+    # Routes for the unified React SPA
+    path("app/", views.schedule_app, name="schedule_app"),
+    # Catch all routes under app/ to be handled by the React Router
+    path("app/<path:path>", views.schedule_app, name="schedule_app_paths"),
 ]

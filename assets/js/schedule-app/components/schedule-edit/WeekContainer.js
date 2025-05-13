@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useSchedule } from '../hooks/useSchedule';
-import { UPDATE_WEEK_DATE, ADD_GAME } from '../contexts/ScheduleContext';
+import { useSchedule } from '../../hooks/useSchedule';
+import { UPDATE_WEEK_DATE, ADD_GAME } from '../../contexts/ScheduleContext';
 import GameRow from './GameRow';
 import AddGameButton from './AddGameButton';
 

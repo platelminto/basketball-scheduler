@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load webpack_loader %}
+
+{% block title %}USBF Schedule{% endblock %}
+
+{# Override the content to only include our React app #}
+{% block content %}
+<div id="schedule-app"></div>
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+{% endblock %}
+
+{# Prevent duplicate headers by overriding any header blocks #}
+{% block header %}{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block extra_js %}
+{% render_bundle 'scheduleApp' %}
+{% endblock %}

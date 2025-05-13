@@ -1,3 +1,66 @@
+/* Main styles for the unified schedule app */
+
+.schedule-app-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.content-container {
+  padding: 20px 0;
+}
+
+/* Common form styles */
+.form-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  background-color: #f8f9fa;
+}
+
+.form-section-title {
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+/* Loading state */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* Error message */
+.error-message {
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 0.25rem;
+}
+
+/* Season List styles */
+.accordion-button.bg-success-light {
+  background-color: #d1e7dd; /* Lighter success background for active season header */
+  color: #0f5132;
+}
+
+.accordion-button:focus {
+  box-shadow: none; /* Remove default focus outline if desired */
+}
+
+/* FontAwesome is included in base.html for Django templates */
+/* Import only needed for standalone development if not using CDN from Django template */
+/* @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"); */
+
+/* ==================== */
+/* Schedule Edit Styles */
+/* ==================== */
+
 /* Score inputs */
 .score-input {
   width: 60px;
@@ -11,7 +74,7 @@
   text-align: center;
 }
 
-/* Form controls */
+/* Form controls for schedule edit */
 .form-control-sm {
   padding: 0.25rem 0.5rem;
   font-size: .875rem;
