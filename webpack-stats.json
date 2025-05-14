@@ -1,21 +1,48 @@
 {
   "status": "done",
   "assets": {
-    "scheduleApp-3bcdea38a44b2a4ee3af.js": {
-      "name": "scheduleApp-3bcdea38a44b2a4ee3af.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3bcdea38a44b2a4ee3af.js",
-      "publicPath": "/static/bundles/scheduleApp-3bcdea38a44b2a4ee3af.js"
+    "scheduleApp-608e48c7b1ff87afed7c.js": {
+      "name": "scheduleApp-608e48c7b1ff87afed7c.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-608e48c7b1ff87afed7c.js",
+      "publicPath": "/static/bundles/scheduleApp-608e48c7b1ff87afed7c.js"
     },
-    "scheduleApp-3bcdea38a44b2a4ee3af.js.LICENSE.txt": {
-      "name": "scheduleApp-3bcdea38a44b2a4ee3af.js.LICENSE.txt",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3bcdea38a44b2a4ee3af.js.LICENSE.txt",
-      "publicPath": "/static/bundles/scheduleApp-3bcdea38a44b2a4ee3af.js.LICENSE.txt"
+    "scheduleApp-7ab87edff30dc4b5bdff.js": {
+      "name": "scheduleApp-7ab87edff30dc4b5bdff.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7ab87edff30dc4b5bdff.js",
+      "publicPath": "/static/bundles/scheduleApp-7ab87edff30dc4b5bdff.js"
+    },
+    "scheduleApp-7cb215393d1fa08f8c4e.js": {
+      "name": "scheduleApp-7cb215393d1fa08f8c4e.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7cb215393d1fa08f8c4e.js",
+      "publicPath": "/static/bundles/scheduleApp-7cb215393d1fa08f8c4e.js"
+    },
+    "scheduleApp-7f497daf1aa81b0e4994.js": {
+      "name": "scheduleApp-7f497daf1aa81b0e4994.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7f497daf1aa81b0e4994.js",
+      "publicPath": "/static/bundles/scheduleApp-7f497daf1aa81b0e4994.js"
+    },
+    "scheduleApp-b474bae2bf9155260323.js": {
+      "name": "scheduleApp-b474bae2bf9155260323.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-b474bae2bf9155260323.js",
+      "publicPath": "/static/bundles/scheduleApp-b474bae2bf9155260323.js"
+    },
+    "scheduleApp-e22c2ac67170be51821a.js": {
+      "name": "scheduleApp-e22c2ac67170be51821a.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e22c2ac67170be51821a.js",
+      "publicPath": "/static/bundles/scheduleApp-e22c2ac67170be51821a.js"
+    },
+    "scheduleApp-f71dfddda8acc4f3a28e.js": {
+      "name": "scheduleApp-f71dfddda8acc4f3a28e.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f71dfddda8acc4f3a28e.js",
+      "publicPath": "/static/bundles/scheduleApp-f71dfddda8acc4f3a28e.js"
     }
   },
   "chunks": {
     "scheduleApp": [
-      "scheduleApp-3bcdea38a44b2a4ee3af.js"
+      "scheduleApp-7ab87edff30dc4b5bdff.js"
     ]
   },
-  "publicPath": "/static/bundles/"
+  "publicPath": "/static/bundles/",
+  "error": "ModuleBuildError",
+  "message": "Module build failed (from ./node_modules/babel-loader/lib/index.js):\nSyntaxError: /home/platelminto/Documents/dev/usbf-schedule/assets/js/schedule-app/pages/ScheduleCreate.js: Unexpected token, expected \",\" (195:8)\n\n  193 |       ].forEach(timeData => {\n  194 |         addTimeSlot(newDay, timeData);\n> 195 |       });\n      |         ^\n  196 |     }\n  197 |\n  198 |     // Update the week with the new day\n    at constructor (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:360:19)\n    at JSXParserMixin.raise (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:6613:19)\n    at JSXParserMixin.unexpected (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:6633:16)\n    at JSXParserMixin.expect (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:6914:12)\n    at JSXParserMixin.parseExprList (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12059:14)\n    at JSXParserMixin.parseArrayLike (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:11975:26)\n    at JSXParserMixin.parseExprAtom (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:11246:23)\n    at JSXParserMixin.parseExprAtom (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4770:20)\n    at JSXParserMixin.parseExprSubscripts (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10992:23)\n    at JSXParserMixin.parseUpdate (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10977:21)\n    at JSXParserMixin.parseMaybeUnary (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10957:23)\n    at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10810:61)\n    at JSXParserMixin.parseExprOps (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10815:23)\n    at JSXParserMixin.parseMaybeConditional (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10792:23)\n    at JSXParserMixin.parseMaybeAssign (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10745:21)\n    at JSXParserMixin.parseExpressionBase (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10698:23)\n    at /home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10694:39\n    at JSXParserMixin.allowInAnd (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12329:16)\n    at JSXParserMixin.parseExpression (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10694:17)\n    at JSXParserMixin.parseStatementContent (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12771:23)\n    at JSXParserMixin.parseStatementLike (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12644:17)\n    at JSXParserMixin.parseStatementListItem (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12624:17)\n    at JSXParserMixin.parseBlockOrModuleBlockBody (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13192:61)\n    at JSXParserMixin.parseBlockBody (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13185:10)\n    at JSXParserMixin.parseBlock (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13173:10)\n    at JSXParserMixin.parseStatementContent (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12734:21)\n    at JSXParserMixin.parseStatementLike (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12644:17)\n    at JSXParserMixin.parseStatementOrSloppyAnnexBFunctionDeclaration (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12634:17)\n    at JSXParserMixin.parseIfStatement (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13007:42)\n    at JSXParserMixin.parseStatementContent (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12673:21)\n    at JSXParserMixin.parseStatementLike (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12644:17)\n    at JSXParserMixin.parseStatementListItem (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12624:17)\n    at JSXParserMixin.parseBlockOrModuleBlockBody (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13192:61)\n    at JSXParserMixin.parseBlockBody (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13185:10)\n    at JSXParserMixin.parseBlock (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13173:10)\n    at JSXParserMixin.parseFunctionBody (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12018:24)\n    at JSXParserMixin.parseArrowExpression (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:11993:10)\n    at JSXParserMixin.parseParenAndDistinguishExpression (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:11603:12)\n    at JSXParserMixin.parseExprAtom (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:11242:23)\n    at JSXParserMixin.parseExprAtom (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4770:20)\n    at JSXParserMixin.parseExprSubscripts (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10992:23)\n    at JSXParserMixin.parseUpdate (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10977:21)\n    at JSXParserMixin.parseMaybeUnary (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10957:23)\n    at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10810:61)\n    at JSXParserMixin.parseExprOps (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10815:23)\n    at JSXParserMixin.parseMaybeConditional (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10792:23)\n    at JSXParserMixin.parseMaybeAssign (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10745:21)\n    at /home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10714:39\n    at JSXParserMixin.allowInAnd (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12329:16)\n    at JSXParserMixin.parseMaybeAssignAllowIn (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10714:17)"
 }
