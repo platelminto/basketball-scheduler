@@ -5,6 +5,10 @@
     margin-bottom: 20px;
 }
 
+.week-container.collapsed .week-content {
+    display: none;
+}
+
 .day-container {
     border-left: 3px solid #dee2e6;
     padding: 10px 15px;
@@ -16,6 +20,21 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+    cursor: pointer;
+}
+
+.week-header h4, .day-header {
+    cursor: pointer;
+}
+
+.week-header::before {
+    content: '▼';
+    font-size: 0.8rem;
+    margin-right: 0.5rem;
+}
+
+.week-container.collapsed .week-header::before {
+    content: '►';
 }
 
 .times-header {

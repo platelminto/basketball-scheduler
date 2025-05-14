@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
 import { UPDATE_WEEK_DATE, ADD_GAME } from '../../contexts/ScheduleContext';
 import GameRow from './GameRow';
-import AddGameButton from './AddGameButton';
 
 const WeekContainer = ({ weekData }) => {
   const { state, dispatch } = useSchedule();
@@ -17,6 +16,25 @@ const WeekContainer = ({ weekData }) => {
       payload: { 
         weekId: weekData.week_number,
         date: validatedDate
+      }
+    });
+    
+    // Update all game dates for this week
+    const mondayDate = new Date(validatedDate);
+    weekData.games.forEach(game => {
+      if (game.day_of_week !== undefined && game.day_of_week !== null) {
+        const gameDate = new Date(mondayDate);
+        gameDate.setDate(mondayDate.getDate() + parseInt(game.day_of_week));
+        
+        // Dispatch update for each game's date
+        dispatch({
+          type: 'UPDATE_GAME',
+          payload: { 
+            gameId: game.id, 
+            field: 'date', 
+            value: gameDate.toISOString().split('T')[0] 
+          }
+        });
       }
     });
   };
@@ -95,7 +113,7 @@ const WeekContainer = ({ weekData }) => {
   };
   
   return (
-    <div className={`week-container ${collapsed ? 'collapsed' : ''}`} data-week-id={weekData.week_number}>
+    <div className={`week-container ${collapsed ? 'collapsed' : ''} ${weekData.isOffWeek ? 'off-week' : ''}`} data-week-id={weekData.week_number}>
       <div 
         className="week-header" 
         onClick={(e) => {
@@ -113,8 +131,8 @@ const WeekContainer = ({ weekData }) => {
           <span className="d-inline-flex align-items-center">
             {!state.editingEnabled ? (
               <span className="week-date-display">
-                {new Date(weekData.monday_date).toLocaleDateString('en-US', { 
-                  month: 'short', day: 'numeric', year: 'numeric' 
+                {new Date(weekData.monday_date).toLocaleDateString('en-GB', { 
+                  day: '2-digit', month: '2-digit', year: 'numeric' 
                 })}
               </span>
             ) : (
@@ -127,10 +145,13 @@ const WeekContainer = ({ weekData }) => {
               />
             )}
           </span>
+          {weekData.isOffWeek && (
+            <span className="badge bg-warning ms-3">OFF WEEK</span>
+          )}
         </h3>
       </div>
       
-      {!collapsed && (
+      {!collapsed && !weekData.isOffWeek && (
         <div className="week-content">
           <div className="table-responsive">
             <table className="table table-striped table-bordered table-sm">
@@ -172,6 +193,14 @@ const WeekContainer = ({ weekData }) => {
                 </tr>
               </tfoot>
             </table>
+          </div>
+        </div>
+      )}
+      
+      {!collapsed && weekData.isOffWeek && (
+        <div className="week-content">
+          <div className="alert alert-warning mt-3 mb-0">
+            <strong>This is an off week.</strong> No games are scheduled for this week.
           </div>
         </div>
       )}

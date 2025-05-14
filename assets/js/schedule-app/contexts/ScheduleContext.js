@@ -19,6 +19,7 @@ export const ADD_GAME = 'ADD_GAME';
 export const DELETE_GAME = 'DELETE_GAME';
 export const UPDATE_WEEK_DATE = 'UPDATE_WEEK_DATE';
 export const MARK_CHANGED = 'MARK_CHANGED';
+export const RESET_CHANGE_TRACKING = 'RESET_CHANGE_TRACKING';
 
 // Initial state
 const initialState = {
@@ -77,13 +78,17 @@ const scheduleReducer = (state, action) => {
             games: initializedGames
           };
         }
+        
 
+        // The API uses teams_by_level but our internal structure uses teamsByLevel
+        const teamsData = action.payload.teams_by_level || action.payload.teamsByLevel || {};
+        
         return {
           ...state,
           season: action.payload.season,
           weeks: initializedWeeks,
           levels: action.payload.levels,
-          teamsByLevel: action.payload.teams_by_level,
+          teamsByLevel: teamsData,
           courts: action.payload.courts,
           isLoading: false
         };
@@ -164,7 +169,8 @@ const scheduleReducer = (state, action) => {
 
       return {
         ...state,
-        weeks: updatedWeeks
+        weeks: updatedWeeks,
+        validationCleared: true
       };
     }
 
@@ -206,7 +212,7 @@ const scheduleReducer = (state, action) => {
     }
 
     case DELETE_GAME: {
-      const { gameId, weekId } = action.payload;
+      const { gameId, weekId, isCreationMode } = action.payload;
       const updatedWeeks = { ...state.weeks };
       const weekData = updatedWeeks[weekId];
 
@@ -214,9 +220,9 @@ const scheduleReducer = (state, action) => {
         const gameIndex = weekData.games.findIndex(g => g.id === gameId);
 
         if (gameIndex !== -1) {
-          // If it's a new game that hasn't been saved yet, we can just remove it completely
-          if (state.newGames.has(gameId)) {
-            // Remove the game from newGames set
+          // In creation mode or for new games, just remove the game completely
+          if (isCreationMode || state.newGames.has(gameId)) {
+            // Remove the game from newGames set if it's there
             const newGames = new Set(state.newGames);
             newGames.delete(gameId);
 
@@ -232,7 +238,7 @@ const scheduleReducer = (state, action) => {
               newGames
             };
           } else {
-            // For existing games, toggle the isDeleted flag
+            // For existing games in edit mode, toggle the isDeleted flag
             const updatedGame = {
               ...weekData.games[gameIndex],
               isDeleted: !weekData.games[gameIndex].isDeleted
@@ -295,6 +301,14 @@ const scheduleReducer = (state, action) => {
       return state;
     }
 
+    case RESET_CHANGE_TRACKING:
+      return {
+        ...state,
+        changedGames: new Set(),
+        newGames: new Set(),
+        changedWeeks: new Set()
+      };
+      
     default:
       return state;
   }

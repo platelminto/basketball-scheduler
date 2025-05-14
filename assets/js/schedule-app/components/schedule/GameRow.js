@@ -18,12 +18,44 @@ const GameRow = ({ game, weekId }) => {
   const [showRefereeNameInput, setShowRefereeNameInput] = useState(
     !game.referee_team_id && game.referee_name
   );
+  const [score1Error, setScore1Error] = useState(false);
+  const [score2Error, setScore2Error] = useState(false);
   
   // Check if this game has been changed
   const isChanged = state.changedGames && state.changedGames.has(game.id) || 
                    (state.newGames && state.newGames.has(game.id));
   
   const handleChange = (field, value) => {
+    // Special handling for day_of_week to update the date
+    if (field === 'day_of_week') {
+      // Find the week for this game
+      let weekData = null;
+      let weekId = null;
+      
+      for (const wId in state.weeks) {
+        const week = state.weeks[wId];
+        if (week.games.some(g => g.id === game.id)) {
+          weekData = week;
+          weekId = wId;
+          break;
+        }
+      }
+      
+      // If we found the week, update the date based on the week's Monday date
+      if (weekData && weekData.monday_date) {
+        const mondayDate = new Date(weekData.monday_date);
+        // Calculate the new date based on day of week (value)
+        const newDate = new Date(mondayDate);
+        newDate.setDate(mondayDate.getDate() + parseInt(value));
+        
+        // Update the date along with day_of_week
+        dispatch({
+          type: UPDATE_GAME,
+          payload: { gameId: game.id, field: 'date', value: newDate.toISOString().split('T')[0] }
+        });
+      }
+    }
+    
     // Update the game in the state
     dispatch({
       type: UPDATE_GAME,
@@ -41,6 +73,7 @@ const GameRow = ({ game, weekId }) => {
   
   const handleLevelChange = (e) => {
     const levelId = e.target.value;
+    
     handleChange('level_id', levelId);
     
     // Clear team selections when level changes
@@ -63,10 +96,17 @@ const GameRow = ({ game, weekId }) => {
   };
   
   const handleToggleDelete = () => {
+    // Check if we're in creation mode (IDs contain "new_")
+    const isInCreationMode = game.id.toString().includes("new_");
+    
     // Toggle isDeleted flag (handled in reducer)
     dispatch({
       type: DELETE_GAME,
-      payload: { gameId: game.id, weekId }
+      payload: { 
+        gameId: game.id, 
+        weekId,
+        isCreationMode: isInCreationMode
+      }
     });
   };
 
@@ -164,9 +204,11 @@ const GameRow = ({ game, weekId }) => {
               </option>
             ))
           ) : (
-            <option value="" disabled>
-              {game.level_id ? 'No teams in level' : 'Select level first'}
-            </option>
+            game.level_id ? (
+              <option value="" disabled>No teams in level</option>
+            ) : (
+              <option value="" disabled>Select level first</option>
+            )
           )}
         </select>
       </td>
@@ -174,23 +216,57 @@ const GameRow = ({ game, weekId }) => {
       {/* Score */}
       <td className="text-center">
         <input 
-          type="number"
+          type="text"
           name={`score1_${game.id}`}
-          className="form-control form-control-sm score-input schedule-input"
+          className={`form-control form-control-sm score-input schedule-input ${score1Error ? 'is-invalid' : ''}`}
           value={game.team1_score || ''}
-          onChange={(e) => handleChange('team1_score', e.target.value)}
+          onChange={(e) => {
+            // Ensure the value is a valid non-negative integer
+            const value = e.target.value;
+            if (value === '' || /^\d+$/.test(value)) {
+              handleChange('team1_score', value);
+              setScore1Error(false);
+            } else {
+              setScore1Error(true);
+              // Show error for 2 seconds then clear the invalid input
+              setTimeout(() => {
+                setScore1Error(false);
+              }, 1500);
+            }
+          }}
+          onBlur={() => setScore1Error(false)}
           min="0"
+          pattern="[0-9]*"
+          inputMode="numeric"
           placeholder="S1"
+          disabled={state.editingEnabled} // Disable score editing when schedule editing is enabled
         />
         <span className="vs-separator">-</span>
         <input 
-          type="number"
+          type="text"
           name={`score2_${game.id}`}
-          className="form-control form-control-sm score-input schedule-input"
+          className={`form-control form-control-sm score-input schedule-input ${score2Error ? 'is-invalid' : ''}`}
           value={game.team2_score || ''}
-          onChange={(e) => handleChange('team2_score', e.target.value)}
+          onChange={(e) => {
+            // Ensure the value is a valid non-negative integer
+            const value = e.target.value;
+            if (value === '' || /^\d+$/.test(value)) {
+              handleChange('team2_score', value);
+              setScore2Error(false);
+            } else {
+              setScore2Error(true);
+              // Show error for 2 seconds then clear the invalid input
+              setTimeout(() => {
+                setScore2Error(false);
+              }, 1500);
+            }
+          }}
+          onBlur={() => setScore2Error(false)}
           min="0"
+          pattern="[0-9]*"
+          inputMode="numeric"
           placeholder="S2"
+          disabled={state.editingEnabled} // Disable score editing when schedule editing is enabled
         />
       </td>
       
@@ -211,9 +287,11 @@ const GameRow = ({ game, weekId }) => {
               </option>
             ))
           ) : (
-            <option value="" disabled>
-              {game.level_id ? 'No teams in level' : 'Select level first'}
-            </option>
+            game.level_id ? (
+              <option value="" disabled>No teams in level</option>
+            ) : (
+              <option value="" disabled>Select level first</option>
+            )
           )}
         </select>
       </td>
@@ -235,9 +313,11 @@ const GameRow = ({ game, weekId }) => {
               </option>
             ))
           ) : (
-            <option value="" disabled>
-              {game.level_id ? 'No teams in level' : 'Select level first'}
-            </option>
+            game.level_id ? (
+              <option value="" disabled>No teams in level</option>
+            ) : (
+              <option value="" disabled>Select level first</option>
+            )
           )}
           <option value="other">Other...</option>
         </select>
@@ -259,12 +339,12 @@ const GameRow = ({ game, weekId }) => {
         {state.editingEnabled && (
           <button
             type="button"
-            className={`btn btn-sm ${isDeleted ? 'btn-success' : 'btn-danger'}`}
-            title={isDeleted ? "Restore Game" : "Delete Game"}
+            className={`btn btn-sm ${game.id.toString().includes("new_") ? 'btn-danger' : (isDeleted ? 'btn-success' : 'btn-danger')}`}
+            title={game.id.toString().includes("new_") ? "Delete Game" : (isDeleted ? "Restore Game" : "Delete Game")}
             onClick={handleToggleDelete}
           >
-            <i className={`fas ${isDeleted ? 'fa-undo' : 'fa-times'}`}></i>
-            {isDeleted ? ' Restore' : ''}
+            <i className={`fas ${game.id.toString().includes("new_") ? 'fa-times' : (isDeleted ? 'fa-undo' : 'fa-times')}`}></i>
+            {isDeleted && !game.id.toString().includes("new_") ? ' Restore' : ''}
           </button>
         )}
       </td>

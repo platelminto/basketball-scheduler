@@ -158,3 +158,13 @@ th, td {
   cursor: pointer; /* Make label clickable */
   padding-left: 0.5em; /* Add space between switch and label */
 }
+
+/* Off Week styling */
+.week-container.off-week {
+  border: 1px dashed #ffc107; /* Dashed border with warning color */
+  background-color: #fff8e1; /* Light yellow background */
+}
+
+.week-container.off-week .week-header {
+  background-color: #fff3cd; /* Warning background color */
+}

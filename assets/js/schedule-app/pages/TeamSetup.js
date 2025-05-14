@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
 import { SET_TEAMS_DATA, SET_ERROR } from '../contexts/ScheduleContext';
 import '../styles/team-setup.css';
@@ -7,6 +7,7 @@ import '../styles/team-setup.css';
 const TeamSetup = () => {
   const { state, dispatch } = useSchedule();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Default levels
   const defaultLevels = [
@@ -25,12 +26,7 @@ const TeamSetup = () => {
   const [levels, setLevels] = useState(defaultLevels);
   const [courts, setCourts] = useState(defaultCourts);
   
-  // Check if schedule data exists in context
-  useEffect(() => {
-    if (!state.scheduleData) {
-      alert('No schedule data found. Please go back and create a schedule first.');
-    }
-  }, [state.scheduleData]);
+  // No need to check for schedule data since we're now the starting point
   
   // Generate some default teams for each level
   useEffect(() => {
@@ -169,17 +165,32 @@ const TeamSetup = () => {
     const courtNames = courts
       .map(court => court.name.trim())
       .filter(name => name !== '');
+
+    // Check for empty team names
+    let hasEmptyTeams = false;
+    Object.keys(teamsData).forEach(level => {
+      if (teamsData[level].length === 0) {
+        hasEmptyTeams = true;
+      }
+    });
+
+    if (hasEmptyTeams) {
+      if (!confirm("Some levels don't have any teams. Continue anyway?")) {
+        return;
+      }
+    }
     
-    // Combine with schedule data
-    const combinedData = {
-      schedule: state.scheduleData || {},
+    // Build just the teams and courts data - no schedule data needed
+    const setupData = {
       teams: teamsData,
       courts: courtNames
     };
     
-    // Store the teams data in context and navigate to game assignment
-    dispatch({ type: SET_TEAMS_DATA, payload: combinedData });
-    navigate('/game_assignment');
+    // Store the teams data in context
+    dispatch({ type: SET_TEAMS_DATA, payload: setupData });
+    
+    // Navigate to game assignment
+    navigate('/game-assignment', { state: { setupData } });
   };
   
   // Render functions
@@ -256,7 +267,8 @@ const TeamSetup = () => {
   
   return (
     <div className="container mt-4">
-      <h2>Team & Court Setup</h2>
+      <h2>Step 1: Team & Court Setup</h2>
+      <p className="text-muted">Define the teams and courts before creating your schedule.</p>
       
       <form id="teamSetupForm" className="mt-4" onSubmit={handleSubmit}>
         {/* Team Levels Section */}
@@ -296,7 +308,13 @@ const TeamSetup = () => {
         </div>
         
         <div className="form-actions mt-4">
-          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>Back to Schedule</button>
+          <button 
+            type="button" 
+            className="btn btn-secondary" 
+            onClick={() => navigate(-1)}
+          >
+            Back to Schedule
+          </button>
           <button type="submit" className="btn btn-success">Continue to Game Assignment</button>
         </div>
       </form>
