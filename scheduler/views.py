@@ -191,15 +191,10 @@ def auto_generate_schedule(request):
         try:
             data = json.loads(request.body)
             setup_data = data.get("setupData", "")
-
-            if not setup_data:
-                return JsonResponse({"error": "No setup data provided"}, status=400)
-
-            # Parse the setup data
-            setup_data = json.loads(setup_data)
+            week_data = data.get("weekData", "")
 
             # Get configuration from the setup data
-            config = get_config_from_schedule_creator(setup_data)
+            config = get_config_from_schedule_creator(setup_data, week_data)
 
             from schedule import Scheduler
 
@@ -208,14 +203,42 @@ def auto_generate_schedule(request):
 
             # Generate the schedule
             schedule, _ = scheduler.find_schedule(
-                num_cores=2, use_saved_schedule=False, max_attempts=30000
+                num_cores=1, use_saved_schedule=False, max_attempts=30000
             )
 
-            return JsonResponse({"config": scheduler.config, "schedule": schedule})
+            if not schedule:
+                return JsonResponse({"error": "No schedule found"}, status=400)
+
+            scheduled_week_data = []
+
+            seen_off_weeks = 0
+            for data_week in week_data.values():
+                if data_week.get("isOffWeek", False):
+                    seen_off_weeks += 1
+                    continue
+
+                schedule_week = schedule[data_week["week_number"] - 1 - seen_off_weeks]
+                schedule_games = [game for slot in schedule_week["slots"].values() for game in slot]
+                week = []
+                
+                for i, data_game in enumerate(data_week["games"]):
+                    schedule_game = schedule_games[i]
+                    data_game["level_name"] = schedule_game["level"]
+                    data_game["team1_name"] = schedule_game["teams"][0]
+                    data_game["team2_name"] = schedule_game["teams"][1]
+                    data_game["referee_name"] = schedule_game["ref"]
+                    
+                    week.append(data_game)
+                
+                scheduled_week_data.append(week)
+
+            return JsonResponse({"config": scheduler.config, "schedule": scheduled_week_data})
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON data"}, status=400)
         except Exception as e:
+            print(f"Error during auto-generation: {e}")
+            print(traceback.format_exc())
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)

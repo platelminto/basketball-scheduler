@@ -3,7 +3,7 @@ import os
 
 
 def convert_to_formatted_schedule(schedule, levels, config):
-    """Convert internal schedule format to the standardized JSON format"""
+    """Convert internal schedule format to a more understandable format"""
 
     team_names_by_level = config["team_names_by_level"]
 
@@ -39,52 +39,53 @@ def convert_to_formatted_schedule(schedule, levels, config):
     return formatted_schedule
 
 
-def get_config_from_schedule_creator(team_setup_output) -> dict:
+def get_config_from_schedule_creator(team_setup, week_data) -> dict:
     config = {}
 
-    if (
-        len(set(len(team_names) for team_names in team_setup_output["teams"].values()))
-        != 1
-    ):
+    if len(set(len(team_names) for team_names in team_setup["teams"].values())) != 1:
         raise ValueError(
             "All levels must have the same number of teams to use the auto-generated schedule"
         )
 
-    config["levels"] = list(team_setup_output["teams"].keys())
+    config["levels"] = list(team_setup["teams"].keys())
 
     config["teams_per_level"] = {
-        level: len(team_names)
-        for level, team_names in team_setup_output["teams"].items()
+        level: len(team_names) for level, team_names in team_setup["teams"].items()
     }
 
-    weeks = [
-        week for week in team_setup_output["schedule"]["weeks"] if not week["isOffWeek"]
-    ]
+    weeks = [week for week in week_data.values() if not week.get("isOffWeek", False)]
 
     # check all weeks only have 1 day
-    if any(len(week["days"]) != 1 for week in weeks):
-        raise ValueError(
-            "All weeks must have only 1 day to use the auto-generated schedule"
-        )
-
-    # check all days have the same number of times
-    if len(set(len(day["times"]) for week in weeks for day in week["days"])) != 1:
-        raise ValueError(
-            "All days must have the same number of slots to use the auto-generated schedule"
-        )
-
-    courts_per_slot = {i: [] for i in range(1, len(weeks[0]["days"][0]["times"]) + 1)}
     for week in weeks:
-        day = week["days"][0]
-        for i, time in enumerate(day["times"]):
-            courts_per_slot[i + 1].append(time["courts"])
+        if len(set(game["day_of_week"] for game in week["games"])) != 1:
+            raise ValueError(
+                "All weeks must have only 1 day to use the auto-generated schedule"
+            )
+
+    # check all days have the same number of slots
+    n_slots = len(set(game["time"] for game in weeks[0]["games"]))
+    for week in weeks:
+        current_n_slots = len(set(game["time"] for game in week["games"]))
+        if current_n_slots != n_slots:
+            raise ValueError(
+                "All days must have the same number of timeslots to use the auto-generated schedule"
+            )
+
+    # how many different times are there? check first week,
+    courts_per_slot = {i: [] for i in range(1, n_slots + 1)}
+    for week in weeks:
+        times = set(game["time"] for game in week["games"])
+        times = sorted(times, key=lambda x: int(x.split(":")[0]) * 60 + int(x.split(":")[1]))
+        
+        for i, time in enumerate(times):
+            courts_per_slot[i + 1].append(len([game for game in week["games"] if game["time"] == time]))
 
     config["courts_per_slot"] = courts_per_slot
 
-    config["team_names_by_level"] = team_setup_output["teams"]
-    
+    config["team_names_by_level"] = team_setup["teams"]
+
     config["total_weeks"] = len(weeks)
-    
+
     config["first_half_weeks"] = len(weeks) // 2
 
     return config
@@ -114,7 +115,10 @@ def save_schedule_to_file(schedule, config, filename="saved_schedule.json"):
             json.dump(schedule, f, indent=2)
 
         # Save team information in a separate file
-        team_info = {"levels": config["levels"], "teams_by_level": config["team_names_by_level"]}
+        team_info = {
+            "levels": config["levels"],
+            "teams_by_level": config["team_names_by_level"],
+        }
 
         with open(f"{os.path.splitext(filename)[0]}_teams.json", "w") as f:
             json.dump(team_info, f, indent=2)

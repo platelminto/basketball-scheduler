@@ -166,7 +166,8 @@ const GameAssignment = () => {
           'X-CSRFToken': getCsrfToken(),
         },
         body: JSON.stringify({
-          setupData: JSON.stringify(setupData)
+          setupData: setupData,
+          weekData: state.weeks,
         })
       });
 
@@ -178,11 +179,119 @@ const GameAssignment = () => {
       const data = await response.json();
       console.log('Generated schedule:', data);
       
-      // TODO: Fill the form with the generated schedule
-      alert('Schedule generated successfully. Display implementation pending.');
+      // Fill the form with the generated schedule
+      fillScheduleWithGeneratedData(data.schedule);
     } catch (error) {
       console.error('Error generating schedule:', error);
       alert('Error generating schedule: ' + error.message);
+    }
+  };
+
+  // Fill schedule with auto-generated data
+  const fillScheduleWithGeneratedData = (generatedSchedule) => {
+    try {
+      // Make a deep copy of the current weeks
+      const updatedWeeks = JSON.parse(JSON.stringify(state.weeks));
+      
+      // Process each week in the generated schedule
+      generatedSchedule.forEach((weekGames, weekIndex) => {
+        // Find the corresponding week in our state (weekIndex + 1 because weeks are 1-based)
+        const weekNumber = weekIndex + 1;
+        const weekData = updatedWeeks[weekNumber];
+        
+        if (!weekData || weekData.isOffWeek) {
+          console.warn(`Week ${weekNumber} not found or is an off week, skipping`);
+          return;
+        }
+        
+        // Create a map of existing games by their ID for quick lookup
+        const existingGamesMap = {};
+        weekData.games.forEach((game, gameIndex) => {
+          if (!game.isDeleted) {
+            existingGamesMap[game.id] = { game, index: gameIndex };
+          }
+        });
+        
+        // Process each generated game
+        weekGames.forEach(generatedGame => {
+          // Find the corresponding existing game by ID
+          const gameInfo = existingGamesMap[generatedGame.id];
+          
+          if (gameInfo) {
+            const existingGame = gameInfo.game;
+            
+            // Update the existing game with generated data
+            if (generatedGame.level_name) {
+              // Find the level object to get both ID and name
+              const levelObj = state.levels.find(l => l.name === generatedGame.level_name);
+              if (levelObj) {
+                existingGame.level_id = levelObj.id;
+                existingGame.level_name = levelObj.name;
+              }
+            }
+            
+            // Update team1 data
+            if (generatedGame.team1_name) {
+              // Find the team object in the appropriate level
+              if (existingGame.level_id && state.teamsByLevel[existingGame.level_id]) {
+                const team1Obj = state.teamsByLevel[existingGame.level_id].find(t => t.name === generatedGame.team1_name);
+                if (team1Obj) {
+                  existingGame.team1_id = team1Obj.id;
+                  existingGame.team1_name = team1Obj.name;
+                }
+              }
+            }
+            
+            // Update team2 data
+            if (generatedGame.team2_name) {
+              // Find the team object in the appropriate level
+              if (existingGame.level_id && state.teamsByLevel[existingGame.level_id]) {
+                const team2Obj = state.teamsByLevel[existingGame.level_id].find(t => t.name === generatedGame.team2_name);
+                if (team2Obj) {
+                  existingGame.team2_id = team2Obj.id;
+                  existingGame.team2_name = team2Obj.name;
+                }
+              }
+            }
+            
+            // Update referee data
+            if (generatedGame.referee_name) {
+              // Check if it's a team reference or a name
+              if (existingGame.level_id && state.teamsByLevel[existingGame.level_id]) {
+                const refTeamObj = state.teamsByLevel[existingGame.level_id].find(t => t.name === generatedGame.referee_name);
+                if (refTeamObj) {
+                  existingGame.referee_team_id = refTeamObj.id;
+                  existingGame.referee_name = ''; // Clear name if we found a team
+                } else {
+                  // If not found as a team, treat as a name
+                  existingGame.referee_team_id = '';
+                  existingGame.referee_name = generatedGame.referee_name;
+                }
+              } else {
+                // If no level or teamsByLevel, treat as a name
+                existingGame.referee_team_id = '';
+                existingGame.referee_name = generatedGame.referee_name;
+              }
+            }
+          } else {
+            console.warn(`Game with ID ${generatedGame.id} not found in week ${weekNumber}`);
+          }
+        });
+      });
+      
+      // Update the state with the filled schedule
+      dispatch({ 
+        type: SET_SCHEDULE_DATA, 
+        payload: {
+          ...state,
+          weeks: updatedWeeks
+        }
+      });
+      
+      alert('Schedule generated and filled successfully!');
+    } catch (error) {
+      console.error('Error filling schedule with generated data:', error);
+      alert('Error filling schedule: ' + error.message);
     }
   };
 
