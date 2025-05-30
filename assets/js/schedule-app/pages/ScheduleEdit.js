@@ -118,10 +118,9 @@ const ScheduleEdit = () => {
       const teams_per_level = {};
       
       for (const levelId in state.teamsByLevel) {
-        const level = state.levels.find(l => l.id == levelId);
-        if (level && state.teamsByLevel[levelId].length > 0) {
-          levels.push(level.name);
-          teams_per_level[level.name] = state.teamsByLevel[levelId].length;
+        if (state.teamsByLevel[levelId].length > 0) {
+          levels.push(levelId); // Use level ID instead of name
+          teams_per_level[levelId] = state.teamsByLevel[levelId].length; // Use level ID as key
         }
       }
       
@@ -408,7 +407,7 @@ const ScheduleEdit = () => {
             team2: game.team2_id,
             score1: game.team1_score !== null && game.team1_score !== undefined ? String(game.team1_score) : '',
             score2: game.team2_score !== null && game.team2_score !== undefined ? String(game.team2_score) : '',
-            referee: game.referee_team_id ? String(game.referee_team_id) :
+            referee: game.referee_team_id ? game.referee_team_id :
                     game.referee_name ? 'name:' + game.referee_name : ''
           });
         });

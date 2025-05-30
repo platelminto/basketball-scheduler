@@ -36,7 +36,7 @@ def pairing_tests(schedule, levels, teams_per_level):
             for slot_key, games in week["slots"].items():
                 # Find games in this level
                 for game in games:
-                    if game["level"] == level:
+                    if str(game["level"]) == level:
                         # Extract team names and create a sorted pair
                         team1, team2 = game["teams"]
                         pair_sorted = tuple(sorted([team1, team2]))

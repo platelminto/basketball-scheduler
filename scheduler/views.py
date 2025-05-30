@@ -30,32 +30,6 @@ from scheduler.services import (
 )
 
 
-def season_list(request):
-    """View to list all available Seasons with their levels and teams for inline expansion."""
-    seasons = (
-        Season.objects.all()
-        .prefetch_related("levels__teams")  # Prefetch levels and their teams
-        .order_by("-is_active", "-created_at")
-    )
-    context = {"seasons": seasons}
-    return render(request, "scheduler/season_list.html", context)
-
-
-def create_season(request):
-    """View to start creating a new season"""
-    return render(request, "scheduler/create_season.html")
-
-
-def team_setup(request):
-    """View for setting up teams and courts"""
-    return render(request, "scheduler/team_setup.html")
-
-
-def game_assignment(request):
-    """View for assigning teams to games"""
-    return render(request, "scheduler/game_assignment.html")
-
-
 def schedule_app(request, path=None):
     """View for the unified React SPA
 
@@ -65,7 +39,7 @@ def schedule_app(request, path=None):
     return render(request, "scheduler/schedule_app_standalone.html")
 
 
-def seasons_api(request):
+def get_seasons(request):
     """API endpoint to get all seasons with their levels and teams."""
     seasons = (
         Season.objects.all()
@@ -97,7 +71,7 @@ def seasons_api(request):
     return JsonResponse(seasons_data, safe=False)
 
 
-def activate_season_api(request, season_id):
+def activate_season(request, season_id):
     """API endpoint to activate a season."""
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)
@@ -225,21 +199,25 @@ def auto_generate_schedule(request):
                     continue
 
                 schedule_week = schedule[data_week["week_number"] - 1 - seen_off_weeks]
-                schedule_games = [game for slot in schedule_week["slots"].values() for game in slot]
+                schedule_games = [
+                    game for slot in schedule_week["slots"].values() for game in slot
+                ]
                 week = []
-                
+
                 for i, data_game in enumerate(data_week["games"]):
                     schedule_game = schedule_games[i]
                     data_game["level_name"] = schedule_game["level"]
                     data_game["team1_name"] = schedule_game["teams"][0]
                     data_game["team2_name"] = schedule_game["teams"][1]
                     data_game["referee_name"] = schedule_game["ref"]
-                    
+
                     week.append(data_game)
-                
+
                 scheduled_week_data.append(week)
 
-            return JsonResponse({"config": scheduler.config, "schedule": scheduled_week_data})
+            return JsonResponse(
+                {"config": scheduler.config, "schedule": scheduled_week_data}
+            )
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON data"}, status=400)
@@ -249,16 +227,6 @@ def auto_generate_schedule(request):
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
-
-
-
-
-
-
-
-
-
-
 
 
 @require_POST
@@ -530,64 +498,6 @@ def save_or_update_schedule(
         )
 
 
-def schedule_edit(request, season_id):
-    """View for displaying the schedule edit form."""
-    season = get_object_or_404(Season, pk=season_id)
-
-    # Fetch all games for this season, related data upfront for efficiency
-    games = (
-        Game.objects.filter(level__season=season)
-        .select_related("level", "team1", "team2", "referee_team", "week")
-        .order_by("week__week_number", "day_of_week", "time", "level__name")
-    )
-
-    # Fetch all levels and teams for this season
-    levels = (
-        Level.objects.filter(season=season).prefetch_related("teams").order_by("name")
-    )
-
-    # Create the original dict with model instances (useful for template loops)
-    teams_by_level_objects = {
-        level.id: list(level.teams.all().order_by("name")) for level in levels
-    }
-
-    # --- Create a JSON-serializable version for json_script ---
-    teams_by_level_serializable = {
-        str(level_id): [{"id": team.id, "name": team.name} for team in team_list]
-        for level_id, team_list in teams_by_level_objects.items()
-    }
-    # ----------------------------------------------------------
-
-    # --- Create serializable levels data for JS name lookup ---
-    levels_data_for_js = [{"id": level.id, "name": level.name} for level in levels]
-    # -------------------------------------------------------
-
-    # Get distinct court names used in this season's games
-    courts = list(games.values_list("court", flat=True).distinct().order_by("court"))
-    courts = [court for court in courts if court]
-
-    # Group games by week
-    games_by_week = {}
-    for game in games:
-        if game.week not in games_by_week:
-            games_by_week[game.week] = []
-        games_by_week[game.week].append(game)
-
-    context = {
-        "season": season,
-        "games_by_week": games_by_week,
-        "levels": levels,  # Pass Level objects for level dropdown
-        # Pass the dictionary with Team objects for initial dropdown population
-        "teams_by_level_objects": teams_by_level_objects,
-        # Pass the serializable dict specifically for json_script
-        "teams_data_for_js": teams_by_level_serializable,
-        "levels_data_for_js": levels_data_for_js,  # Add levels data
-        "courts": courts,
-    }
-
-    return render(request, "scheduler/schedule_edit.html", context)
-
-
 @require_GET
 def get_season_schedule_data(request: HttpRequest, season_id: int):
     """API endpoint to fetch current data for all games in a season."""
@@ -627,39 +537,6 @@ def get_season_schedule_data(request: HttpRequest, season_id: int):
         )
 
     return JsonResponse({"games": game_data})
-
-
-@require_POST
-def activate_season(request, season_id):
-    """Sets the specified season as active."""
-    season_to_activate = get_object_or_404(Season, pk=season_id)
-    if not season_to_activate.is_active:
-        season_to_activate.is_active = True
-        try:
-            season_to_activate.save()
-            messages.success(
-                request, f"Season '{season_to_activate.name}' is now active."
-            )
-        except Exception as e:
-            messages.error(request, f"Could not activate season: {e}")
-
-    return redirect("scheduler:season_list")
-
-
-# Placeholder for the new view to edit season structure (Levels/Teams)
-def edit_season_structure(request, season_id):
-    # TODO: Implement view to edit levels and teams for an existing season
-    season = get_object_or_404(Season, pk=season_id)
-    # For now, just redirect back to the detail page or render a simple placeholder
-    # Example: Render a placeholder template
-    return render(
-        request,
-        "scheduler/edit_season_structure_placeholder.html",
-        {"season": season},
-    )
-    # Or redirect:
-    # from django.shortcuts import redirect
-    # return redirect('scheduler:season_detail', season_id=season_id)
 
 
 def schedule_edit_react(request, season_id):
