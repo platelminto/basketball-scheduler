@@ -10,6 +10,7 @@ module.exports = {
     filename: "[name]-[hash].js",
     publicPath: '/static/bundles/',
   },
+  devtool: 'source-map',
   module: {
     rules: [
       {

@@ -10,6 +10,7 @@ const GameAssignment = () => {
   const location = useLocation();
   const [setupData, setSetupData] = useState(null);
   const [isDevelopment, setIsDevelopment] = useState(false);
+  const [shouldRandomFill, setShouldRandomFill] = useState(false);
 
   // Reset change tracking when component mounts to prevent stale state
   useEffect(() => {
@@ -186,7 +187,7 @@ const GameAssignment = () => {
   };
 
   // Handle saving the schedule
-  const saveSchedule = async () => {
+  const saveSchedule = async (scheduleData) => {
     if (!setupData) {
       alert('No setup data available. Please go back to setup.');
       return;
@@ -199,20 +200,7 @@ const GameAssignment = () => {
       return;
     }
 
-    // Collect game assignments and off weeks
-    const gameAssignments = collectGameAssignments();
-    const offWeeks = [];
-    
-    // Find off weeks
-    for (const weekNum in state.weeks) {
-      const weekData = state.weeks[weekNum];
-      if (weekData.isOffWeek) {
-        offWeeks.push({
-          week_number: weekData.week_number,
-          monday_date: weekData.monday_date
-        });
-      }
-    }
+    const { gameAssignments, weekDates, offWeeks } = scheduleData;
     
     if (gameAssignments.length === 0 && offWeeks.length === 0) {
       alert('No games or off weeks to save. Please create some weeks first.');
@@ -222,13 +210,15 @@ const GameAssignment = () => {
     // Create the payload
     const payload = {
       season_name: seasonName.trim(),
-      setupData: JSON.stringify(setupData),
+      setupData: setupData,
       game_assignments: gameAssignments,
-      off_weeks: offWeeks
+      week_dates: weekDates,
+      off_weeks: offWeeks,
+      skip_validation: true
     };
 
     try {
-      const response = await fetch('/scheduler/save_schedule/', {
+      const response = await fetch('/scheduler/save_or_update_schedule/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -243,7 +233,7 @@ const GameAssignment = () => {
         alert(`Schedule saved successfully. Created ${data.games_created} games in season "${seasonName}".`);
         navigate('/');
       } else {
-        alert(`Error: ${data.error || 'Unknown error'}`);
+        alert(`Error: ${data.message || 'Unknown error'}`);
       }
     } catch (error) {
       alert(`Network error: ${error.message}`);
@@ -251,63 +241,6 @@ const GameAssignment = () => {
     }
   };
 
-  // Collect all game assignments from the state
-  const collectGameAssignments = () => {
-    const gameAssignments = [];
-    const offWeeks = [];
-    
-    // Check if there are weeks in the state
-    if (!state.weeks || Object.keys(state.weeks).length === 0) {
-      return gameAssignments;
-    }
-
-    // Iterate through all weeks
-    for (const weekNum in state.weeks) {
-      const weekData = state.weeks[weekNum];
-      
-      // Check if this is an off week
-      if (weekData.isOffWeek) {
-        offWeeks.push({
-          week: weekData.week_number,
-          monday_date: weekData.monday_date
-        });
-        continue; // Skip to the next week
-      }
-      
-      // Iterate through all games in this week
-      weekData.games.forEach(game => {
-        // Skip games that are marked for deletion
-        if (game.isDeleted) {
-          return;
-        }
-
-        // Get referee value (either team ID or name)
-        let referee = game.referee_team_id || "";
-        if (!referee && game.referee_name) {
-          referee = game.referee_name;
-        }
-
-        gameAssignments.push({
-          week: weekData.week_number,
-          dayOfWeek: game.day_of_week,
-          time: game.time,
-          gameIndex: 0, // Will be determined based on time sorting
-          level: game.level_id,
-          team1: game.team1_id,
-          team2: game.team2_id,
-          referee: referee,
-          court: game.court
-        });
-      });
-    }
-    
-    // Add off_weeks property to the first item in gameAssignments to pass it along
-    if (gameAssignments.length > 0 && offWeeks.length > 0) {
-      gameAssignments[0].off_weeks = offWeeks;
-    }
-    
-    return gameAssignments;
-  };
 
   // Get CSRF token for form submissions
   const getCsrfToken = () => {
@@ -340,9 +273,19 @@ const GameAssignment = () => {
           <p className="text-muted">Create your schedule and assign teams to games.</p>
         </div>
 
-        {/* Dev mode buttons */}
-        {isDevelopment && (
-          <div className="d-flex gap-2">
+        {/* Action buttons */}
+        <div className="d-flex gap-2">
+          {/* Random Fill button */}
+          <button 
+            type="button" 
+            className="btn btn-warning" 
+            onClick={() => setShouldRandomFill(true)}
+          >
+            Random Fill
+          </button>
+          
+          {/* Dev mode buttons */}
+          {isDevelopment && (
             <button 
               type="button" 
               className="btn btn-info" 
@@ -350,8 +293,8 @@ const GameAssignment = () => {
             >
               Auto-generate Schedule
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Back to Team Setup button */}
@@ -370,6 +313,8 @@ const GameAssignment = () => {
         mode="create"
         showValidation={true}
         onSave={saveSchedule}
+        shouldRandomFill={shouldRandomFill}
+        onRandomFillComplete={() => setShouldRandomFill(false)}
       />
     </div>
   );

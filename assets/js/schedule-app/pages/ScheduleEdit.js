@@ -28,6 +28,18 @@ const ScheduleEdit = () => {
     setValidationPassed(false);
   }, [dispatch]);
 
+  // Clear validation results when schedule changes
+  useEffect(() => {
+    if (validationResults) {
+      console.log('Clearing validation due to schedule changes');
+      
+      // Clear local state
+      setValidationResults(null);
+      setIgnoredFailures(new Set());
+      setValidationPassed(false);
+    }
+  }, [state.changedGames, state.newGames, state.changedWeeks]);
+
   useEffect(() => {
     // Fetch schedule data when component mounts
     const fetchScheduleData = async () => {
@@ -56,17 +68,6 @@ const ScheduleEdit = () => {
     }
   }, [seasonId, dispatch]);
 
-  // Clear validation results when schedule changes
-  useEffect(() => {
-    if (validationResults) {
-      console.log('Clearing validation due to schedule changes');
-      
-      // Clear local state
-      setValidationResults(null);
-      setIgnoredFailures(new Set());
-      setValidationPassed(false);
-    }
-  }, [state.changedGames, state.newGames, state.changedWeeks]); // Removed validationResults from dependencies
 
   const handleEditToggle = (enabled) => {
     // Don't allow enabling schedule editing if there are unsaved score changes
@@ -95,62 +96,36 @@ const ScheduleEdit = () => {
     
     setIsEditingEnabled(enabled);
     
-    // Only reset validation status when toggling edit mode
-    // The ScheduleEditor component will handle validation for schedule changes
+    // Reset validation status when toggling edit mode
     setValidationPassed(false);
     
     dispatch({ type: TOGGLE_EDIT_MODE, payload: enabled });
   };
   
+  // Simple validation function that calls the backend
   const validateSchedule = async () => {
     setIsValidating(true);
     
     try {
-      // Collect game assignments
+      // Collect data using the same approach as ScheduleEditor
       const gameAssignments = collectGameAssignments();
       
-      // Convert to backend format
+      // Convert to backend format for validation
       const scheduleData = webToScheduleFormat(gameAssignments);
       
-      // Extract unique teams per level from game assignments
-      const teamsPerLevel = {};
-      
-      // Group teams by level
-      gameAssignments.forEach(game => {
-        if (!game.level) return; // Skip games with no level
-        
-        // Find the level name from the level ID
-        const level = state.levels.find(l => l.id === game.level);
-        if (!level) return; // Skip if level not found
-        
-        const levelName = level.name;
-        
-        // Initialize level if needed
-        if (!teamsPerLevel[levelName]) {
-          teamsPerLevel[levelName] = new Set();
-        }
-        
-        // Add teams to this level
-        if (game.team1) teamsPerLevel[levelName].add(game.team1);
-        if (game.team2) teamsPerLevel[levelName].add(game.team2);
-      });
-      
-      // Convert Sets to counts
-      const teams_per_level = {};
+      // Extract config from game assignments
       const levels = [];
+      const teams_per_level = {};
       
-      for (const levelName in teamsPerLevel) {
-        const teamCount = teamsPerLevel[levelName].size;
-        if (teamCount > 0) {
-          teams_per_level[levelName] = teamCount;
-          levels.push(levelName);
+      for (const levelId in state.teamsByLevel) {
+        const level = state.levels.find(l => l.id == levelId);
+        if (level && state.teamsByLevel[levelId].length > 0) {
+          levels.push(level.name);
+          teams_per_level[level.name] = state.teamsByLevel[levelId].length;
         }
       }
       
-      const minimalConfig = { 
-        levels: levels, 
-        teams_per_level: teams_per_level 
-      };
+      const minimalConfig = { levels, teams_per_level };
       
       // Call validation API
       const response = await fetch('/scheduler/validate_schedule/', {
@@ -178,7 +153,6 @@ const ScheduleEdit = () => {
     }
   };
   
-  
   const checkValidationState = (results = validationResults) => {
     if (!results) return;
 
@@ -195,7 +169,6 @@ const ScheduleEdit = () => {
   };
   
   const handleIgnoreFailure = (testName, isIgnored) => {
-    // Create a new Set to ensure state update is detected
     const updatedIgnores = new Set(ignoredFailures);
     
     if (isIgnored) {
@@ -210,18 +183,16 @@ const ScheduleEdit = () => {
     let allPassedOrIgnored = true;
     
     for (const name in validationResults) {
-      // A test fails validation if it failed and is not in the updated ignore set
       if (!validationResults[name].passed && !updatedIgnores.has(name)) {
         allPassedOrIgnored = false;
         break;
       }
     }
     
-    // Update validation state immediately
     setValidationPassed(allPassedOrIgnored);
   };
-  
-  // Helper functions for validation
+
+  // Helper functions for validation - same as ScheduleEditor
   const collectGameAssignments = () => {
     const gameAssignments = [];
     
@@ -246,7 +217,7 @@ const ScheduleEdit = () => {
           week: weekData.week_number,
           dayOfWeek: game.day_of_week,
           time: game.time,
-          gameIndex: 0, // Will be determined based on time sorting
+          gameIndex: 0,
           level: game.level_id,
           team1: game.team1_id,
           team2: game.team2_id,
@@ -260,7 +231,7 @@ const ScheduleEdit = () => {
   };
   
   const webToScheduleFormat = (gameAssignments) => {
-    // First, group by week
+    // Same logic as ScheduleEditor
     const weekGroups = {};
     gameAssignments.forEach(game => {
       const weekKey = game.week;
@@ -272,14 +243,10 @@ const ScheduleEdit = () => {
         };
       }
       
-      // Group times and create slots
       const timeStr = game.time;
-      
-      // Find or create slot number for this time
       let slotNum = 1;
       const slots = weekGroups[weekKey].slots;
       
-      // Check if this time already has a slot number
       let foundSlot = false;
       for (const slotKey in slots) {
         const gamesInSlot = slots[slotKey];
@@ -290,30 +257,26 @@ const ScheduleEdit = () => {
         }
       }
       
-      // If no slot was found, create a new one with the next number
       if (!foundSlot) {
         slotNum = Object.keys(slots).length + 1;
       }
       
-      // Initialize slot if needed
       if (!slots[slotNum]) {
         slots[slotNum] = [];
       }
       
-      // Add the game to the slot
       slots[slotNum].push({
         level: game.level,
         teams: [game.team1, game.team2],
         ref: game.referee,
-        time: timeStr // Add time for reference
+        time: timeStr
       });
     });
     
-    // Convert to array format for backend
     return Object.values(weekGroups);
   };
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = async (scheduleData = null) => {
     // If nothing has changed, show alert and return
     // Check if any games are marked as deleted
     const hasDeletedGames = Object.values(state.weeks).some(week =>
@@ -386,63 +349,118 @@ const ScheduleEdit = () => {
       return;
     }
 
-    // All games are valid, proceed with save
-    const games = [];
+    let games, weekDateChanges, offWeeks;
 
-    // Include ALL games from all weeks (not marked for deletion)
-    for (const weekNum in state.weeks) {
-      const weekData = state.weeks[weekNum];
+    if (scheduleData) {
+      // Use data from ScheduleEditor
+      const { gameAssignments, weekDates, offWeeks: scheduleOffWeeks } = scheduleData;
+      
+      games = gameAssignments.map(assignment => ({
+        id: null, // New games from schedule editor
+        week: assignment.week,
+        day: assignment.dayOfWeek,
+        time: assignment.time,
+        court: assignment.court,
+        level: assignment.level,
+        team1: assignment.team1,
+        team2: assignment.team2,
+        score1: '',
+        score2: '',
+        referee: assignment.referee
+      }));
 
-      weekData.games.forEach(game => {
-        // Skip games that are marked for deletion
-        if (game.isDeleted) {
-          return;
-        }
+      weekDateChanges = weekDates.map(week => ({
+        id: week.week_number, // Use week number as ID for new weeks
+        date: week.monday_date,
+        isOffWeek: week.is_off_week
+      }));
 
-        // For new games, use null ID
-        const gameId = state.newGames.has(game.id) ? null : game.id;
+      offWeeks = scheduleOffWeeks.map(week => ({
+        week_id: week.week_number,
+        week_number: week.week_number,
+        date: week.monday_date
+      }));
+    } else {
+      // Legacy path for direct button clicks
+      games = [];
 
-        games.push({
-          id: gameId,
-          week: weekData.week_number,
-          day: game.day_of_week,
-          time: game.time,
-          court: game.court,
-          level: game.level_id,
-          team1: game.team1_id,
-          team2: game.team2_id,
-          score1: game.team1_score !== null && game.team1_score !== undefined ? String(game.team1_score) : '',
-          score2: game.team2_score !== null && game.team2_score !== undefined ? String(game.team2_score) : '',
-          referee: game.referee_team_id ? String(game.referee_team_id) :
-                  game.referee_name ? 'name:' + game.referee_name : ''
-        });
-      });
-    }
+      // Include ALL games from all weeks (not marked for deletion)
+      for (const weekNum in state.weeks) {
+        const weekData = state.weeks[weekNum];
 
-    // Prepare week date changes
-    const weekDateChanges = [];
-    const offWeeks = [];
-    
-    Array.from(state.changedWeeks).forEach(weekId => {
-      const weekData = state.weeks[weekId];
+        weekData.games.forEach(game => {
+          // Skip games that are marked for deletion
+          if (game.isDeleted) {
+            return;
+          }
 
-      if (weekData) {
-        weekDateChanges.push({
-          id: weekData.id,
-          date: weekData.monday_date,
-          isOffWeek: !!weekData.isOffWeek
-        });
-        
-        // Track off weeks separately
-        if (weekData.isOffWeek) {
-          offWeeks.push({
-            week_id: weekData.id,
-            week_number: weekData.week_number,
-            date: weekData.monday_date
+          // For new games, use null ID
+          const gameId = state.newGames.has(game.id) ? null : game.id;
+
+          games.push({
+            id: gameId,
+            week: weekData.week_number,
+            day: game.day_of_week,
+            time: game.time,
+            court: game.court,
+            level: game.level_id,
+            team1: game.team1_id,
+            team2: game.team2_id,
+            score1: game.team1_score !== null && game.team1_score !== undefined ? String(game.team1_score) : '',
+            score2: game.team2_score !== null && game.team2_score !== undefined ? String(game.team2_score) : '',
+            referee: game.referee_team_id ? String(game.referee_team_id) :
+                    game.referee_name ? 'name:' + game.referee_name : ''
           });
-        }
+        });
       }
-    });
+
+      // For editing mode, collect all week dates, not just changed ones
+      weekDateChanges = [];
+      offWeeks = [];
+      
+      if (isEditingEnabled) {
+        // When in editing mode, send all week dates to ensure backend has complete week information
+        for (const weekNum in state.weeks) {
+          const weekData = state.weeks[weekNum];
+          
+          weekDateChanges.push({
+            id: weekData.week_number, // Use week number as ID for consistency
+            date: weekData.monday_date,
+            isOffWeek: !!weekData.isOffWeek
+          });
+          
+          if (weekData.isOffWeek) {
+            offWeeks.push({
+              week_id: weekData.week_number,
+              week_number: weekData.week_number,
+              date: weekData.monday_date
+            });
+          }
+        }
+      } else {
+        // For score-only changes, only send changed weeks
+        Array.from(state.changedWeeks).forEach(weekId => {
+          const weekData = state.weeks[weekId];
+
+          if (weekData) {
+            weekDateChanges.push({
+              id: weekData.id,
+              date: weekData.monday_date,
+              isOffWeek: !!weekData.isOffWeek
+            });
+            
+            // Track off weeks separately
+            if (weekData.isOffWeek) {
+              offWeeks.push({
+                week_id: weekData.id,
+                week_number: weekData.week_number,
+                date: weekData.monday_date
+              });
+            }
+          }
+        });
+      }
+    }
 
     try {
       // Log the data being sent
@@ -452,7 +470,7 @@ const ScheduleEdit = () => {
         off_weeks: offWeeks
       });
 
-      const response = await fetch(`/scheduler/schedule/${seasonId}/update/`, {
+      const response = await fetch(`/scheduler/save_or_update_schedule/${seasonId}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -471,7 +489,7 @@ const ScheduleEdit = () => {
         alert(data.message);
         window.location.reload();
       } else {
-        alert(`Error: ${data.error || 'Unknown error'}`);
+        alert(`Error: ${data.message || 'Unknown error'}`);
         console.error('Error details:', data.error);
       }
     } catch (error) {
@@ -537,7 +555,7 @@ const ScheduleEdit = () => {
             <button
               type="button"
               className={validationPassed ? "btn btn-success" : "btn btn-primary"}
-              onClick={validationPassed ? handleSaveChanges : validateSchedule}
+              onClick={validationPassed ? () => handleSaveChanges(null) : validateSchedule}
               disabled={isValidating}
             >
               {isValidating ? (
@@ -554,7 +572,7 @@ const ScheduleEdit = () => {
             <button
               type="button"
               className="btn btn-success"
-              onClick={handleSaveChanges}
+              onClick={() => handleSaveChanges(null)}
             >
               Save Score Changes
             </button>
@@ -576,11 +594,10 @@ const ScheduleEdit = () => {
       )}
 
       {/* Schedule Editor Component */}
-      {/* We handle validation in the parent component */}
       <ScheduleEditor 
         mode="edit"
         showValidation={false}
-        onSave={handleSaveChanges}
+        onSave={(scheduleData) => handleSaveChanges(scheduleData)}
         seasonId={seasonId}
       />
     </div>

@@ -21,6 +21,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run schedule tests: `python schedule_tests.py`
 - Run all tests: `python manage.py test && python schedule_tests.py`
 - Run specific validation test: `python -c "from tests import test_name; print(test_name(args))"`
+- DO NOT start the server to test web features - user will handle testing themselves
+- Make code changes, but let the user test the implementation with their own server instance
 
 ## Frontend Architecture
 - Main entry point: `/assets/js/schedule-app/index.js`

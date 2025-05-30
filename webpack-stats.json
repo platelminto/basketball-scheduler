@@ -1,708 +1,478 @@
 {
   "status": "done",
   "assets": {
-    "scheduleApp-02805c2ff9deb54130fe.js": {
-      "name": "scheduleApp-02805c2ff9deb54130fe.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-02805c2ff9deb54130fe.js",
-      "publicPath": "/static/bundles/scheduleApp-02805c2ff9deb54130fe.js"
+    "scheduleApp-0034997ce5f76abdcbaa.js": {
+      "name": "scheduleApp-0034997ce5f76abdcbaa.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-0034997ce5f76abdcbaa.js",
+      "publicPath": "/static/bundles/scheduleApp-0034997ce5f76abdcbaa.js"
     },
-    "scheduleApp-04ca586e6aaa3e4b4541.js": {
-      "name": "scheduleApp-04ca586e6aaa3e4b4541.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-04ca586e6aaa3e4b4541.js",
-      "publicPath": "/static/bundles/scheduleApp-04ca586e6aaa3e4b4541.js"
+    "scheduleApp-036e8ca5e56d1afb73bf.js": {
+      "name": "scheduleApp-036e8ca5e56d1afb73bf.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-036e8ca5e56d1afb73bf.js",
+      "publicPath": "/static/bundles/scheduleApp-036e8ca5e56d1afb73bf.js"
     },
-    "scheduleApp-06b2d53568a979264065.js": {
-      "name": "scheduleApp-06b2d53568a979264065.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-06b2d53568a979264065.js",
-      "publicPath": "/static/bundles/scheduleApp-06b2d53568a979264065.js"
+    "scheduleApp-04175ee93343ad7286ae.js": {
+      "name": "scheduleApp-04175ee93343ad7286ae.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-04175ee93343ad7286ae.js",
+      "publicPath": "/static/bundles/scheduleApp-04175ee93343ad7286ae.js"
     },
-    "scheduleApp-073da257151318a281df.js": {
-      "name": "scheduleApp-073da257151318a281df.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-073da257151318a281df.js",
-      "publicPath": "/static/bundles/scheduleApp-073da257151318a281df.js"
+    "scheduleApp-08127ae026da8ef0c5fb.js": {
+      "name": "scheduleApp-08127ae026da8ef0c5fb.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-08127ae026da8ef0c5fb.js",
+      "publicPath": "/static/bundles/scheduleApp-08127ae026da8ef0c5fb.js"
     },
-    "scheduleApp-0998cf72a773fdf24dd0.js": {
-      "name": "scheduleApp-0998cf72a773fdf24dd0.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-0998cf72a773fdf24dd0.js",
-      "publicPath": "/static/bundles/scheduleApp-0998cf72a773fdf24dd0.js"
+    "scheduleApp-08c9aea25b51d79eb447.js": {
+      "name": "scheduleApp-08c9aea25b51d79eb447.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-08c9aea25b51d79eb447.js",
+      "publicPath": "/static/bundles/scheduleApp-08c9aea25b51d79eb447.js"
     },
-    "scheduleApp-0a3711986990c89dcdd2.js": {
-      "name": "scheduleApp-0a3711986990c89dcdd2.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-0a3711986990c89dcdd2.js",
-      "publicPath": "/static/bundles/scheduleApp-0a3711986990c89dcdd2.js"
+    "scheduleApp-0c14544114b2aa8e9e83.js": {
+      "name": "scheduleApp-0c14544114b2aa8e9e83.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-0c14544114b2aa8e9e83.js",
+      "publicPath": "/static/bundles/scheduleApp-0c14544114b2aa8e9e83.js"
     },
-    "scheduleApp-0c941e0e3f08f58555ee.js": {
-      "name": "scheduleApp-0c941e0e3f08f58555ee.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-0c941e0e3f08f58555ee.js",
-      "publicPath": "/static/bundles/scheduleApp-0c941e0e3f08f58555ee.js"
+    "scheduleApp-0cfb5af977d7435bba96.js": {
+      "name": "scheduleApp-0cfb5af977d7435bba96.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-0cfb5af977d7435bba96.js",
+      "publicPath": "/static/bundles/scheduleApp-0cfb5af977d7435bba96.js"
     },
-    "scheduleApp-0d9daa243ded07cb2f7b.js": {
-      "name": "scheduleApp-0d9daa243ded07cb2f7b.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-0d9daa243ded07cb2f7b.js",
-      "publicPath": "/static/bundles/scheduleApp-0d9daa243ded07cb2f7b.js"
+    "scheduleApp-0f016081a559ddb17002.js": {
+      "name": "scheduleApp-0f016081a559ddb17002.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-0f016081a559ddb17002.js",
+      "publicPath": "/static/bundles/scheduleApp-0f016081a559ddb17002.js"
     },
-    "scheduleApp-108cd67ebb52e049ad83.js": {
-      "name": "scheduleApp-108cd67ebb52e049ad83.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-108cd67ebb52e049ad83.js",
-      "publicPath": "/static/bundles/scheduleApp-108cd67ebb52e049ad83.js"
+    "scheduleApp-12d2c06846943dc2e036.js": {
+      "name": "scheduleApp-12d2c06846943dc2e036.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-12d2c06846943dc2e036.js",
+      "publicPath": "/static/bundles/scheduleApp-12d2c06846943dc2e036.js"
     },
-    "scheduleApp-11aa821fa63eb5a6cb3f.js": {
-      "name": "scheduleApp-11aa821fa63eb5a6cb3f.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-11aa821fa63eb5a6cb3f.js",
-      "publicPath": "/static/bundles/scheduleApp-11aa821fa63eb5a6cb3f.js"
+    "scheduleApp-1759d9376ea441bbe089.js": {
+      "name": "scheduleApp-1759d9376ea441bbe089.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-1759d9376ea441bbe089.js",
+      "publicPath": "/static/bundles/scheduleApp-1759d9376ea441bbe089.js"
     },
-    "scheduleApp-13504dcd8e1ddfb1b022.js": {
-      "name": "scheduleApp-13504dcd8e1ddfb1b022.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-13504dcd8e1ddfb1b022.js",
-      "publicPath": "/static/bundles/scheduleApp-13504dcd8e1ddfb1b022.js"
+    "scheduleApp-19812e89e1ee60cf68f0.js": {
+      "name": "scheduleApp-19812e89e1ee60cf68f0.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-19812e89e1ee60cf68f0.js",
+      "publicPath": "/static/bundles/scheduleApp-19812e89e1ee60cf68f0.js"
     },
-    "scheduleApp-14b0795bf0f747305f77.js": {
-      "name": "scheduleApp-14b0795bf0f747305f77.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-14b0795bf0f747305f77.js",
-      "publicPath": "/static/bundles/scheduleApp-14b0795bf0f747305f77.js"
+    "scheduleApp-1d97da249eb63b11e426.js": {
+      "name": "scheduleApp-1d97da249eb63b11e426.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-1d97da249eb63b11e426.js",
+      "publicPath": "/static/bundles/scheduleApp-1d97da249eb63b11e426.js"
     },
-    "scheduleApp-15ff3e074f5c2203507e.js": {
-      "name": "scheduleApp-15ff3e074f5c2203507e.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-15ff3e074f5c2203507e.js",
-      "publicPath": "/static/bundles/scheduleApp-15ff3e074f5c2203507e.js"
+    "scheduleApp-1dcd5077ad53ffa33013.js": {
+      "name": "scheduleApp-1dcd5077ad53ffa33013.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-1dcd5077ad53ffa33013.js",
+      "publicPath": "/static/bundles/scheduleApp-1dcd5077ad53ffa33013.js"
     },
-    "scheduleApp-173e42cc8131955188fa.js": {
-      "name": "scheduleApp-173e42cc8131955188fa.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-173e42cc8131955188fa.js",
-      "publicPath": "/static/bundles/scheduleApp-173e42cc8131955188fa.js"
+    "scheduleApp-1de01884a8453ad61779.js": {
+      "name": "scheduleApp-1de01884a8453ad61779.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-1de01884a8453ad61779.js",
+      "publicPath": "/static/bundles/scheduleApp-1de01884a8453ad61779.js"
     },
-    "scheduleApp-178209447876aa05f6a5.js": {
-      "name": "scheduleApp-178209447876aa05f6a5.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-178209447876aa05f6a5.js",
-      "publicPath": "/static/bundles/scheduleApp-178209447876aa05f6a5.js"
+    "scheduleApp-1e2232fdcd772bb7ef1b.js": {
+      "name": "scheduleApp-1e2232fdcd772bb7ef1b.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-1e2232fdcd772bb7ef1b.js",
+      "publicPath": "/static/bundles/scheduleApp-1e2232fdcd772bb7ef1b.js"
     },
-    "scheduleApp-180f6ac8ad252b5a1915.js": {
-      "name": "scheduleApp-180f6ac8ad252b5a1915.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-180f6ac8ad252b5a1915.js",
-      "publicPath": "/static/bundles/scheduleApp-180f6ac8ad252b5a1915.js"
+    "scheduleApp-24bf32599033aefe8fb3.js": {
+      "name": "scheduleApp-24bf32599033aefe8fb3.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-24bf32599033aefe8fb3.js",
+      "publicPath": "/static/bundles/scheduleApp-24bf32599033aefe8fb3.js"
     },
-    "scheduleApp-1de5ca097eb7d848bb73.js": {
-      "name": "scheduleApp-1de5ca097eb7d848bb73.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-1de5ca097eb7d848bb73.js",
-      "publicPath": "/static/bundles/scheduleApp-1de5ca097eb7d848bb73.js"
+    "scheduleApp-2596935137f0d9d4003b.js": {
+      "name": "scheduleApp-2596935137f0d9d4003b.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2596935137f0d9d4003b.js",
+      "publicPath": "/static/bundles/scheduleApp-2596935137f0d9d4003b.js"
     },
-    "scheduleApp-204fc233ae76fc31494e.js": {
-      "name": "scheduleApp-204fc233ae76fc31494e.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-204fc233ae76fc31494e.js",
-      "publicPath": "/static/bundles/scheduleApp-204fc233ae76fc31494e.js"
+    "scheduleApp-25efb7f19d3de851b5f7.js": {
+      "name": "scheduleApp-25efb7f19d3de851b5f7.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-25efb7f19d3de851b5f7.js",
+      "publicPath": "/static/bundles/scheduleApp-25efb7f19d3de851b5f7.js"
     },
-    "scheduleApp-216fd44f965b3300d5cb.js": {
-      "name": "scheduleApp-216fd44f965b3300d5cb.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-216fd44f965b3300d5cb.js",
-      "publicPath": "/static/bundles/scheduleApp-216fd44f965b3300d5cb.js"
+    "scheduleApp-26c7a67947f53857e319.js": {
+      "name": "scheduleApp-26c7a67947f53857e319.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-26c7a67947f53857e319.js",
+      "publicPath": "/static/bundles/scheduleApp-26c7a67947f53857e319.js"
     },
-    "scheduleApp-2303897ff285081675cc.js": {
-      "name": "scheduleApp-2303897ff285081675cc.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2303897ff285081675cc.js",
-      "publicPath": "/static/bundles/scheduleApp-2303897ff285081675cc.js"
+    "scheduleApp-2c60533789dfd5fca804.js": {
+      "name": "scheduleApp-2c60533789dfd5fca804.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2c60533789dfd5fca804.js",
+      "publicPath": "/static/bundles/scheduleApp-2c60533789dfd5fca804.js"
     },
-    "scheduleApp-237e07dbc31a547baee5.js": {
-      "name": "scheduleApp-237e07dbc31a547baee5.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-237e07dbc31a547baee5.js",
-      "publicPath": "/static/bundles/scheduleApp-237e07dbc31a547baee5.js"
+    "scheduleApp-2ca2d73a0c60c01d6c54.js": {
+      "name": "scheduleApp-2ca2d73a0c60c01d6c54.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2ca2d73a0c60c01d6c54.js",
+      "publicPath": "/static/bundles/scheduleApp-2ca2d73a0c60c01d6c54.js"
     },
-    "scheduleApp-249acb0e9c02c2eb0f4d.js": {
-      "name": "scheduleApp-249acb0e9c02c2eb0f4d.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-249acb0e9c02c2eb0f4d.js",
-      "publicPath": "/static/bundles/scheduleApp-249acb0e9c02c2eb0f4d.js"
+    "scheduleApp-2f9afeff4d7c7824abb5.js": {
+      "name": "scheduleApp-2f9afeff4d7c7824abb5.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2f9afeff4d7c7824abb5.js",
+      "publicPath": "/static/bundles/scheduleApp-2f9afeff4d7c7824abb5.js"
     },
-    "scheduleApp-260d6777e4241042203a.js": {
-      "name": "scheduleApp-260d6777e4241042203a.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-260d6777e4241042203a.js",
-      "publicPath": "/static/bundles/scheduleApp-260d6777e4241042203a.js"
+    "scheduleApp-3082fb9c5cfce9a11ecc.js": {
+      "name": "scheduleApp-3082fb9c5cfce9a11ecc.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3082fb9c5cfce9a11ecc.js",
+      "publicPath": "/static/bundles/scheduleApp-3082fb9c5cfce9a11ecc.js"
     },
-    "scheduleApp-263880aaa9889f2e1719.js": {
-      "name": "scheduleApp-263880aaa9889f2e1719.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-263880aaa9889f2e1719.js",
-      "publicPath": "/static/bundles/scheduleApp-263880aaa9889f2e1719.js"
+    "scheduleApp-39906199b7a89c9a6edc.js": {
+      "name": "scheduleApp-39906199b7a89c9a6edc.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-39906199b7a89c9a6edc.js",
+      "publicPath": "/static/bundles/scheduleApp-39906199b7a89c9a6edc.js"
     },
-    "scheduleApp-274733c38bb9d7780495.js": {
-      "name": "scheduleApp-274733c38bb9d7780495.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-274733c38bb9d7780495.js",
-      "publicPath": "/static/bundles/scheduleApp-274733c38bb9d7780495.js"
+    "scheduleApp-39a57b1bb7a84a82a759.js": {
+      "name": "scheduleApp-39a57b1bb7a84a82a759.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-39a57b1bb7a84a82a759.js",
+      "publicPath": "/static/bundles/scheduleApp-39a57b1bb7a84a82a759.js"
     },
-    "scheduleApp-27739a8f7825fe6aace5.js": {
-      "name": "scheduleApp-27739a8f7825fe6aace5.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-27739a8f7825fe6aace5.js",
-      "publicPath": "/static/bundles/scheduleApp-27739a8f7825fe6aace5.js"
+    "scheduleApp-3ba8567c166b01fed111.js": {
+      "name": "scheduleApp-3ba8567c166b01fed111.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3ba8567c166b01fed111.js",
+      "publicPath": "/static/bundles/scheduleApp-3ba8567c166b01fed111.js"
     },
-    "scheduleApp-2a7cc2aca0fe0bc22963.js": {
-      "name": "scheduleApp-2a7cc2aca0fe0bc22963.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2a7cc2aca0fe0bc22963.js",
-      "publicPath": "/static/bundles/scheduleApp-2a7cc2aca0fe0bc22963.js"
+    "scheduleApp-3d318e6432e494846e23.js": {
+      "name": "scheduleApp-3d318e6432e494846e23.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3d318e6432e494846e23.js",
+      "publicPath": "/static/bundles/scheduleApp-3d318e6432e494846e23.js"
     },
-    "scheduleApp-2cea0bf9fe0c056fb347.js": {
-      "name": "scheduleApp-2cea0bf9fe0c056fb347.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2cea0bf9fe0c056fb347.js",
-      "publicPath": "/static/bundles/scheduleApp-2cea0bf9fe0c056fb347.js"
-    },
-    "scheduleApp-2dad08d92dcfb66a984d.js": {
-      "name": "scheduleApp-2dad08d92dcfb66a984d.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2dad08d92dcfb66a984d.js",
-      "publicPath": "/static/bundles/scheduleApp-2dad08d92dcfb66a984d.js"
-    },
-    "scheduleApp-2dbc04ae4d2bf66eb129.js": {
-      "name": "scheduleApp-2dbc04ae4d2bf66eb129.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2dbc04ae4d2bf66eb129.js",
-      "publicPath": "/static/bundles/scheduleApp-2dbc04ae4d2bf66eb129.js"
-    },
-    "scheduleApp-314c54d4815fcd5e3cbf.js": {
-      "name": "scheduleApp-314c54d4815fcd5e3cbf.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-314c54d4815fcd5e3cbf.js",
-      "publicPath": "/static/bundles/scheduleApp-314c54d4815fcd5e3cbf.js"
-    },
-    "scheduleApp-316aa6da1274f8382f52.js": {
-      "name": "scheduleApp-316aa6da1274f8382f52.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-316aa6da1274f8382f52.js",
-      "publicPath": "/static/bundles/scheduleApp-316aa6da1274f8382f52.js"
-    },
-    "scheduleApp-31cfdc1f2efc8eb3e567.js": {
-      "name": "scheduleApp-31cfdc1f2efc8eb3e567.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-31cfdc1f2efc8eb3e567.js",
-      "publicPath": "/static/bundles/scheduleApp-31cfdc1f2efc8eb3e567.js"
-    },
-    "scheduleApp-322a47fdc3dfc12626ec.js": {
-      "name": "scheduleApp-322a47fdc3dfc12626ec.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-322a47fdc3dfc12626ec.js",
-      "publicPath": "/static/bundles/scheduleApp-322a47fdc3dfc12626ec.js"
-    },
-    "scheduleApp-357a46fc25478a15b26c.js": {
-      "name": "scheduleApp-357a46fc25478a15b26c.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-357a46fc25478a15b26c.js",
-      "publicPath": "/static/bundles/scheduleApp-357a46fc25478a15b26c.js"
-    },
-    "scheduleApp-35a2041aaca392c80759.js": {
-      "name": "scheduleApp-35a2041aaca392c80759.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-35a2041aaca392c80759.js",
-      "publicPath": "/static/bundles/scheduleApp-35a2041aaca392c80759.js"
-    },
-    "scheduleApp-37ef114e4185401272b2.js": {
-      "name": "scheduleApp-37ef114e4185401272b2.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-37ef114e4185401272b2.js",
-      "publicPath": "/static/bundles/scheduleApp-37ef114e4185401272b2.js"
-    },
-    "scheduleApp-38ddf6f9310119e57279.js": {
-      "name": "scheduleApp-38ddf6f9310119e57279.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-38ddf6f9310119e57279.js",
-      "publicPath": "/static/bundles/scheduleApp-38ddf6f9310119e57279.js"
-    },
-    "scheduleApp-39cc86a6d038724a67d2.js": {
-      "name": "scheduleApp-39cc86a6d038724a67d2.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-39cc86a6d038724a67d2.js",
-      "publicPath": "/static/bundles/scheduleApp-39cc86a6d038724a67d2.js"
-    },
-    "scheduleApp-3a7ac657f6f2ecbb5626.js": {
-      "name": "scheduleApp-3a7ac657f6f2ecbb5626.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3a7ac657f6f2ecbb5626.js",
-      "publicPath": "/static/bundles/scheduleApp-3a7ac657f6f2ecbb5626.js"
-    },
-    "scheduleApp-3f54e7654b649456f480.js": {
-      "name": "scheduleApp-3f54e7654b649456f480.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3f54e7654b649456f480.js",
-      "publicPath": "/static/bundles/scheduleApp-3f54e7654b649456f480.js"
-    },
-    "scheduleApp-40e8f82e0e1a4e28f4d7.js": {
-      "name": "scheduleApp-40e8f82e0e1a4e28f4d7.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-40e8f82e0e1a4e28f4d7.js",
-      "publicPath": "/static/bundles/scheduleApp-40e8f82e0e1a4e28f4d7.js"
-    },
-    "scheduleApp-41ae2a0ebe7d8d099c48.js": {
-      "name": "scheduleApp-41ae2a0ebe7d8d099c48.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-41ae2a0ebe7d8d099c48.js",
-      "publicPath": "/static/bundles/scheduleApp-41ae2a0ebe7d8d099c48.js"
+    "scheduleApp-3dcfc94de4ba288d69cc.js": {
+      "name": "scheduleApp-3dcfc94de4ba288d69cc.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-3dcfc94de4ba288d69cc.js",
+      "publicPath": "/static/bundles/scheduleApp-3dcfc94de4ba288d69cc.js"
     },
     "scheduleApp-4355738086864901f71f.js": {
       "name": "scheduleApp-4355738086864901f71f.js",
       "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-4355738086864901f71f.js",
       "publicPath": "/static/bundles/scheduleApp-4355738086864901f71f.js"
     },
-    "scheduleApp-467f992158a6a2e8ace4.js": {
-      "name": "scheduleApp-467f992158a6a2e8ace4.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-467f992158a6a2e8ace4.js",
-      "publicPath": "/static/bundles/scheduleApp-467f992158a6a2e8ace4.js"
-    },
-    "scheduleApp-483937eb565505ff3776.js": {
-      "name": "scheduleApp-483937eb565505ff3776.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-483937eb565505ff3776.js",
-      "publicPath": "/static/bundles/scheduleApp-483937eb565505ff3776.js"
-    },
-    "scheduleApp-48d431551cb42ea1eca3.js": {
-      "name": "scheduleApp-48d431551cb42ea1eca3.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-48d431551cb42ea1eca3.js",
-      "publicPath": "/static/bundles/scheduleApp-48d431551cb42ea1eca3.js"
-    },
-    "scheduleApp-4a3997a949419cb1fca8.js": {
-      "name": "scheduleApp-4a3997a949419cb1fca8.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-4a3997a949419cb1fca8.js",
-      "publicPath": "/static/bundles/scheduleApp-4a3997a949419cb1fca8.js"
-    },
-    "scheduleApp-4b91c85b3206a23dd95f.js": {
-      "name": "scheduleApp-4b91c85b3206a23dd95f.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-4b91c85b3206a23dd95f.js",
-      "publicPath": "/static/bundles/scheduleApp-4b91c85b3206a23dd95f.js"
-    },
-    "scheduleApp-4fad9015c34722213141.js": {
-      "name": "scheduleApp-4fad9015c34722213141.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-4fad9015c34722213141.js",
-      "publicPath": "/static/bundles/scheduleApp-4fad9015c34722213141.js"
-    },
-    "scheduleApp-50e3a03d492d11c96290.js": {
-      "name": "scheduleApp-50e3a03d492d11c96290.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-50e3a03d492d11c96290.js",
-      "publicPath": "/static/bundles/scheduleApp-50e3a03d492d11c96290.js"
-    },
-    "scheduleApp-51bf7e7d213e41056ac8.js": {
-      "name": "scheduleApp-51bf7e7d213e41056ac8.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-51bf7e7d213e41056ac8.js",
-      "publicPath": "/static/bundles/scheduleApp-51bf7e7d213e41056ac8.js"
-    },
-    "scheduleApp-523bff6d1ad3497d560d.js": {
-      "name": "scheduleApp-523bff6d1ad3497d560d.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-523bff6d1ad3497d560d.js",
-      "publicPath": "/static/bundles/scheduleApp-523bff6d1ad3497d560d.js"
-    },
-    "scheduleApp-528b8b8462a74582d9e3.js": {
-      "name": "scheduleApp-528b8b8462a74582d9e3.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-528b8b8462a74582d9e3.js",
-      "publicPath": "/static/bundles/scheduleApp-528b8b8462a74582d9e3.js"
-    },
-    "scheduleApp-54733b9659226200812b.js": {
-      "name": "scheduleApp-54733b9659226200812b.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-54733b9659226200812b.js",
-      "publicPath": "/static/bundles/scheduleApp-54733b9659226200812b.js"
-    },
-    "scheduleApp-54e2ce9af2356b38a06c.js": {
-      "name": "scheduleApp-54e2ce9af2356b38a06c.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-54e2ce9af2356b38a06c.js",
-      "publicPath": "/static/bundles/scheduleApp-54e2ce9af2356b38a06c.js"
-    },
-    "scheduleApp-55fe82e78239a5fb2def.js": {
-      "name": "scheduleApp-55fe82e78239a5fb2def.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-55fe82e78239a5fb2def.js",
-      "publicPath": "/static/bundles/scheduleApp-55fe82e78239a5fb2def.js"
-    },
-    "scheduleApp-5c748b7a22076bf0efe9.js": {
-      "name": "scheduleApp-5c748b7a22076bf0efe9.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-5c748b7a22076bf0efe9.js",
-      "publicPath": "/static/bundles/scheduleApp-5c748b7a22076bf0efe9.js"
-    },
-    "scheduleApp-5cd041c7c15a948d1fb9.js": {
-      "name": "scheduleApp-5cd041c7c15a948d1fb9.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-5cd041c7c15a948d1fb9.js",
-      "publicPath": "/static/bundles/scheduleApp-5cd041c7c15a948d1fb9.js"
-    },
-    "scheduleApp-6724dbbfb5f7aa638d14.js": {
-      "name": "scheduleApp-6724dbbfb5f7aa638d14.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-6724dbbfb5f7aa638d14.js",
-      "publicPath": "/static/bundles/scheduleApp-6724dbbfb5f7aa638d14.js"
-    },
-    "scheduleApp-6895b23b6f146353153a.js": {
-      "name": "scheduleApp-6895b23b6f146353153a.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-6895b23b6f146353153a.js",
-      "publicPath": "/static/bundles/scheduleApp-6895b23b6f146353153a.js"
-    },
-    "scheduleApp-69b44e470675400f1902.js": {
-      "name": "scheduleApp-69b44e470675400f1902.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-69b44e470675400f1902.js",
-      "publicPath": "/static/bundles/scheduleApp-69b44e470675400f1902.js"
-    },
-    "scheduleApp-6b8202e20798ec40e9cc.js": {
-      "name": "scheduleApp-6b8202e20798ec40e9cc.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-6b8202e20798ec40e9cc.js",
-      "publicPath": "/static/bundles/scheduleApp-6b8202e20798ec40e9cc.js"
-    },
-    "scheduleApp-6e4ffd71dab4be5c43ee.js": {
-      "name": "scheduleApp-6e4ffd71dab4be5c43ee.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-6e4ffd71dab4be5c43ee.js",
-      "publicPath": "/static/bundles/scheduleApp-6e4ffd71dab4be5c43ee.js"
-    },
-    "scheduleApp-6e6e6c996dac5fbdb4f0.js": {
-      "name": "scheduleApp-6e6e6c996dac5fbdb4f0.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-6e6e6c996dac5fbdb4f0.js",
-      "publicPath": "/static/bundles/scheduleApp-6e6e6c996dac5fbdb4f0.js"
-    },
-    "scheduleApp-740dee341e68f7f71230.js": {
-      "name": "scheduleApp-740dee341e68f7f71230.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-740dee341e68f7f71230.js",
-      "publicPath": "/static/bundles/scheduleApp-740dee341e68f7f71230.js"
-    },
-    "scheduleApp-7452f53a77f32a5dd4fe.js": {
-      "name": "scheduleApp-7452f53a77f32a5dd4fe.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7452f53a77f32a5dd4fe.js",
-      "publicPath": "/static/bundles/scheduleApp-7452f53a77f32a5dd4fe.js"
-    },
-    "scheduleApp-7ab87edff30dc4b5bdff.js": {
-      "name": "scheduleApp-7ab87edff30dc4b5bdff.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7ab87edff30dc4b5bdff.js",
-      "publicPath": "/static/bundles/scheduleApp-7ab87edff30dc4b5bdff.js"
-    },
-    "scheduleApp-7b1fe7eef46c8c1fef56.js": {
-      "name": "scheduleApp-7b1fe7eef46c8c1fef56.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7b1fe7eef46c8c1fef56.js",
-      "publicPath": "/static/bundles/scheduleApp-7b1fe7eef46c8c1fef56.js"
-    },
-    "scheduleApp-7ca3cf6f784e3e3d57f9.js": {
-      "name": "scheduleApp-7ca3cf6f784e3e3d57f9.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7ca3cf6f784e3e3d57f9.js",
-      "publicPath": "/static/bundles/scheduleApp-7ca3cf6f784e3e3d57f9.js"
-    },
-    "scheduleApp-7da5d356ac9cf54b8ab9.js": {
-      "name": "scheduleApp-7da5d356ac9cf54b8ab9.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7da5d356ac9cf54b8ab9.js",
-      "publicPath": "/static/bundles/scheduleApp-7da5d356ac9cf54b8ab9.js"
-    },
-    "scheduleApp-83df108596a74d01884d.js": {
-      "name": "scheduleApp-83df108596a74d01884d.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-83df108596a74d01884d.js",
-      "publicPath": "/static/bundles/scheduleApp-83df108596a74d01884d.js"
-    },
-    "scheduleApp-85758ae3b769fc5f89a6.js": {
-      "name": "scheduleApp-85758ae3b769fc5f89a6.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-85758ae3b769fc5f89a6.js",
-      "publicPath": "/static/bundles/scheduleApp-85758ae3b769fc5f89a6.js"
-    },
-    "scheduleApp-88ecb47cc0358ef2fbec.js": {
-      "name": "scheduleApp-88ecb47cc0358ef2fbec.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-88ecb47cc0358ef2fbec.js",
-      "publicPath": "/static/bundles/scheduleApp-88ecb47cc0358ef2fbec.js"
-    },
-    "scheduleApp-8e5508ce69bdd0310d46.js": {
-      "name": "scheduleApp-8e5508ce69bdd0310d46.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-8e5508ce69bdd0310d46.js",
-      "publicPath": "/static/bundles/scheduleApp-8e5508ce69bdd0310d46.js"
-    },
-    "scheduleApp-8e8f9e07ab7441161c61.js": {
-      "name": "scheduleApp-8e8f9e07ab7441161c61.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-8e8f9e07ab7441161c61.js",
-      "publicPath": "/static/bundles/scheduleApp-8e8f9e07ab7441161c61.js"
-    },
-    "scheduleApp-9241b35f58836c7be56a.js": {
-      "name": "scheduleApp-9241b35f58836c7be56a.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9241b35f58836c7be56a.js",
-      "publicPath": "/static/bundles/scheduleApp-9241b35f58836c7be56a.js"
-    },
-    "scheduleApp-94f6923ad5002e3eb867.js": {
-      "name": "scheduleApp-94f6923ad5002e3eb867.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-94f6923ad5002e3eb867.js",
-      "publicPath": "/static/bundles/scheduleApp-94f6923ad5002e3eb867.js"
-    },
-    "scheduleApp-9672bdaa0c415f2f530c.js": {
-      "name": "scheduleApp-9672bdaa0c415f2f530c.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9672bdaa0c415f2f530c.js",
-      "publicPath": "/static/bundles/scheduleApp-9672bdaa0c415f2f530c.js"
-    },
-    "scheduleApp-96aef5cc383f4faf94b9.js": {
-      "name": "scheduleApp-96aef5cc383f4faf94b9.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-96aef5cc383f4faf94b9.js",
-      "publicPath": "/static/bundles/scheduleApp-96aef5cc383f4faf94b9.js"
-    },
-    "scheduleApp-9c904d99b436109e37d4.js": {
-      "name": "scheduleApp-9c904d99b436109e37d4.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9c904d99b436109e37d4.js",
-      "publicPath": "/static/bundles/scheduleApp-9c904d99b436109e37d4.js"
-    },
-    "scheduleApp-9ce07605dee90b3fcbea.js": {
-      "name": "scheduleApp-9ce07605dee90b3fcbea.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9ce07605dee90b3fcbea.js",
-      "publicPath": "/static/bundles/scheduleApp-9ce07605dee90b3fcbea.js"
-    },
-    "scheduleApp-9cf815b28936c18b68b4.js": {
-      "name": "scheduleApp-9cf815b28936c18b68b4.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9cf815b28936c18b68b4.js",
-      "publicPath": "/static/bundles/scheduleApp-9cf815b28936c18b68b4.js"
-    },
-    "scheduleApp-9db6c25595b4e0c8b366.js": {
-      "name": "scheduleApp-9db6c25595b4e0c8b366.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9db6c25595b4e0c8b366.js",
-      "publicPath": "/static/bundles/scheduleApp-9db6c25595b4e0c8b366.js"
-    },
-    "scheduleApp-9e117faf49d692aa6199.js": {
-      "name": "scheduleApp-9e117faf49d692aa6199.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9e117faf49d692aa6199.js",
-      "publicPath": "/static/bundles/scheduleApp-9e117faf49d692aa6199.js"
-    },
-    "scheduleApp-9e6aca3f754ee74e5ba2.js": {
-      "name": "scheduleApp-9e6aca3f754ee74e5ba2.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9e6aca3f754ee74e5ba2.js",
-      "publicPath": "/static/bundles/scheduleApp-9e6aca3f754ee74e5ba2.js"
-    },
-    "scheduleApp-9f4d916d8ac1679d0f05.js": {
-      "name": "scheduleApp-9f4d916d8ac1679d0f05.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9f4d916d8ac1679d0f05.js",
-      "publicPath": "/static/bundles/scheduleApp-9f4d916d8ac1679d0f05.js"
-    },
-    "scheduleApp-9f7ccaccb084e0f35dc8.js": {
-      "name": "scheduleApp-9f7ccaccb084e0f35dc8.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9f7ccaccb084e0f35dc8.js",
-      "publicPath": "/static/bundles/scheduleApp-9f7ccaccb084e0f35dc8.js"
-    },
-    "scheduleApp-9f843149e576ef5a0a8f.js": {
-      "name": "scheduleApp-9f843149e576ef5a0a8f.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9f843149e576ef5a0a8f.js",
-      "publicPath": "/static/bundles/scheduleApp-9f843149e576ef5a0a8f.js"
-    },
-    "scheduleApp-a17d64eda04e5d19edcc.js": {
-      "name": "scheduleApp-a17d64eda04e5d19edcc.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a17d64eda04e5d19edcc.js",
-      "publicPath": "/static/bundles/scheduleApp-a17d64eda04e5d19edcc.js"
-    },
-    "scheduleApp-a1e7c07c894582b3646d.js": {
-      "name": "scheduleApp-a1e7c07c894582b3646d.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a1e7c07c894582b3646d.js",
-      "publicPath": "/static/bundles/scheduleApp-a1e7c07c894582b3646d.js"
-    },
-    "scheduleApp-a264c34646f0661d079d.js": {
-      "name": "scheduleApp-a264c34646f0661d079d.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a264c34646f0661d079d.js",
-      "publicPath": "/static/bundles/scheduleApp-a264c34646f0661d079d.js"
-    },
-    "scheduleApp-a2b11f52cfe5bee75fbb.js": {
-      "name": "scheduleApp-a2b11f52cfe5bee75fbb.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a2b11f52cfe5bee75fbb.js",
-      "publicPath": "/static/bundles/scheduleApp-a2b11f52cfe5bee75fbb.js"
-    },
-    "scheduleApp-a3a051da25ae6c8be3be.js": {
-      "name": "scheduleApp-a3a051da25ae6c8be3be.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a3a051da25ae6c8be3be.js",
-      "publicPath": "/static/bundles/scheduleApp-a3a051da25ae6c8be3be.js"
-    },
-    "scheduleApp-a616fbb6e36f4389d532.js": {
-      "name": "scheduleApp-a616fbb6e36f4389d532.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a616fbb6e36f4389d532.js",
-      "publicPath": "/static/bundles/scheduleApp-a616fbb6e36f4389d532.js"
-    },
-    "scheduleApp-a63b2a98f1ff3aca1fb3.js": {
-      "name": "scheduleApp-a63b2a98f1ff3aca1fb3.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a63b2a98f1ff3aca1fb3.js",
-      "publicPath": "/static/bundles/scheduleApp-a63b2a98f1ff3aca1fb3.js"
-    },
-    "scheduleApp-aa18a59a6dfe997592fb.js": {
-      "name": "scheduleApp-aa18a59a6dfe997592fb.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-aa18a59a6dfe997592fb.js",
-      "publicPath": "/static/bundles/scheduleApp-aa18a59a6dfe997592fb.js"
-    },
-    "scheduleApp-aafd485259d26aac0350.js": {
-      "name": "scheduleApp-aafd485259d26aac0350.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-aafd485259d26aac0350.js",
-      "publicPath": "/static/bundles/scheduleApp-aafd485259d26aac0350.js"
-    },
-    "scheduleApp-ab0712287083dae06304.js": {
-      "name": "scheduleApp-ab0712287083dae06304.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-ab0712287083dae06304.js",
-      "publicPath": "/static/bundles/scheduleApp-ab0712287083dae06304.js"
-    },
-    "scheduleApp-af37fbedc7a2314c03fe.js": {
-      "name": "scheduleApp-af37fbedc7a2314c03fe.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-af37fbedc7a2314c03fe.js",
-      "publicPath": "/static/bundles/scheduleApp-af37fbedc7a2314c03fe.js"
-    },
-    "scheduleApp-b505f61cdd9c47e95554.js": {
-      "name": "scheduleApp-b505f61cdd9c47e95554.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-b505f61cdd9c47e95554.js",
-      "publicPath": "/static/bundles/scheduleApp-b505f61cdd9c47e95554.js"
-    },
-    "scheduleApp-bc2e3519c5efcd642bcf.js": {
-      "name": "scheduleApp-bc2e3519c5efcd642bcf.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-bc2e3519c5efcd642bcf.js",
-      "publicPath": "/static/bundles/scheduleApp-bc2e3519c5efcd642bcf.js"
-    },
-    "scheduleApp-bc9260324dbd270fe395.js": {
-      "name": "scheduleApp-bc9260324dbd270fe395.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-bc9260324dbd270fe395.js",
-      "publicPath": "/static/bundles/scheduleApp-bc9260324dbd270fe395.js"
-    },
-    "scheduleApp-be193d999b8f94903de0.js": {
-      "name": "scheduleApp-be193d999b8f94903de0.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-be193d999b8f94903de0.js",
-      "publicPath": "/static/bundles/scheduleApp-be193d999b8f94903de0.js"
-    },
-    "scheduleApp-bf0d280316900b388be1.js": {
-      "name": "scheduleApp-bf0d280316900b388be1.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-bf0d280316900b388be1.js",
-      "publicPath": "/static/bundles/scheduleApp-bf0d280316900b388be1.js"
-    },
-    "scheduleApp-c454cc675e3dc62980d1.js": {
-      "name": "scheduleApp-c454cc675e3dc62980d1.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c454cc675e3dc62980d1.js",
-      "publicPath": "/static/bundles/scheduleApp-c454cc675e3dc62980d1.js"
-    },
-    "scheduleApp-c85fb6ed0b82e7fedc70.js": {
-      "name": "scheduleApp-c85fb6ed0b82e7fedc70.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c85fb6ed0b82e7fedc70.js",
-      "publicPath": "/static/bundles/scheduleApp-c85fb6ed0b82e7fedc70.js"
-    },
-    "scheduleApp-c8a0fee4b0089fbb21d6.js": {
-      "name": "scheduleApp-c8a0fee4b0089fbb21d6.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c8a0fee4b0089fbb21d6.js",
-      "publicPath": "/static/bundles/scheduleApp-c8a0fee4b0089fbb21d6.js"
-    },
-    "scheduleApp-ca03fb4faf6e2979dfa1.js": {
-      "name": "scheduleApp-ca03fb4faf6e2979dfa1.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-ca03fb4faf6e2979dfa1.js",
-      "publicPath": "/static/bundles/scheduleApp-ca03fb4faf6e2979dfa1.js"
-    },
-    "scheduleApp-cae3a083091292c070ec.js": {
-      "name": "scheduleApp-cae3a083091292c070ec.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-cae3a083091292c070ec.js",
-      "publicPath": "/static/bundles/scheduleApp-cae3a083091292c070ec.js"
-    },
-    "scheduleApp-cae827d3a3c3c05a8e65.js": {
-      "name": "scheduleApp-cae827d3a3c3c05a8e65.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-cae827d3a3c3c05a8e65.js",
-      "publicPath": "/static/bundles/scheduleApp-cae827d3a3c3c05a8e65.js"
-    },
-    "scheduleApp-cd8e61e602999c669396.js": {
-      "name": "scheduleApp-cd8e61e602999c669396.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-cd8e61e602999c669396.js",
-      "publicPath": "/static/bundles/scheduleApp-cd8e61e602999c669396.js"
-    },
-    "scheduleApp-cda553d420ce70a2aade.js": {
-      "name": "scheduleApp-cda553d420ce70a2aade.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-cda553d420ce70a2aade.js",
-      "publicPath": "/static/bundles/scheduleApp-cda553d420ce70a2aade.js"
-    },
-    "scheduleApp-d189f72a04b63157fe25.js": {
-      "name": "scheduleApp-d189f72a04b63157fe25.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-d189f72a04b63157fe25.js",
-      "publicPath": "/static/bundles/scheduleApp-d189f72a04b63157fe25.js"
-    },
-    "scheduleApp-d474eb36e3a5b9a80d60.js": {
-      "name": "scheduleApp-d474eb36e3a5b9a80d60.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-d474eb36e3a5b9a80d60.js",
-      "publicPath": "/static/bundles/scheduleApp-d474eb36e3a5b9a80d60.js"
-    },
-    "scheduleApp-d5dcab017710149a0907.js": {
-      "name": "scheduleApp-d5dcab017710149a0907.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-d5dcab017710149a0907.js",
-      "publicPath": "/static/bundles/scheduleApp-d5dcab017710149a0907.js"
-    },
-    "scheduleApp-d628e010ea401aaaf544.js": {
-      "name": "scheduleApp-d628e010ea401aaaf544.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-d628e010ea401aaaf544.js",
-      "publicPath": "/static/bundles/scheduleApp-d628e010ea401aaaf544.js"
-    },
-    "scheduleApp-d81eaaafec747a9628a9.js": {
-      "name": "scheduleApp-d81eaaafec747a9628a9.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-d81eaaafec747a9628a9.js",
-      "publicPath": "/static/bundles/scheduleApp-d81eaaafec747a9628a9.js"
-    },
-    "scheduleApp-db7dd753500638fd97c4.js": {
-      "name": "scheduleApp-db7dd753500638fd97c4.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-db7dd753500638fd97c4.js",
-      "publicPath": "/static/bundles/scheduleApp-db7dd753500638fd97c4.js"
-    },
-    "scheduleApp-db98340088ea957e17bf.js": {
-      "name": "scheduleApp-db98340088ea957e17bf.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-db98340088ea957e17bf.js",
-      "publicPath": "/static/bundles/scheduleApp-db98340088ea957e17bf.js"
-    },
-    "scheduleApp-de8384c0f6e90cf8b476.js": {
-      "name": "scheduleApp-de8384c0f6e90cf8b476.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-de8384c0f6e90cf8b476.js",
-      "publicPath": "/static/bundles/scheduleApp-de8384c0f6e90cf8b476.js"
-    },
-    "scheduleApp-deaccbee7c8ad32fb789.js": {
-      "name": "scheduleApp-deaccbee7c8ad32fb789.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-deaccbee7c8ad32fb789.js",
-      "publicPath": "/static/bundles/scheduleApp-deaccbee7c8ad32fb789.js"
-    },
-    "scheduleApp-e06d0f06648d27f1144f.js": {
-      "name": "scheduleApp-e06d0f06648d27f1144f.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e06d0f06648d27f1144f.js",
-      "publicPath": "/static/bundles/scheduleApp-e06d0f06648d27f1144f.js"
-    },
-    "scheduleApp-e29b4b813ea4b74c2073.js": {
-      "name": "scheduleApp-e29b4b813ea4b74c2073.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e29b4b813ea4b74c2073.js",
-      "publicPath": "/static/bundles/scheduleApp-e29b4b813ea4b74c2073.js"
-    },
-    "scheduleApp-e34ffe9d01cd13fa9b34.js": {
-      "name": "scheduleApp-e34ffe9d01cd13fa9b34.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e34ffe9d01cd13fa9b34.js",
-      "publicPath": "/static/bundles/scheduleApp-e34ffe9d01cd13fa9b34.js"
-    },
-    "scheduleApp-e5d61982b936c2e7122b.js": {
-      "name": "scheduleApp-e5d61982b936c2e7122b.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e5d61982b936c2e7122b.js",
-      "publicPath": "/static/bundles/scheduleApp-e5d61982b936c2e7122b.js"
-    },
-    "scheduleApp-e627d97dfec4f9a8edf9.js": {
-      "name": "scheduleApp-e627d97dfec4f9a8edf9.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e627d97dfec4f9a8edf9.js",
-      "publicPath": "/static/bundles/scheduleApp-e627d97dfec4f9a8edf9.js"
-    },
-    "scheduleApp-e79c23d9ca906fc5e24a.js": {
-      "name": "scheduleApp-e79c23d9ca906fc5e24a.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e79c23d9ca906fc5e24a.js",
-      "publicPath": "/static/bundles/scheduleApp-e79c23d9ca906fc5e24a.js"
-    },
-    "scheduleApp-e82618ad34f245a255c3.js": {
-      "name": "scheduleApp-e82618ad34f245a255c3.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e82618ad34f245a255c3.js",
-      "publicPath": "/static/bundles/scheduleApp-e82618ad34f245a255c3.js"
-    },
-    "scheduleApp-e94b586deef96bf616da.js": {
-      "name": "scheduleApp-e94b586deef96bf616da.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e94b586deef96bf616da.js",
-      "publicPath": "/static/bundles/scheduleApp-e94b586deef96bf616da.js"
-    },
-    "scheduleApp-ea264ec43b31aa6ef8b9.js": {
-      "name": "scheduleApp-ea264ec43b31aa6ef8b9.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-ea264ec43b31aa6ef8b9.js",
-      "publicPath": "/static/bundles/scheduleApp-ea264ec43b31aa6ef8b9.js"
-    },
-    "scheduleApp-ea40b0375f91fac65919.js": {
-      "name": "scheduleApp-ea40b0375f91fac65919.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-ea40b0375f91fac65919.js",
-      "publicPath": "/static/bundles/scheduleApp-ea40b0375f91fac65919.js"
-    },
-    "scheduleApp-eab5a5739c3f76348948.js": {
-      "name": "scheduleApp-eab5a5739c3f76348948.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-eab5a5739c3f76348948.js",
-      "publicPath": "/static/bundles/scheduleApp-eab5a5739c3f76348948.js"
-    },
-    "scheduleApp-f0ca011aac8191d96083.js": {
-      "name": "scheduleApp-f0ca011aac8191d96083.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f0ca011aac8191d96083.js",
-      "publicPath": "/static/bundles/scheduleApp-f0ca011aac8191d96083.js"
-    },
-    "scheduleApp-f1caa5554ac63d2831a0.js": {
-      "name": "scheduleApp-f1caa5554ac63d2831a0.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f1caa5554ac63d2831a0.js",
-      "publicPath": "/static/bundles/scheduleApp-f1caa5554ac63d2831a0.js"
-    },
-    "scheduleApp-f3aab0ff3ce11b4cf97b.js": {
-      "name": "scheduleApp-f3aab0ff3ce11b4cf97b.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f3aab0ff3ce11b4cf97b.js",
-      "publicPath": "/static/bundles/scheduleApp-f3aab0ff3ce11b4cf97b.js"
-    },
-    "scheduleApp-f4342f81228f8671baed.js": {
-      "name": "scheduleApp-f4342f81228f8671baed.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f4342f81228f8671baed.js",
-      "publicPath": "/static/bundles/scheduleApp-f4342f81228f8671baed.js"
-    },
-    "scheduleApp-f74094dd17e06f2d61eb.js": {
-      "name": "scheduleApp-f74094dd17e06f2d61eb.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f74094dd17e06f2d61eb.js",
-      "publicPath": "/static/bundles/scheduleApp-f74094dd17e06f2d61eb.js"
-    },
-    "scheduleApp-fb60fab3f169da0d54f1.js": {
-      "name": "scheduleApp-fb60fab3f169da0d54f1.js",
-      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-fb60fab3f169da0d54f1.js",
-      "publicPath": "/static/bundles/scheduleApp-fb60fab3f169da0d54f1.js"
+    "scheduleApp-436b5bf5904608aa2d69.js": {
+      "name": "scheduleApp-436b5bf5904608aa2d69.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-436b5bf5904608aa2d69.js",
+      "publicPath": "/static/bundles/scheduleApp-436b5bf5904608aa2d69.js"
+    },
+    "scheduleApp-45acf4b6ca07c6f5016b.js": {
+      "name": "scheduleApp-45acf4b6ca07c6f5016b.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-45acf4b6ca07c6f5016b.js",
+      "publicPath": "/static/bundles/scheduleApp-45acf4b6ca07c6f5016b.js"
+    },
+    "scheduleApp-45b7fddd7180b303207e.js": {
+      "name": "scheduleApp-45b7fddd7180b303207e.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-45b7fddd7180b303207e.js",
+      "publicPath": "/static/bundles/scheduleApp-45b7fddd7180b303207e.js"
+    },
+    "scheduleApp-480b40dff28c1c615141.js": {
+      "name": "scheduleApp-480b40dff28c1c615141.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-480b40dff28c1c615141.js",
+      "publicPath": "/static/bundles/scheduleApp-480b40dff28c1c615141.js"
+    },
+    "scheduleApp-484a2bb36b3720760d0d.js": {
+      "name": "scheduleApp-484a2bb36b3720760d0d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-484a2bb36b3720760d0d.js",
+      "publicPath": "/static/bundles/scheduleApp-484a2bb36b3720760d0d.js"
+    },
+    "scheduleApp-495eca91d8aa2b2732d9.js": {
+      "name": "scheduleApp-495eca91d8aa2b2732d9.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-495eca91d8aa2b2732d9.js",
+      "publicPath": "/static/bundles/scheduleApp-495eca91d8aa2b2732d9.js"
+    },
+    "scheduleApp-4bd75bcd453b6e02a549.js": {
+      "name": "scheduleApp-4bd75bcd453b6e02a549.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-4bd75bcd453b6e02a549.js",
+      "publicPath": "/static/bundles/scheduleApp-4bd75bcd453b6e02a549.js"
+    },
+    "scheduleApp-4eb4fb937a15475f86b8.js": {
+      "name": "scheduleApp-4eb4fb937a15475f86b8.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-4eb4fb937a15475f86b8.js",
+      "publicPath": "/static/bundles/scheduleApp-4eb4fb937a15475f86b8.js"
+    },
+    "scheduleApp-4f8408243bf05ba91255.js": {
+      "name": "scheduleApp-4f8408243bf05ba91255.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-4f8408243bf05ba91255.js",
+      "publicPath": "/static/bundles/scheduleApp-4f8408243bf05ba91255.js"
+    },
+    "scheduleApp-5365d39d41963fcf623d.js": {
+      "name": "scheduleApp-5365d39d41963fcf623d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-5365d39d41963fcf623d.js",
+      "publicPath": "/static/bundles/scheduleApp-5365d39d41963fcf623d.js"
+    },
+    "scheduleApp-53b758ce95e57dc695bc.js": {
+      "name": "scheduleApp-53b758ce95e57dc695bc.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-53b758ce95e57dc695bc.js",
+      "publicPath": "/static/bundles/scheduleApp-53b758ce95e57dc695bc.js"
+    },
+    "scheduleApp-55a8023d3089cb13671d.js": {
+      "name": "scheduleApp-55a8023d3089cb13671d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-55a8023d3089cb13671d.js",
+      "publicPath": "/static/bundles/scheduleApp-55a8023d3089cb13671d.js"
+    },
+    "scheduleApp-60aa96c2d730e425fec7.js": {
+      "name": "scheduleApp-60aa96c2d730e425fec7.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-60aa96c2d730e425fec7.js",
+      "publicPath": "/static/bundles/scheduleApp-60aa96c2d730e425fec7.js"
+    },
+    "scheduleApp-6513637913f46ef2ae16.js": {
+      "name": "scheduleApp-6513637913f46ef2ae16.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-6513637913f46ef2ae16.js",
+      "publicPath": "/static/bundles/scheduleApp-6513637913f46ef2ae16.js"
+    },
+    "scheduleApp-685608f2fee0ed401cf5.js": {
+      "name": "scheduleApp-685608f2fee0ed401cf5.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-685608f2fee0ed401cf5.js",
+      "publicPath": "/static/bundles/scheduleApp-685608f2fee0ed401cf5.js"
+    },
+    "scheduleApp-6a93f5b44039ec19f66d.js": {
+      "name": "scheduleApp-6a93f5b44039ec19f66d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-6a93f5b44039ec19f66d.js",
+      "publicPath": "/static/bundles/scheduleApp-6a93f5b44039ec19f66d.js"
+    },
+    "scheduleApp-6d6539df1e9baf2ed088.js": {
+      "name": "scheduleApp-6d6539df1e9baf2ed088.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-6d6539df1e9baf2ed088.js",
+      "publicPath": "/static/bundles/scheduleApp-6d6539df1e9baf2ed088.js"
+    },
+    "scheduleApp-72037e32cc347f9d6a15.js": {
+      "name": "scheduleApp-72037e32cc347f9d6a15.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-72037e32cc347f9d6a15.js",
+      "publicPath": "/static/bundles/scheduleApp-72037e32cc347f9d6a15.js"
+    },
+    "scheduleApp-73d1d355b32ab92a67c7.js": {
+      "name": "scheduleApp-73d1d355b32ab92a67c7.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-73d1d355b32ab92a67c7.js",
+      "publicPath": "/static/bundles/scheduleApp-73d1d355b32ab92a67c7.js"
+    },
+    "scheduleApp-7614e24cd2b4d3d3804d.js": {
+      "name": "scheduleApp-7614e24cd2b4d3d3804d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7614e24cd2b4d3d3804d.js",
+      "publicPath": "/static/bundles/scheduleApp-7614e24cd2b4d3d3804d.js"
+    },
+    "scheduleApp-77cea27f239f2c417c04.js": {
+      "name": "scheduleApp-77cea27f239f2c417c04.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-77cea27f239f2c417c04.js",
+      "publicPath": "/static/bundles/scheduleApp-77cea27f239f2c417c04.js"
+    },
+    "scheduleApp-78d899965e289d8d070d.js": {
+      "name": "scheduleApp-78d899965e289d8d070d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-78d899965e289d8d070d.js",
+      "publicPath": "/static/bundles/scheduleApp-78d899965e289d8d070d.js"
+    },
+    "scheduleApp-799770925e1dcdb51fcf.js": {
+      "name": "scheduleApp-799770925e1dcdb51fcf.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-799770925e1dcdb51fcf.js",
+      "publicPath": "/static/bundles/scheduleApp-799770925e1dcdb51fcf.js"
+    },
+    "scheduleApp-7d7d27b80ada1da93f6a.js": {
+      "name": "scheduleApp-7d7d27b80ada1da93f6a.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-7d7d27b80ada1da93f6a.js",
+      "publicPath": "/static/bundles/scheduleApp-7d7d27b80ada1da93f6a.js"
+    },
+    "scheduleApp-816c04404d624c322f95.js": {
+      "name": "scheduleApp-816c04404d624c322f95.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-816c04404d624c322f95.js",
+      "publicPath": "/static/bundles/scheduleApp-816c04404d624c322f95.js"
+    },
+    "scheduleApp-8480c19b1e01c13e428f.js": {
+      "name": "scheduleApp-8480c19b1e01c13e428f.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-8480c19b1e01c13e428f.js",
+      "publicPath": "/static/bundles/scheduleApp-8480c19b1e01c13e428f.js"
+    },
+    "scheduleApp-872e28ea488e6eaebe2f.js": {
+      "name": "scheduleApp-872e28ea488e6eaebe2f.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-872e28ea488e6eaebe2f.js",
+      "publicPath": "/static/bundles/scheduleApp-872e28ea488e6eaebe2f.js"
+    },
+    "scheduleApp-879a3ab61f38083687d5.js": {
+      "name": "scheduleApp-879a3ab61f38083687d5.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-879a3ab61f38083687d5.js",
+      "publicPath": "/static/bundles/scheduleApp-879a3ab61f38083687d5.js"
+    },
+    "scheduleApp-8ba2eec3e8070bea6f3a.js": {
+      "name": "scheduleApp-8ba2eec3e8070bea6f3a.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-8ba2eec3e8070bea6f3a.js",
+      "publicPath": "/static/bundles/scheduleApp-8ba2eec3e8070bea6f3a.js"
+    },
+    "scheduleApp-92a24cbe302c64d3eaa2.js": {
+      "name": "scheduleApp-92a24cbe302c64d3eaa2.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-92a24cbe302c64d3eaa2.js",
+      "publicPath": "/static/bundles/scheduleApp-92a24cbe302c64d3eaa2.js"
+    },
+    "scheduleApp-9511e467c69e04b0c6d7.js": {
+      "name": "scheduleApp-9511e467c69e04b0c6d7.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9511e467c69e04b0c6d7.js",
+      "publicPath": "/static/bundles/scheduleApp-9511e467c69e04b0c6d7.js"
+    },
+    "scheduleApp-951d12e724c16a1d5327.js": {
+      "name": "scheduleApp-951d12e724c16a1d5327.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-951d12e724c16a1d5327.js",
+      "publicPath": "/static/bundles/scheduleApp-951d12e724c16a1d5327.js"
+    },
+    "scheduleApp-988721f071d66ff6b2d8.js": {
+      "name": "scheduleApp-988721f071d66ff6b2d8.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-988721f071d66ff6b2d8.js",
+      "publicPath": "/static/bundles/scheduleApp-988721f071d66ff6b2d8.js"
+    },
+    "scheduleApp-9a3a159adb6858d5ea45.js": {
+      "name": "scheduleApp-9a3a159adb6858d5ea45.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9a3a159adb6858d5ea45.js",
+      "publicPath": "/static/bundles/scheduleApp-9a3a159adb6858d5ea45.js"
+    },
+    "scheduleApp-9ac02c77272d7bbbdf7d.js": {
+      "name": "scheduleApp-9ac02c77272d7bbbdf7d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9ac02c77272d7bbbdf7d.js",
+      "publicPath": "/static/bundles/scheduleApp-9ac02c77272d7bbbdf7d.js"
+    },
+    "scheduleApp-9d445c23f6be718a333c.js": {
+      "name": "scheduleApp-9d445c23f6be718a333c.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9d445c23f6be718a333c.js",
+      "publicPath": "/static/bundles/scheduleApp-9d445c23f6be718a333c.js"
+    },
+    "scheduleApp-a22825c324ee23217d2b.js": {
+      "name": "scheduleApp-a22825c324ee23217d2b.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a22825c324ee23217d2b.js",
+      "publicPath": "/static/bundles/scheduleApp-a22825c324ee23217d2b.js"
+    },
+    "scheduleApp-a6a634f2280046942d92.js": {
+      "name": "scheduleApp-a6a634f2280046942d92.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-a6a634f2280046942d92.js",
+      "publicPath": "/static/bundles/scheduleApp-a6a634f2280046942d92.js"
+    },
+    "scheduleApp-ad0b6229b69097581494.js": {
+      "name": "scheduleApp-ad0b6229b69097581494.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-ad0b6229b69097581494.js",
+      "publicPath": "/static/bundles/scheduleApp-ad0b6229b69097581494.js"
+    },
+    "scheduleApp-ad54e121a33d0039b96b.js": {
+      "name": "scheduleApp-ad54e121a33d0039b96b.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-ad54e121a33d0039b96b.js",
+      "publicPath": "/static/bundles/scheduleApp-ad54e121a33d0039b96b.js"
+    },
+    "scheduleApp-b0a3b93a152b4d951790.js": {
+      "name": "scheduleApp-b0a3b93a152b4d951790.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-b0a3b93a152b4d951790.js",
+      "publicPath": "/static/bundles/scheduleApp-b0a3b93a152b4d951790.js"
+    },
+    "scheduleApp-b123c0bc6d94d80fa909.js": {
+      "name": "scheduleApp-b123c0bc6d94d80fa909.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-b123c0bc6d94d80fa909.js",
+      "publicPath": "/static/bundles/scheduleApp-b123c0bc6d94d80fa909.js"
+    },
+    "scheduleApp-b852bddfcdbd05c0a37c.js": {
+      "name": "scheduleApp-b852bddfcdbd05c0a37c.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-b852bddfcdbd05c0a37c.js",
+      "publicPath": "/static/bundles/scheduleApp-b852bddfcdbd05c0a37c.js"
+    },
+    "scheduleApp-b8eb96ae6488d6027881.js": {
+      "name": "scheduleApp-b8eb96ae6488d6027881.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-b8eb96ae6488d6027881.js",
+      "publicPath": "/static/bundles/scheduleApp-b8eb96ae6488d6027881.js"
+    },
+    "scheduleApp-ba36fe5965168104e935.js": {
+      "name": "scheduleApp-ba36fe5965168104e935.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-ba36fe5965168104e935.js",
+      "publicPath": "/static/bundles/scheduleApp-ba36fe5965168104e935.js"
+    },
+    "scheduleApp-bc1a04c133a10b3c3330.js": {
+      "name": "scheduleApp-bc1a04c133a10b3c3330.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-bc1a04c133a10b3c3330.js",
+      "publicPath": "/static/bundles/scheduleApp-bc1a04c133a10b3c3330.js"
+    },
+    "scheduleApp-be07b3f398de60673bab.js": {
+      "name": "scheduleApp-be07b3f398de60673bab.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-be07b3f398de60673bab.js",
+      "publicPath": "/static/bundles/scheduleApp-be07b3f398de60673bab.js"
+    },
+    "scheduleApp-c0743de104dedc5481cb.js": {
+      "name": "scheduleApp-c0743de104dedc5481cb.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c0743de104dedc5481cb.js",
+      "publicPath": "/static/bundles/scheduleApp-c0743de104dedc5481cb.js"
+    },
+    "scheduleApp-c0b9a30d83ba9be1f912.js": {
+      "name": "scheduleApp-c0b9a30d83ba9be1f912.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c0b9a30d83ba9be1f912.js",
+      "publicPath": "/static/bundles/scheduleApp-c0b9a30d83ba9be1f912.js"
+    },
+    "scheduleApp-c45cab4c1a0d1db7f07d.js": {
+      "name": "scheduleApp-c45cab4c1a0d1db7f07d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c45cab4c1a0d1db7f07d.js",
+      "publicPath": "/static/bundles/scheduleApp-c45cab4c1a0d1db7f07d.js"
+    },
+    "scheduleApp-c5d21ec68c353937e831.js": {
+      "name": "scheduleApp-c5d21ec68c353937e831.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c5d21ec68c353937e831.js",
+      "publicPath": "/static/bundles/scheduleApp-c5d21ec68c353937e831.js"
+    },
+    "scheduleApp-c99e9829f621d6dcd947.js": {
+      "name": "scheduleApp-c99e9829f621d6dcd947.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c99e9829f621d6dcd947.js",
+      "publicPath": "/static/bundles/scheduleApp-c99e9829f621d6dcd947.js"
+    },
+    "scheduleApp-c9f0ca8e34b64bf3be50.js": {
+      "name": "scheduleApp-c9f0ca8e34b64bf3be50.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-c9f0ca8e34b64bf3be50.js",
+      "publicPath": "/static/bundles/scheduleApp-c9f0ca8e34b64bf3be50.js"
+    },
+    "scheduleApp-cfee73102e0f28fb8104.js": {
+      "name": "scheduleApp-cfee73102e0f28fb8104.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-cfee73102e0f28fb8104.js",
+      "publicPath": "/static/bundles/scheduleApp-cfee73102e0f28fb8104.js"
+    },
+    "scheduleApp-d62ce5dfd62775f9d11b.js": {
+      "name": "scheduleApp-d62ce5dfd62775f9d11b.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-d62ce5dfd62775f9d11b.js",
+      "publicPath": "/static/bundles/scheduleApp-d62ce5dfd62775f9d11b.js"
+    },
+    "scheduleApp-dbc81c3b505029cd390d.js": {
+      "name": "scheduleApp-dbc81c3b505029cd390d.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-dbc81c3b505029cd390d.js",
+      "publicPath": "/static/bundles/scheduleApp-dbc81c3b505029cd390d.js"
+    },
+    "scheduleApp-dec4fd50a6a9cd0632c5.js": {
+      "name": "scheduleApp-dec4fd50a6a9cd0632c5.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-dec4fd50a6a9cd0632c5.js",
+      "publicPath": "/static/bundles/scheduleApp-dec4fd50a6a9cd0632c5.js"
+    },
+    "scheduleApp-e218204100848aa42620.js": {
+      "name": "scheduleApp-e218204100848aa42620.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e218204100848aa42620.js",
+      "publicPath": "/static/bundles/scheduleApp-e218204100848aa42620.js"
+    },
+    "scheduleApp-e3acdb8adcd09695c3a8.js": {
+      "name": "scheduleApp-e3acdb8adcd09695c3a8.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-e3acdb8adcd09695c3a8.js",
+      "publicPath": "/static/bundles/scheduleApp-e3acdb8adcd09695c3a8.js"
+    },
+    "scheduleApp-f11b01c383abe33399cf.js": {
+      "name": "scheduleApp-f11b01c383abe33399cf.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f11b01c383abe33399cf.js",
+      "publicPath": "/static/bundles/scheduleApp-f11b01c383abe33399cf.js"
+    },
+    "scheduleApp-f5939bcf71326875747f.js": {
+      "name": "scheduleApp-f5939bcf71326875747f.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f5939bcf71326875747f.js",
+      "publicPath": "/static/bundles/scheduleApp-f5939bcf71326875747f.js"
+    },
+    "scheduleApp-f7ebbe82a11a02effb58.js": {
+      "name": "scheduleApp-f7ebbe82a11a02effb58.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f7ebbe82a11a02effb58.js",
+      "publicPath": "/static/bundles/scheduleApp-f7ebbe82a11a02effb58.js"
+    },
+    "scheduleApp-f8735dc919fb57ad0701.js": {
+      "name": "scheduleApp-f8735dc919fb57ad0701.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-f8735dc919fb57ad0701.js",
+      "publicPath": "/static/bundles/scheduleApp-f8735dc919fb57ad0701.js"
+    },
+    "scheduleApp-fbcdec75146f8382d31a.js": {
+      "name": "scheduleApp-fbcdec75146f8382d31a.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-fbcdec75146f8382d31a.js",
+      "publicPath": "/static/bundles/scheduleApp-fbcdec75146f8382d31a.js"
     }
   },
   "chunks": {
     "scheduleApp": [
-      "scheduleApp-4355738086864901f71f.js"
+      "scheduleApp-9d445c23f6be718a333c.js"
     ]
   },
   "publicPath": "/static/bundles/",
-  "error": "ModuleNotFoundError",
-  "message": "Module not found: Error: Can't resolve '../components/schedule-edit/ScheduleEditor' in '/home/platelminto/Documents/dev/usbf-schedule/assets/js/schedule-app/pages'"
+  "error": "ModuleBuildError",
+  "message": "Module build failed (from ./node_modules/babel-loader/lib/index.js):\nSyntaxError: /home/platelminto/Documents/dev/usbf-schedule/assets/js/schedule-app/pages/GameAssignment.js: Unexpected token (370:7)\n\n  368 |         </div>\n  369 |         )}\n> 370 |       </div>\n      |        ^\n  371 |\n  372 |       {/* Back to Team Setup button */}\n  373 |       <div className=\"mb-3\">\n    at constructor (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:360:19)\n    at JSXParserMixin.raise (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:6613:19)\n    at JSXParserMixin.unexpected (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:6633:16)\n    at JSXParserMixin.jsxParseIdentifier (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4575:12)\n    at JSXParserMixin.jsxParseNamespacedName (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4582:23)\n    at JSXParserMixin.jsxParseElementName (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4591:21)\n    at JSXParserMixin.jsxParseOpeningElementAt (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4667:22)\n    at JSXParserMixin.jsxParseElementAt (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4692:33)\n    at JSXParserMixin.jsxParseElement (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4755:17)\n    at JSXParserMixin.parseExprAtom (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:4768:19)\n    at JSXParserMixin.parseExprSubscripts (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10992:23)\n    at JSXParserMixin.parseUpdate (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10977:21)\n    at JSXParserMixin.parseMaybeUnary (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10957:23)\n    at JSXParserMixin.parseMaybeUnaryOrPrivate (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10810:61)\n    at JSXParserMixin.parseExprOps (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10815:23)\n    at JSXParserMixin.parseMaybeConditional (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10792:23)\n    at JSXParserMixin.parseMaybeAssign (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10745:21)\n    at JSXParserMixin.parseExpressionBase (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10698:23)\n    at /home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10694:39\n    at JSXParserMixin.allowInAnd (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12329:16)\n    at JSXParserMixin.parseExpression (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:10694:17)\n    at JSXParserMixin.parseStatementContent (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12771:23)\n    at JSXParserMixin.parseStatementLike (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12644:17)\n    at JSXParserMixin.parseModuleItem (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12621:17)\n    at JSXParserMixin.parseBlockOrModuleBlockBody (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13192:36)\n    at JSXParserMixin.parseBlockBody (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:13185:10)\n    at JSXParserMixin.parseProgram (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12514:10)\n    at JSXParserMixin.parseTopLevel (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:12504:25)\n    at JSXParserMixin.parse (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:14364:10)\n    at parse (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/parser/lib/index.js:14398:38)\n    at parser (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/core/lib/parser/index.js:41:34)\n    at parser.next (<anonymous>)\n    at normalizeFile (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)\n    at normalizeFile.next (<anonymous>)\n    at run (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/core/lib/transformation/index.js:22:50)\n    at run.next (<anonymous>)\n    at transform (/home/platelminto/Documents/dev/usbf-schedule/node_modules/@babel/core/lib/transform.js:22:33)\n    at transform.next (<anonymous>)\n    at step (/home/platelminto/Documents/dev/usbf-schedule/node_modules/gensync/index.js:261:32)\n    at /home/platelminto/Documents/dev/usbf-schedule/node_modules/gensync/index.js:273:13\n    at async.call.result.err.err (/home/platelminto/Documents/dev/usbf-schedule/node_modules/gensync/index.js:223:11)"
 }

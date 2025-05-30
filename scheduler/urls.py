@@ -15,7 +15,21 @@ urlpatterns = [
         views.auto_generate_schedule,
         name="auto_generate_schedule",
     ),
-    path("save_schedule/", views.save_schedule, name="save_schedule"),
+    # call save_or_update_schedule with skip_validation=True
+    path(
+        "save_or_update_schedule/",
+        lambda request, *args, **kwargs: views.save_or_update_schedule(
+            request, skip_validation=True, *args, **kwargs
+        ),
+        name="save_or_update_schedule",
+    ),
+    path(
+        "save_or_update_schedule/<int:season_id>/",
+        lambda request, season_id, *args, **kwargs: views.save_or_update_schedule(
+            request, season_id=season_id, skip_validation=True, *args, **kwargs
+        ),
+        name="save_or_update_schedule_with_id",
+    ),
     path(
         "season/<int:season_id>/activate/",
         views.activate_season,
@@ -45,18 +59,14 @@ urlpatterns = [
         views.get_season_schedule_data,
         name="get_season_schedule_data",
     ),
-    # Update endpoint URL needs updating to match structure if desired, but keeping for now
-    path(
-        "schedule/<int:season_id>/update/",
-        views.update_schedule,
-        name="update_schedule",
-    ),
-
     # API endpoints for React
     path("api/seasons/", views.seasons_api, name="seasons_api"),
-    path("api/seasons/<int:season_id>/activate/", views.activate_season_api, name="activate_season_api"),
+    path(
+        "api/seasons/<int:season_id>/activate/",
+        views.activate_season_api,
+        name="activate_season_api",
+    ),
     path("api/schedule/<int:season_id>/", views.schedule_data, name="schedule_data"),
-
     # Routes for the unified React SPA
     path("app/", views.schedule_app, name="schedule_app"),
     # Catch all routes under app/ to be handled by the React Router
