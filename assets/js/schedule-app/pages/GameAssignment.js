@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
-import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE, RESET_CHANGE_TRACKING } from '../contexts/ScheduleContext';
+import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE, RESET_CHANGE_TRACKING, UPDATE_GAME } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
 
 const GameAssignment = () => {
@@ -190,19 +190,27 @@ const GameAssignment = () => {
   // Fill schedule with auto-generated data
   const fillScheduleWithGeneratedData = (generatedSchedule) => {
     try {
-      // Make a deep copy of the current weeks
-      const updatedWeeks = JSON.parse(JSON.stringify(state.weeks));
+      let lastUsedWeekNumber = 0; // Track the last week we used
       
       // Process each week in the generated schedule
       generatedSchedule.forEach((weekGames, weekIndex) => {
-        // Find the corresponding week in our state (weekIndex + 1 because weeks are 1-based)
-        const weekNumber = weekIndex + 1;
-        const weekData = updatedWeeks[weekNumber];
+        // Find the next available non-off week starting from where we left off
+        let weekNumber = lastUsedWeekNumber + 1;
+        let weekData = state.weeks[weekNumber];
         
-        if (!weekData || weekData.isOffWeek) {
-          console.warn(`Week ${weekNumber} not found or is an off week, skipping`);
+        // Keep incrementing until we find a non-off week
+        while (weekData && weekData.isOffWeek) {
+          weekNumber++;
+          weekData = state.weeks[weekNumber];
+        }
+        
+        if (!weekData) {
+          console.warn(`No more weeks available for generated schedule entry ${weekIndex}`);
           return;
         }
+        
+        // Update our tracking variable
+        lastUsedWeekNumber = weekNumber;
         
         // Create a map of existing games by their ID for quick lookup
         const existingGamesMap = {};
@@ -219,73 +227,97 @@ const GameAssignment = () => {
           
           if (gameInfo) {
             const existingGame = gameInfo.game;
+            let levelId = null;
             
-            // Update the existing game with generated data
+            // First, handle level assignment and get the levelId for team lookups
             if (generatedGame.level_name) {
-              // Find the level object to get both ID and name
               const levelObj = state.levels.find(l => l.name === generatedGame.level_name);
               if (levelObj) {
-                existingGame.level_id = levelObj.id;
-                existingGame.level_name = levelObj.name;
+                levelId = levelObj.id;
+                dispatch({
+                  type: UPDATE_GAME,
+                  payload: { gameId: existingGame.id, field: 'level_id', value: levelObj.id }
+                });
+                dispatch({
+                  type: UPDATE_GAME,
+                  payload: { gameId: existingGame.id, field: 'level_name', value: levelObj.name }
+                });
               }
             }
             
+            // Use the levelId we just determined or fall back to existing level_id
+            const finalLevelId = levelId || existingGame.level_id;
+            
             // Update team1 data
-            if (generatedGame.team1_name) {
-              // Find the team object in the appropriate level
-              if (existingGame.level_id && state.teamsByLevel[existingGame.level_id]) {
-                const team1Obj = state.teamsByLevel[existingGame.level_id].find(t => t.name === generatedGame.team1_name);
-                if (team1Obj) {
-                  existingGame.team1_id = team1Obj.id;
-                  existingGame.team1_name = team1Obj.name;
-                }
+            if (generatedGame.team1_name && finalLevelId && state.teamsByLevel[finalLevelId]) {
+              const team1Obj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.team1_name);
+              if (team1Obj) {
+                dispatch({
+                  type: UPDATE_GAME,
+                  payload: { gameId: existingGame.id, field: 'team1_id', value: team1Obj.id }
+                });
+                dispatch({
+                  type: UPDATE_GAME,
+                  payload: { gameId: existingGame.id, field: 'team1_name', value: team1Obj.name }
+                });
               }
             }
             
             // Update team2 data
-            if (generatedGame.team2_name) {
-              // Find the team object in the appropriate level
-              if (existingGame.level_id && state.teamsByLevel[existingGame.level_id]) {
-                const team2Obj = state.teamsByLevel[existingGame.level_id].find(t => t.name === generatedGame.team2_name);
-                if (team2Obj) {
-                  existingGame.team2_id = team2Obj.id;
-                  existingGame.team2_name = team2Obj.name;
-                }
+            if (generatedGame.team2_name && finalLevelId && state.teamsByLevel[finalLevelId]) {
+              const team2Obj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.team2_name);
+              if (team2Obj) {
+                dispatch({
+                  type: UPDATE_GAME,
+                  payload: { gameId: existingGame.id, field: 'team2_id', value: team2Obj.id }
+                });
+                dispatch({
+                  type: UPDATE_GAME,
+                  payload: { gameId: existingGame.id, field: 'team2_name', value: team2Obj.name }
+                });
               }
             }
             
             // Update referee data
             if (generatedGame.referee_name) {
-              // Check if it's a team reference or a name
-              if (existingGame.level_id && state.teamsByLevel[existingGame.level_id]) {
-                const refTeamObj = state.teamsByLevel[existingGame.level_id].find(t => t.name === generatedGame.referee_name);
+              if (finalLevelId && state.teamsByLevel[finalLevelId]) {
+                const refTeamObj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.referee_name);
                 if (refTeamObj) {
-                  existingGame.referee_team_id = refTeamObj.id;
-                  existingGame.referee_name = ''; // Clear name if we found a team
+                  dispatch({
+                    type: UPDATE_GAME,
+                    payload: { gameId: existingGame.id, field: 'referee_team_id', value: refTeamObj.id }
+                  });
+                  dispatch({
+                    type: UPDATE_GAME,
+                    payload: { gameId: existingGame.id, field: 'referee_name', value: '' }
+                  });
                 } else {
                   // If not found as a team, treat as a name
-                  existingGame.referee_team_id = '';
-                  existingGame.referee_name = generatedGame.referee_name;
+                  dispatch({
+                    type: UPDATE_GAME,
+                    payload: { gameId: existingGame.id, field: 'referee_team_id', value: '' }
+                  });
+                  dispatch({
+                    type: UPDATE_GAME,
+                    payload: { gameId: existingGame.id, field: 'referee_name', value: generatedGame.referee_name }
+                  });
                 }
               } else {
                 // If no level or teamsByLevel, treat as a name
-                existingGame.referee_team_id = '';
-                existingGame.referee_name = generatedGame.referee_name;
+                dispatch({
+                  type: UPDATE_GAME,
+                  payload: { gameId: existingGame.id, field: 'referee_team_id', value: '' }
+                });
+                dispatch({
+                  type: UPDATE_GAME,
+                  payload: { gameId: existingGame.id, field: 'referee_name', value: generatedGame.referee_name }
+                });
               }
             }
           } else {
             console.warn(`Game with ID ${generatedGame.id} not found in week ${weekNumber}`);
           }
         });
-      });
-      
-      // Update the state with the filled schedule
-      dispatch({ 
-        type: SET_SCHEDULE_DATA, 
-        payload: {
-          ...state,
-          weeks: updatedWeeks
-        }
       });
       
       alert('Schedule generated and filled successfully!');

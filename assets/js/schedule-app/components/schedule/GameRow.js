@@ -74,7 +74,7 @@ const GameRow = ({ game, weekId }) => {
   const handleLevelChange = (e) => {
     const levelId = e.target.value;
     
-    handleChange('level_id', levelId ? parseInt(levelId, 10) : '');
+    handleChange('level_id', levelId);
     
     // Clear team selections when level changes
     handleChange('team1_id', '');
@@ -90,7 +90,11 @@ const GameRow = ({ game, weekId }) => {
       handleChange('referee_team_id', '');
     } else {
       setShowRefereeNameInput(false);
-      handleChange('referee_team_id', value ? parseInt(value, 10) : '');
+      // Preserve the same type as team IDs in the data - check a sample team
+      const sampleTeam = game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] && state.teamsByLevel[game.level_id][0];
+      const shouldParseAsInt = sampleTeam && typeof sampleTeam.id === 'number';
+      const finalValue = value && shouldParseAsInt ? parseInt(value, 10) : value;
+      handleChange('referee_team_id', finalValue);
       handleChange('referee_name', '');
     }
   };
@@ -193,7 +197,14 @@ const GameRow = ({ game, weekId }) => {
           name={`team1_${game.id}`}
           className="form-select form-select-sm team-select team1-select schedule-input"
           value={game.team1_id || ''}
-          onChange={(e) => handleChange('team1_id', e.target.value ? parseInt(e.target.value, 10) : '')}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Preserve the same type as team IDs in the data - check a sample team
+            const sampleTeam = game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] && state.teamsByLevel[game.level_id][0];
+            const shouldParseAsInt = sampleTeam && typeof sampleTeam.id === 'number';
+            const finalValue = value && shouldParseAsInt ? parseInt(value, 10) : value;
+            handleChange('team1_id', finalValue);
+          }}
           disabled={!state.editingEnabled}
         >
           <option value="">---------</option>
@@ -276,7 +287,14 @@ const GameRow = ({ game, weekId }) => {
           name={`team2_${game.id}`}
           className="form-select form-select-sm team-select team2-select schedule-input"
           value={game.team2_id || ''}
-          onChange={(e) => handleChange('team2_id', e.target.value ? parseInt(e.target.value, 10) : '')}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Preserve the same type as team IDs in the data - check a sample team
+            const sampleTeam = game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] && state.teamsByLevel[game.level_id][0];
+            const shouldParseAsInt = sampleTeam && typeof sampleTeam.id === 'number';
+            const finalValue = value && shouldParseAsInt ? parseInt(value, 10) : value;
+            handleChange('team2_id', finalValue);
+          }}
           disabled={!state.editingEnabled}
         >
           <option value="">---------</option>
