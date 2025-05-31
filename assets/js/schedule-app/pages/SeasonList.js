@@ -239,7 +239,7 @@ const SeasonList = () => {
       )}
 
       <hr />
-      <Link to="/schedule/create" className="btn btn-primary">
+      <Link to="/season/create/team-setup" className="btn btn-primary">
         Create New Season
       </Link>
     </div>

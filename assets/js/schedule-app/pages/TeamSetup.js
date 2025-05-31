@@ -189,8 +189,8 @@ const TeamSetup = () => {
     // Store the teams data in context
     dispatch({ type: SET_TEAMS_DATA, payload: setupData });
     
-    // Navigate to game assignment
-    navigate('/game-assignment', { state: { setupData } });
+    // Navigate to schedule create
+    navigate('/season/create/schedule', { state: { setupData } });
   };
   
   // Render functions

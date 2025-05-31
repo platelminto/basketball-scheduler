@@ -4,7 +4,7 @@ import { useSchedule } from '../hooks/useSchedule';
 import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE, RESET_CHANGE_TRACKING, UPDATE_GAME } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
 
-const GameAssignment = () => {
+const ScheduleCreate = () => {
   const { state, dispatch } = useSchedule();
   const navigate = useNavigate();
   const location = useLocation();
@@ -461,4 +461,4 @@ const GameAssignment = () => {
   );
 };
 
-export default GameAssignment;
+export default ScheduleCreate;

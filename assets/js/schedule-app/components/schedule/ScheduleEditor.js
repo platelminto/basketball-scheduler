@@ -209,7 +209,7 @@ const ScheduleEditor = ({
     setValidationResults(null);
     
     try {
-      // Collect game assignments - similar to GameAssignment component
+      // Collect game assignments - similar to ScheduleCreate component
       const gameAssignments = collectGameAssignments();
       
       // Convert to backend format
