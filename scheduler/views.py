@@ -445,11 +445,12 @@ def save_or_update_schedule(
         # Handle creation errors (shouldn't happen if validation passed)
         if creation_errors:
             transaction.set_rollback(True)
+            # Include errors in the message instead of separate field
+            error_details = ". ".join(creation_errors)
             return JsonResponse(
                 {
                     "status": "error",
-                    "message": f"Schedule passed validation but had creation errors.",
-                    "errors": creation_errors,
+                    "message": f"Schedule passed validation but had creation errors: {error_details}",
                 },
                 status=400,
             )

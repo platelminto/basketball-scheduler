@@ -113,14 +113,18 @@ const ScheduleEdit = () => {
       // Convert to backend format for validation
       const scheduleData = webToScheduleFormat(gameAssignments);
       
-      // Extract config from game assignments
+      // Extract config from game assignments - Use names like ScheduleEditor does
       const levels = [];
       const teams_per_level = {};
       
-      for (const levelId in state.teamsByLevel) {
+      for (let levelId of Object.keys(state.teamsByLevel)) {
+        levelId = parseInt(levelId);
         if (state.teamsByLevel[levelId].length > 0) {
-          levels.push(levelId); // Use level ID instead of name
-          teams_per_level[levelId] = state.teamsByLevel[levelId].length; // Use level ID as key
+          const level = state.levels.find(l => l.id === levelId);
+          if (level) {
+            levels.push(level.name); // Use level name instead of ID
+            teams_per_level[level.name] = state.teamsByLevel[levelId].length; // Use level name as key
+          }
         }
       }
       
@@ -264,10 +268,33 @@ const ScheduleEdit = () => {
         slots[slotNum] = [];
       }
       
+      // Convert IDs to names for validation
+      const level = state.levels.find(l => l.id === game.level);
+      const levelName = level ? level.name : game.level;
+      
+      // Find team names
+      let team1Name = game.team1;
+      let team2Name = game.team2;
+      let refName = game.referee;
+      
+      if (level && state.teamsByLevel[level.id]) {
+        const team1Obj = state.teamsByLevel[level.id].find(t => t.id === game.team1);
+        const team2Obj = state.teamsByLevel[level.id].find(t => t.id === game.team2);
+        
+        team1Name = team1Obj ? team1Obj.name : game.team1;
+        team2Name = team2Obj ? team2Obj.name : game.team2;
+        
+        // Handle referee - could be team ID or a name
+        if (game.referee) {
+          const refObj = state.teamsByLevel[level.id].find(t => t.id === game.referee);
+          refName = refObj ? refObj.name : game.referee;
+        }
+      }
+      
       slots[slotNum].push({
-        level: game.level,
-        teams: [game.team1, game.team2],
-        ref: game.referee,
+        level: levelName,
+        teams: [team1Name, team2Name],
+        ref: refName || "External Ref",
         time: timeStr
       });
     });
