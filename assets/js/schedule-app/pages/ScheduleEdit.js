@@ -577,22 +577,36 @@ const ScheduleEdit = () => {
           
           {/* Button logic based on editing state and validation */}
           {isEditingEnabled ? (
-            // When schedule editing is enabled, show Validate or Save button based on validation status
-            <button
-              type="button"
-              className={validationPassed ? "btn btn-success" : "btn btn-primary"}
-              onClick={validationPassed ? () => handleSaveChanges(null) : validateSchedule}
-              disabled={isValidating}
-            >
-              {isValidating ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Validating...
-                </>
-              ) : (
-                validationPassed ? 'Save Schedule Changes' : 'Validate Schedule'
-              )}
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to reset all changes? This will reload the page and discard any unsaved changes.')) {
+                    window.location.reload();
+                  }
+                }}
+              >
+                Reset Changes
+              </button>
+              
+              {/* When schedule editing is enabled, show Validate or Save button based on validation status */}
+              <button
+                type="button"
+                className={validationPassed ? "btn btn-success" : "btn btn-primary"}
+                onClick={validationPassed ? () => handleSaveChanges(null) : validateSchedule}
+                disabled={isValidating}
+              >
+                {isValidating ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Validating...
+                  </>
+                ) : (
+                  validationPassed ? 'Save Schedule Changes' : 'Validate Schedule'
+                )}
+              </button>
+            </>
           ) : (
             // When only score editing is enabled, just show Save Score Changes button
             <button

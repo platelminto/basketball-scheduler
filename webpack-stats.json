@@ -46,6 +46,11 @@
       "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-2cb16bb7e1839f905ddc.js",
       "publicPath": "/static/bundles/scheduleApp-2cb16bb7e1839f905ddc.js"
     },
+    "scheduleApp-30aeeed26da070aa6146.js": {
+      "name": "scheduleApp-30aeeed26da070aa6146.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-30aeeed26da070aa6146.js",
+      "publicPath": "/static/bundles/scheduleApp-30aeeed26da070aa6146.js"
+    },
     "scheduleApp-351687a75ee5d3fb15a8.js": {
       "name": "scheduleApp-351687a75ee5d3fb15a8.js",
       "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-351687a75ee5d3fb15a8.js",
@@ -150,6 +155,11 @@
       "name": "scheduleApp-96ddf55550dd8e8f4c3f.js",
       "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-96ddf55550dd8e8f4c3f.js",
       "publicPath": "/static/bundles/scheduleApp-96ddf55550dd8e8f4c3f.js"
+    },
+    "scheduleApp-9788bcd26cbedc9c9767.js": {
+      "name": "scheduleApp-9788bcd26cbedc9c9767.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-9788bcd26cbedc9c9767.js",
+      "publicPath": "/static/bundles/scheduleApp-9788bcd26cbedc9c9767.js"
     },
     "scheduleApp-9907e1ba3caf26b71359.js": {
       "name": "scheduleApp-9907e1ba3caf26b71359.js",
@@ -270,11 +280,16 @@
       "name": "scheduleApp-ff763868f33abb9f552f.js",
       "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-ff763868f33abb9f552f.js",
       "publicPath": "/static/bundles/scheduleApp-ff763868f33abb9f552f.js"
+    },
+    "scheduleApp-fff76ee282ea699f39c3.js": {
+      "name": "scheduleApp-fff76ee282ea699f39c3.js",
+      "path": "/home/platelminto/Documents/dev/usbf-schedule/static/bundles/scheduleApp-fff76ee282ea699f39c3.js",
+      "publicPath": "/static/bundles/scheduleApp-fff76ee282ea699f39c3.js"
     }
   },
   "chunks": {
     "scheduleApp": [
-      "scheduleApp-edff1f9d17eaeba09cd4.js"
+      "scheduleApp-9788bcd26cbedc9c9767.js"
     ]
   },
   "publicPath": "/static/bundles/",
