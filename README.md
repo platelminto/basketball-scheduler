@@ -99,7 +99,7 @@ The schedule generation process follows these steps:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/platelminto/usbf-schedule.git
+   git clone https://github.com/platelminto/basketball-scheduler.git
    cd usbf-schedule
    ```
 
