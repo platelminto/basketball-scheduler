@@ -39,6 +39,7 @@ node_modules/
 /assets/node_modules/
 /assets/bundles/
 /static/bundles/
+webpack-stats.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

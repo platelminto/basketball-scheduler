@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a sophisticated basketball league schedule generator designed to create balanced schedules for multi-level leagues. It uses advanced algorithms to generate schedules that satisfy various constraints and balance requirements. The application has evolved into a full-featured web application with a React frontend and Django backend.
+This project is a basketball league schedule generator designed to create balanced schedules for multi-level leagues. It uses advanced algorithms to generate schedules that satisfy various constraints and balance requirements. The application has evolved into a full-featured web application with a React frontend and Django backend.
 
 ## Key Features
 
@@ -99,15 +99,21 @@ The schedule generation process follows these steps:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/usbf-schedule.git
+   git clone https://github.com/platelminto/usbf-schedule.git
    cd usbf-schedule
    ```
 
 2. Create a virtual environment and install dependencies:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   # Option 1: Using traditional venv
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
+   npm install
+
+   
+   # Option 2: Using uv (recommended)
+   uv sync
    npm install
    ```
 
