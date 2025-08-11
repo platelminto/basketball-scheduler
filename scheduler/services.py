@@ -121,10 +121,12 @@ def resolve_game_objects(game_data, is_create, lookups):
         referee_obj = None
         referee_name = None
         if game_data["referee_value"]:
-            if game_data["referee_value"].startswith("name:"):
-                referee_name = game_data["referee_value"][5:]
+            # Convert referee_value to string to handle both string and integer IDs
+            referee_str = str(game_data["referee_value"])
+            if referee_str.startswith("name:"):
+                referee_name = referee_str[5:]
             else:
-                referee_obj = valid_teams.get(str(game_data["referee_value"]))
+                referee_obj = valid_teams.get(referee_str)
                 if (
                     game_data["referee_value"]
                     and referee_obj
@@ -187,10 +189,12 @@ def convert_to_validation_format(game_assignments, is_create, lookups):
                 # Handle referee
                 ref_name = "External Ref"
                 if game_data["referee_value"]:
-                    if game_data["referee_value"].startswith("name:"):
-                        ref_name = game_data["referee_value"][5:]
+                    # Convert referee_value to string to handle both string and integer IDs
+                    referee_str = str(game_data["referee_value"])
+                    if referee_str.startswith("name:"):
+                        ref_name = referee_str[5:]
                     else:
-                        ref_obj = valid_teams.get(str(game_data["referee_value"]))
+                        ref_obj = valid_teams.get(referee_str)
                         ref_name = ref_obj.name if ref_obj else "External Ref"
 
             week_key = game_data["week_number"]
@@ -299,15 +303,14 @@ def parse_game_fields(game_data, is_create):
     if not is_create:
         score1_str = game_data["score1"]
         score2_str = game_data["score2"]
-        team1_score = (
-            int(score1_str)
-            if isinstance(score1_str, str) and score1_str.isdigit()
-            else None
-        )
-        team2_score = (
-            int(score2_str)
-            if isinstance(score2_str, str) and score2_str.isdigit()
-            else None
-        )
+        
+        # Handle scores - convert to string first if needed, then check if numeric
+        if score1_str is not None and score1_str != '':
+            score1_str = str(score1_str)
+            team1_score = int(score1_str) if score1_str.isdigit() else None
+        
+        if score2_str is not None and score2_str != '':
+            score2_str = str(score2_str)
+            team2_score = int(score2_str) if score2_str.isdigit() else None
 
     return game_time, day_of_week, team1_score, team2_score, errors

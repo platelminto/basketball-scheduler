@@ -4,6 +4,7 @@ import { useSchedule } from '../hooks/useSchedule';
 import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE, SET_LOADING, SET_ERROR, RESET_CHANGE_TRACKING } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
 import ValidationResults from '../components/schedule/ValidationResults';
+import { webToScheduleFormat } from '../utils/scheduleDataTransforms';
 
 const ScheduleEdit = () => {
   // Get seasonId from Router params
@@ -30,7 +31,13 @@ const ScheduleEdit = () => {
 
   // Clear validation results when schedule changes
   useEffect(() => {
-    if (validationResults) {
+    // Only clear if we have validation results
+    if (validationResults &&
+        (state.changedGames.size > 0 || 
+         state.newGames.size > 0 || 
+         state.changedWeeks.size > 0 ||
+         Object.values(state.weeks).some(week => week.games && week.games.some(game => game.isDeleted)))) {
+      
       console.log('Clearing validation due to schedule changes');
       
       // Clear local state
@@ -38,7 +45,24 @@ const ScheduleEdit = () => {
       setIgnoredFailures(new Set());
       setValidationPassed(false);
     }
-  }, [state.changedGames, state.newGames, state.changedWeeks]);
+  }, [state.changedGames, state.newGames, state.changedWeeks, state.weeks]);
+
+  // Scroll to validation results when they appear
+  useEffect(() => {
+    if (validationResults) {
+      // Add a small delay to ensure the validation results are fully rendered
+      setTimeout(() => {
+        const validationElement = document.querySelector('.validation-results');
+        if (validationElement) {
+          validationElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'nearest' 
+          });
+        }
+      }, 100);
+    }
+  }, [validationResults]);
 
   useEffect(() => {
     // Fetch schedule data when component mounts
@@ -111,7 +135,7 @@ const ScheduleEdit = () => {
       const gameAssignments = collectGameAssignments();
       
       // Convert to backend format for validation
-      const scheduleData = webToScheduleFormat(gameAssignments);
+      const scheduleData = webToScheduleFormat(gameAssignments, state);
       
       // Extract config from game assignments - Use names like ScheduleEditor does
       const levels = [];
@@ -129,6 +153,11 @@ const ScheduleEdit = () => {
       }
       
       const minimalConfig = { levels, teams_per_level };
+      
+      // Debug logging
+      console.log('Validation - Game Assignments:', gameAssignments.length);
+      console.log('Validation - Schedule Data:', scheduleData);
+      console.log('Validation - Config:', minimalConfig);
       
       // Call validation API
       const response = await fetch('/scheduler/validate_schedule/', {
@@ -211,7 +240,7 @@ const ScheduleEdit = () => {
           return;
         }
         
-        let referee = game.referee_team_id || "";
+        let referee = game.referee_team_id ? String(game.referee_team_id) : "";
         if (!referee && game.referee_name) {
           referee = game.referee_name;
         }
@@ -233,74 +262,6 @@ const ScheduleEdit = () => {
     return gameAssignments;
   };
   
-  const webToScheduleFormat = (gameAssignments) => {
-    // Same logic as ScheduleEditor
-    const weekGroups = {};
-    gameAssignments.forEach(game => {
-      const weekKey = game.week;
-      
-      if (!weekGroups[weekKey]) {
-        weekGroups[weekKey] = {
-          week: weekKey,
-          slots: {}
-        };
-      }
-      
-      const timeStr = game.time;
-      let slotNum = 1;
-      const slots = weekGroups[weekKey].slots;
-      
-      let foundSlot = false;
-      for (const slotKey in slots) {
-        const gamesInSlot = slots[slotKey];
-        if (gamesInSlot.length > 0 && gamesInSlot[0].time === timeStr) {
-          slotNum = parseInt(slotKey);
-          foundSlot = true;
-          break;
-        }
-      }
-      
-      if (!foundSlot) {
-        slotNum = Object.keys(slots).length + 1;
-      }
-      
-      if (!slots[slotNum]) {
-        slots[slotNum] = [];
-      }
-      
-      // Convert IDs to names for validation
-      const level = state.levels.find(l => l.id === game.level);
-      const levelName = level ? level.name : game.level;
-      
-      // Find team names
-      let team1Name = game.team1;
-      let team2Name = game.team2;
-      let refName = game.referee;
-      
-      if (level && state.teamsByLevel[level.id]) {
-        const team1Obj = state.teamsByLevel[level.id].find(t => t.id === game.team1);
-        const team2Obj = state.teamsByLevel[level.id].find(t => t.id === game.team2);
-        
-        team1Name = team1Obj ? team1Obj.name : game.team1;
-        team2Name = team2Obj ? team2Obj.name : game.team2;
-        
-        // Handle referee - could be team ID or a name
-        if (game.referee) {
-          const refObj = state.teamsByLevel[level.id].find(t => t.id === game.referee);
-          refName = refObj ? refObj.name : game.referee;
-        }
-      }
-      
-      slots[slotNum].push({
-        level: levelName,
-        teams: [team1Name, team2Name],
-        ref: refName || "External Ref",
-        time: timeStr
-      });
-    });
-    
-    return Object.values(weekGroups);
-  };
 
   const handleSaveChanges = async (scheduleData = null) => {
     // If nothing has changed, show alert and return
@@ -434,7 +395,7 @@ const ScheduleEdit = () => {
             team2: game.team2_id,
             score1: game.team1_score !== null && game.team1_score !== undefined ? String(game.team1_score) : '',
             score2: game.team2_score !== null && game.team2_score !== undefined ? String(game.team2_score) : '',
-            referee: game.referee_team_id ? game.referee_team_id :
+            referee: game.referee_team_id ? String(game.referee_team_id) :
                     game.referee_name ? 'name:' + game.referee_name : ''
           });
         });
@@ -622,7 +583,7 @@ const ScheduleEdit = () => {
 
       {/* Show validation results when available */}
       {validationResults && (
-        <div className="mb-4">
+        <div className="mb-4 validation-results">
           <ValidationResults
             validationResults={validationResults}
             ignoredFailures={ignoredFailures}

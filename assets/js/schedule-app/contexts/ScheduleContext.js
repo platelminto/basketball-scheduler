@@ -18,6 +18,8 @@ export const UPDATE_GAME = 'UPDATE_GAME';
 export const ADD_GAME = 'ADD_GAME';
 export const DELETE_GAME = 'DELETE_GAME';
 export const UPDATE_WEEK_DATE = 'UPDATE_WEEK_DATE';
+export const DELETE_WEEK = 'DELETE_WEEK';
+export const ADD_OFF_WEEK = 'ADD_OFF_WEEK';
 export const MARK_CHANGED = 'MARK_CHANGED';
 export const RESET_CHANGE_TRACKING = 'RESET_CHANGE_TRACKING';
 
@@ -299,6 +301,105 @@ const scheduleReducer = (state, action) => {
       }
 
       return state;
+    }
+
+    case DELETE_WEEK: {
+      const { weekId } = action.payload;
+      const updatedWeeks = { ...state.weeks };
+      
+      // Remove the week
+      delete updatedWeeks[weekId];
+      
+      // Mark the week as changed (for backend deletion tracking)
+      const changedWeeks = new Set(state.changedWeeks);
+      changedWeeks.add(weekId);
+      
+      return {
+        ...state,
+        weeks: updatedWeeks,
+        changedWeeks
+      };
+    }
+
+    case ADD_OFF_WEEK: {
+      const { afterWeekId, offWeekData } = action.payload;
+      const updatedWeeks = { ...state.weeks };
+      
+      // Get all weeks sorted by week number
+      const sortedWeeks = Object.values(updatedWeeks)
+        .sort((a, b) => a.week_number - b.week_number);
+      
+      // Find insertion position
+      let insertionIndex;
+      if (afterWeekId === null) {
+        // Insert at the beginning
+        insertionIndex = 0;
+      } else {
+        // Find the index after the specified week
+        const afterWeekIndex = sortedWeeks.findIndex(w => w.week_number === afterWeekId);
+        insertionIndex = afterWeekIndex !== -1 ? afterWeekIndex + 1 : sortedWeeks.length;
+      }
+      
+      // Create new off week with temporary ID
+      const newOffWeek = {
+        id: `off_week_${Date.now()}`,
+        week_number: 0, // Will be set during renumbering
+        monday_date: offWeekData.monday_date,
+        isOffWeek: true,
+        games: []
+      };
+      
+      // Insert the new off week into the sorted array
+      sortedWeeks.splice(insertionIndex, 0, newOffWeek);
+      
+      // Renumber all weeks sequentially and adjust dates
+      const renumberedWeeks = {};
+      const changedWeeks = new Set(state.changedWeeks);
+      
+      sortedWeeks.forEach((week, index) => {
+        const newWeekNumber = index + 1;
+        let adjustedDate = week.monday_date;
+        let updatedGames = week.games || [];
+        
+        // For weeks after the insertion point, shift their dates by 7 days
+        if (index > insertionIndex) {
+          const originalDate = new Date(week.monday_date);
+          const shiftedDate = new Date(originalDate);
+          shiftedDate.setDate(originalDate.getDate() + 7);
+          adjustedDate = shiftedDate.toISOString().split('T')[0];
+          
+          // Update individual game dates for shifted weeks
+          updatedGames = week.games.map(game => {
+            if (game.day_of_week !== undefined && game.day_of_week !== null) {
+              const gameDate = new Date(shiftedDate);
+              gameDate.setDate(shiftedDate.getDate() + parseInt(game.day_of_week));
+              return {
+                ...game,
+                date: gameDate.toISOString().split('T')[0]
+              };
+            }
+            return game;
+          });
+        }
+        
+        const updatedWeek = {
+          ...week,
+          week_number: newWeekNumber,
+          monday_date: adjustedDate,
+          games: updatedGames
+        };
+        
+        renumberedWeeks[newWeekNumber] = updatedWeek;
+        
+        // Mark all affected weeks as changed
+        changedWeeks.add(newWeekNumber);
+      });
+      
+      return {
+        ...state,
+        weeks: renumberedWeeks,
+        changedWeeks
+      };
     }
 
     case RESET_CHANGE_TRACKING:

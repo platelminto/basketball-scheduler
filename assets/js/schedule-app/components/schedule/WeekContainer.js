@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
-import { UPDATE_WEEK_DATE, ADD_GAME } from '../../contexts/ScheduleContext';
+import { UPDATE_WEEK_DATE, ADD_GAME, DELETE_WEEK, ADD_OFF_WEEK } from '../../contexts/ScheduleContext';
 import GameRow from './GameRow';
 
 const WeekContainer = ({ weekData }) => {
@@ -111,44 +111,76 @@ const WeekContainer = ({ weekData }) => {
       }
     });
   };
+
+  const handleDeleteWeek = () => {
+    if (!state.editingEnabled) return;
+    
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete Week ${weekData.week_number}? This will remove all games in this week.`
+    );
+    
+    if (confirmDelete) {
+      dispatch({
+        type: DELETE_WEEK,
+        payload: { weekId: weekData.week_number }
+      });
+    }
+  };
+
   
   return (
     <div className={`week-container ${collapsed ? 'collapsed' : ''} ${weekData.isOffWeek ? 'off-week' : ''}`} data-week-id={weekData.week_number}>
       <div 
         className="week-header" 
         onClick={(e) => {
-          // Don't toggle collapse if they clicked on the date input
+          // Don't toggle collapse if they clicked on the date input or buttons
           if (
             !e.target.closest('.week-date-input') && 
-            !e.target.closest('.week-date-display')
+            !e.target.closest('.week-date-display') &&
+            !e.target.closest('.week-actions')
           ) {
             setCollapsed(!collapsed);
           }
         }}
       >
-        <h3>
-          Week {weekData.week_number} - 
-          <span className="d-inline-flex align-items-center">
-            {!state.editingEnabled ? (
-              <span className="week-date-display">
-                {new Date(weekData.monday_date).toLocaleDateString('en-GB', { 
-                  day: '2-digit', month: '2-digit', year: 'numeric' 
-                })}
-              </span>
-            ) : (
-              <input 
-                type="date"
-                value={weekData.monday_date}
-                className="form-control form-control-sm ms-2 week-date-input"
-                onChange={handleDateChange}
-                disabled={!state.editingEnabled}
-              />
+        <div className="d-flex justify-content-between align-items-center">
+          <h3 className="mb-0">
+            Week {weekData.week_number} - 
+            <span className="d-inline-flex align-items-center">
+              {!state.editingEnabled ? (
+                <span className="week-date-display">
+                  {new Date(weekData.monday_date).toLocaleDateString('en-GB', { 
+                    day: '2-digit', month: '2-digit', year: 'numeric' 
+                  })}
+                </span>
+              ) : (
+                <input 
+                  type="date"
+                  value={weekData.monday_date}
+                  className="form-control form-control-sm ms-2 week-date-input"
+                  onChange={handleDateChange}
+                  disabled={!state.editingEnabled}
+                />
+              )}
+            </span>
+            {weekData.isOffWeek && (
+              <span className="badge bg-warning ms-3">OFF WEEK</span>
             )}
-          </span>
-          {weekData.isOffWeek && (
-            <span className="badge bg-warning ms-3">OFF WEEK</span>
+          </h3>
+          
+          {state.editingEnabled && (
+            <div className="week-actions d-flex gap-2">
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
+                title="Delete this week"
+                onClick={handleDeleteWeek}
+              >
+                <i className="fas fa-trash"></i> Delete Week
+              </button>
+            </div>
           )}
-        </h3>
+        </div>
       </div>
       
       {!collapsed && !weekData.isOffWeek && (

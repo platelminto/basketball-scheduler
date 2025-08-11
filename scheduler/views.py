@@ -315,30 +315,66 @@ def save_or_update_schedule(
         else:
             season = get_object_or_404(Season, pk=season_id)
 
-            # Handle week date updates
+            # Handle week date updates, deletions, and off-week insertions
             if week_dates_data:
-                week_numbers = {
+                existing_weeks = {
                     str(week.week_number): week
                     for week in Week.objects.filter(season=season)
                 }
+                
+                # Get list of existing week numbers from database
+                existing_week_numbers = set(existing_weeks.keys())
+                
+                # Get list of week numbers from frontend data
+                frontend_week_numbers = set(str(week_date.get("id")) for week_date in week_dates_data if week_date.get("id"))
+                
+                # Find weeks to delete (exist in DB but not in frontend data)
+                weeks_to_delete = existing_week_numbers - frontend_week_numbers
+                
+                # Delete weeks that are no longer present
+                for week_number_str in weeks_to_delete:
+                    week_to_delete = existing_weeks[week_number_str]
+                    # Delete all games in this week first
+                    Game.objects.filter(week=week_to_delete).delete()
+                    # Delete the week
+                    week_to_delete.delete()
+                
+                # Process remaining weeks (updates and new weeks)
                 for week_date in week_dates_data:
                     week_id = week_date.get("id")
                     new_date = week_date.get("date")
+                    is_off_week = week_date.get("isOffWeek", False)
+                    
                     if week_id and new_date:
                         try:
-                            week = week_numbers.get(str(week_id))
-                            if not week:
-                                raise ValueError(f"Invalid week number: {week_id}")
                             from datetime import datetime
-
                             parsed_date = datetime.strptime(new_date, "%Y-%m-%d").date()
-                            week.monday_date = parsed_date
-                            week.save()
+                            
+                            existing_week = existing_weeks.get(str(week_id))
+                            
+                            if existing_week:
+                                # Update existing week
+                                existing_week.monday_date = parsed_date
+                                existing_week.save()
+                            elif is_off_week:
+                                # Create new off week
+                                OffWeek.objects.create(
+                                    season=season,
+                                    monday_date=parsed_date
+                                )
+                            else:
+                                # Create new regular week
+                                Week.objects.create(
+                                    season=season,
+                                    week_number=int(week_id),
+                                    monday_date=parsed_date
+                                )
+                                
                         except Exception as e:
                             return JsonResponse(
                                 {
                                     "status": "error",
-                                    "error": f"Error updating week {week_id}: {str(e)}",
+                                    "error": f"Error processing week {week_id}: {str(e)}",
                                 },
                                 status=400,
                             )
@@ -553,11 +589,14 @@ def schedule_data(request, season_id):
     """API endpoint for schedule data used by React"""
     season = get_object_or_404(Season, pk=season_id)
 
-    # Get all weeks in this season
+    # Get all weeks in this season (both regular and off weeks)
     weeks = Week.objects.filter(season=season).order_by("week_number")
+    off_weeks = OffWeek.objects.filter(season=season).order_by("monday_date")
 
     # Get all games grouped by week
     games_by_week = {}
+    
+    # Add regular weeks
     for week in weeks:
         games = (
             Game.objects.filter(week=week)
@@ -593,6 +632,23 @@ def schedule_data(request, season_id):
             "week_number": week.week_number,
             "monday_date": week.monday_date.strftime("%Y-%m-%d"),
             "games": games_list,
+        }
+    
+    # Add off weeks
+    for off_week in off_weeks:
+        # Use a unique week number for off weeks (we'll need to determine this properly)
+        # For now, we'll generate a unique number based on the off week's position
+        existing_week_numbers = set(games_by_week.keys())
+        off_week_number = max(existing_week_numbers, default=0) + 1
+        while off_week_number in existing_week_numbers:
+            off_week_number += 1
+            
+        games_by_week[off_week_number] = {
+            "id": f"off_{off_week.id}",
+            "week_number": off_week_number,
+            "monday_date": off_week.monday_date.strftime("%Y-%m-%d"),
+            "isOffWeek": True,
+            "games": [],
         }
 
     # Get all levels

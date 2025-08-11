@@ -424,17 +424,6 @@ const ScheduleCreate = () => {
           >
             Random Fill
           </button>
-          
-          {/* Dev mode buttons */}
-          {isDevelopment && (
-            <button 
-              type="button" 
-              className="btn btn-info" 
-              onClick={autoGenerateSchedule}
-            >
-              Auto-generate Schedule
-            </button>
-          )}
         </div>
       </div>
 
@@ -456,6 +445,8 @@ const ScheduleCreate = () => {
         onSave={saveSchedule}
         shouldRandomFill={shouldRandomFill}
         onRandomFillComplete={() => setShouldRandomFill(false)}
+        isDevelopment={isDevelopment}
+        onAutoGenerate={autoGenerateSchedule}
       />
     </div>
   );
