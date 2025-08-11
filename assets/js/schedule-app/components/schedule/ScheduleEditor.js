@@ -280,31 +280,34 @@ const ScheduleEditor = ({
             .map(([weekNum, weekData], index, sortedWeeks) => (
               <React.Fragment key={weekData.id}>
                 {/* Add separator before first week (for inserting off-week at beginning) */}
-                {index === 0 && mode === 'edit' && (
+                {index === 0 && (
                   <WeekSeparator 
                     afterWeekNumber={null}
                     beforeWeekNumber={parseInt(weekNum)}
+                    mode={mode}
                   />
                 )}
                 
                 {/* Week content */}
                 <div className="mb-4">
-                  <WeekContainer weekData={weekData} />
+                  <WeekContainer weekData={weekData} mode={mode} />
                 </div>
                 
                 {/* Add separator after each week (except the last one) */}
-                {index < sortedWeeks.length - 1 && mode === 'edit' && (
+                {index < sortedWeeks.length - 1 && (
                   <WeekSeparator 
                     afterWeekNumber={parseInt(weekNum)}
                     beforeWeekNumber={parseInt(sortedWeeks[index + 1][0])}
+                    mode={mode}
                   />
                 )}
                 
                 {/* Add separator after last week */}
-                {index === sortedWeeks.length - 1 && mode === 'edit' && (
+                {index === sortedWeeks.length - 1 && (
                   <WeekSeparator 
                     afterWeekNumber={parseInt(weekNum)}
                     beforeWeekNumber={null}
+                    mode={mode}
                   />
                 )}
               </React.Fragment>

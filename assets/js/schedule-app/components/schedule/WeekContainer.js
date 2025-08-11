@@ -3,7 +3,7 @@ import { useSchedule } from '../../hooks/useSchedule';
 import { UPDATE_WEEK_DATE, ADD_GAME, DELETE_WEEK, ADD_OFF_WEEK, TOGGLE_WEEK_LOCK } from '../../contexts/ScheduleContext';
 import GameRow from './GameRow';
 
-const WeekContainer = ({ weekData }) => {
+const WeekContainer = ({ weekData, mode = 'edit' }) => {
   const { state, dispatch } = useSchedule();
   
   // Debug logging for week data
@@ -26,7 +26,8 @@ const WeekContainer = ({ weekData }) => {
     return firstUnlockedWeek?.week_number === weekData.week_number;
   };
   
-  const [collapsed, setCollapsed] = useState(!isFirstUnlockedWeek()); // Start expanded if first unlocked week
+  // In create mode: start all weeks expanded, in edit mode: start collapsed except first unlocked
+  const [collapsed, setCollapsed] = useState(mode === 'create' ? false : !isFirstUnlockedWeek());
   
   // Check if this week has incomplete scores (not all games have scores AND week date is before today)
   const hasIncompleteScores = () => {

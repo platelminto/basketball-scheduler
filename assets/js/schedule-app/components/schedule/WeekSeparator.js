@@ -2,7 +2,7 @@ import React from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
 import { ADD_OFF_WEEK } from '../../contexts/ScheduleContext';
 
-const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber }) => {
+const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'edit' }) => {
   const { state, dispatch } = useSchedule();
 
   const handleAddOffWeek = () => {
@@ -60,8 +60,8 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber }) => {
     });
   };
 
-  // Only show if editing is enabled
-  if (!state.editingEnabled) {
+  // Only show if editing is enabled (always show in create mode)
+  if (!state.editingEnabled && mode !== 'create') {
     return null;
   }
 
