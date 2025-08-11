@@ -593,63 +593,77 @@ def schedule_data(request, season_id):
     weeks = Week.objects.filter(season=season).order_by("week_number")
     off_weeks = OffWeek.objects.filter(season=season).order_by("monday_date")
 
-    # Get all games grouped by week
-    games_by_week = {}
+    # Create a combined list of all weeks (regular and off) sorted by date
+    all_week_data = []
     
     # Add regular weeks
     for week in weeks:
-        games = (
-            Game.objects.filter(week=week)
-            .select_related("level", "team1", "team2", "referee_team")
-            .order_by("day_of_week", "time")
-        )
-
-        games_list = []
-        for game in games:
-            games_list.append(
-                {
-                    "id": game.id,
-                    "day_of_week": game.day_of_week,
-                    "time": game.time.strftime("%H:%M") if game.time else "",
-                    "court": game.court,
-                    "level_id": game.level.id if game.level else None,
-                    "level_name": game.level.name if game.level else "",
-                    "team1_id": game.team1.id if game.team1 else None,
-                    "team1_name": game.team1.name if game.team1 else "",
-                    "team2_id": game.team2.id if game.team2 else None,
-                    "team2_name": game.team2.name if game.team2 else "",
-                    "team1_score": game.team1_score,
-                    "team2_score": game.team2_score,
-                    "referee_team_id": (
-                        game.referee_team.id if game.referee_team else None
-                    ),
-                    "referee_name": game.referee_name,
-                }
-            )
-
-        games_by_week[week.week_number] = {
-            "id": week.id,
-            "week_number": week.week_number,
-            "monday_date": week.monday_date.strftime("%Y-%m-%d"),
-            "games": games_list,
-        }
+        all_week_data.append({
+            'type': 'regular',
+            'date': week.monday_date,
+            'week_obj': week,
+        })
     
     # Add off weeks
     for off_week in off_weeks:
-        # Use a unique week number for off weeks (we'll need to determine this properly)
-        # For now, we'll generate a unique number based on the off week's position
-        existing_week_numbers = set(games_by_week.keys())
-        off_week_number = max(existing_week_numbers, default=0) + 1
-        while off_week_number in existing_week_numbers:
-            off_week_number += 1
-            
-        games_by_week[off_week_number] = {
-            "id": f"off_{off_week.id}",
-            "week_number": off_week_number,
-            "monday_date": off_week.monday_date.strftime("%Y-%m-%d"),
-            "isOffWeek": True,
-            "games": [],
-        }
+        all_week_data.append({
+            'type': 'off',
+            'date': off_week.monday_date,
+            'week_obj': off_week,
+        })
+    
+    # Sort all weeks by date
+    all_week_data.sort(key=lambda x: x['date'])
+    
+    # Process weeks in chronological order and assign sequential week numbers
+    games_by_week = {}
+    for week_num, week_data in enumerate(all_week_data, 1):
+        if week_data['type'] == 'regular':
+            week = week_data['week_obj']
+            games = (
+                Game.objects.filter(week=week)
+                .select_related("level", "team1", "team2", "referee_team")
+                .order_by("day_of_week", "time")
+            )
+
+            games_list = []
+            for game in games:
+                games_list.append(
+                    {
+                        "id": game.id,
+                        "day_of_week": game.day_of_week,
+                        "time": game.time.strftime("%H:%M") if game.time else "",
+                        "court": game.court,
+                        "level_id": game.level.id if game.level else None,
+                        "level_name": game.level.name if game.level else "",
+                        "team1_id": game.team1.id if game.team1 else None,
+                        "team1_name": game.team1.name if game.team1 else "",
+                        "team2_id": game.team2.id if game.team2 else None,
+                        "team2_name": game.team2.name if game.team2 else "",
+                        "team1_score": game.team1_score,
+                        "team2_score": game.team2_score,
+                        "referee_team_id": (
+                            game.referee_team.id if game.referee_team else None
+                        ),
+                        "referee_name": game.referee_name,
+                    }
+                )
+
+            games_by_week[week_num] = {
+                "id": week.id,
+                "week_number": week_num,
+                "monday_date": week.monday_date.strftime("%Y-%m-%d"),
+                "games": games_list,
+            }
+        else:  # off week
+            off_week = week_data['week_obj']
+            games_by_week[week_num] = {
+                "id": f"off_{off_week.id}",
+                "week_number": week_num,
+                "monday_date": off_week.monday_date.strftime("%Y-%m-%d"),
+                "isOffWeek": True,
+                "games": [],
+            }
 
     # Get all levels
     levels = Level.objects.filter(season=season).order_by("name")

@@ -7,6 +7,52 @@ const SeasonList = () => {
   const { state, dispatch } = useSchedule();
   const navigate = useNavigate();
   const [expandedSeasons, setExpandedSeasons] = useState({});
+  const [incompleteWeeksCount, setIncompleteWeeksCount] = useState({});
+  
+  // Function to check for incomplete scores in a season
+  const checkIncompleteScores = async (seasonId) => {
+    try {
+      const response = await fetch(`/scheduler/api/schedule/${seasonId}/`);
+      if (!response.ok) return 0;
+      
+      const data = await response.json();
+      if (!data.weeks) return 0;
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      let incompleteCount = 0;
+      
+      for (const weekNum in data.weeks) {
+        const week = data.weeks[weekNum];
+        if (week.isOffWeek || !week.games || week.games.length === 0) continue;
+        
+        // Check if week date is before today
+        const weekDate = new Date(week.monday_date);
+        weekDate.setHours(0, 0, 0, 0);
+        if (weekDate >= today) continue;
+        
+        // Count games with both scores
+        const gamesWithBothScores = week.games.filter(game => 
+          !game.isDeleted && 
+          (game.team1_score && game.team1_score !== '') && 
+          (game.team2_score && game.team2_score !== '')
+        ).length;
+        
+        const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
+        
+        // If not all games have complete scores, mark as incomplete
+        if (gamesWithBothScores < totalActiveGames) {
+          incompleteCount++;
+        }
+      }
+      
+      return incompleteCount;
+    } catch (error) {
+      console.error('Error checking incomplete scores:', error);
+      return 0;
+    }
+  };
   
   useEffect(() => {
     const fetchSeasons = async () => {
@@ -29,6 +75,13 @@ const SeasonList = () => {
           expandedStates[season.id] = season.is_active;
         });
         setExpandedSeasons(expandedStates);
+        
+        // Check for incomplete scores in active season
+        const activeSeason = data.find(season => season.is_active);
+        if (activeSeason) {
+          const incompleteCount = await checkIncompleteScores(activeSeason.id);
+          setIncompleteWeeksCount({ [activeSeason.id]: incompleteCount });
+        }
       } catch (error) {
         console.error('Error fetching seasons:', error);
         dispatch({ type: SET_ERROR, payload: 'Failed to load seasons. Please try again.' });
@@ -95,6 +148,13 @@ const SeasonList = () => {
         expandedStates[season.id] = season.is_active;
       });
       setExpandedSeasons(expandedStates);
+      
+      // Check for incomplete scores in newly active season
+      const activeSeason = data.find(season => season.is_active);
+      if (activeSeason) {
+        const incompleteCount = await checkIncompleteScores(activeSeason.id);
+        setIncompleteWeeksCount({ [activeSeason.id]: incompleteCount });
+      }
 
     } catch (error) {
       console.error('Error activating season:', error);
@@ -150,7 +210,13 @@ const SeasonList = () => {
                   aria-controls={`collapse${season.id}`}
                 >
                   <span className="me-auto">
-                    {season.name} {season.is_active && <span className="badge bg-success ms-2">Active</span>}
+                    {season.name} 
+                    {season.is_active && <span className="badge bg-success ms-2">Active</span>}
+                    {season.is_active && incompleteWeeksCount[season.id] > 0 && (
+                      <span className="badge bg-warning ms-2" title={`${incompleteWeeksCount[season.id]} week(s) with incomplete scores`}>
+                        <i className="fas fa-exclamation-triangle"></i> Missing scores
+                      </span>
+                    )}
                   </span>
                   <small className="text-muted">
                     Created: {new Date(season.created_at).toISOString().split('T')[0]}

@@ -79,7 +79,14 @@ const ScheduleEdit = () => {
         }
 
         const data = await response.json();
-        console.log('Successfully fetched schedule data');
+        console.log('Successfully fetched schedule data:', data);
+        console.log('Weeks in data:', data.weeks);
+        // Check specifically for off weeks
+        Object.entries(data.weeks || {}).forEach(([weekId, week]) => {
+          if (week.isOffWeek) {
+            console.log('Found off week in API response:', weekId, week);
+          }
+        });
         dispatch({ type: SET_SCHEDULE_DATA, payload: data });
       } catch (error) {
         console.error('Error fetching schedule data:', error);
@@ -91,6 +98,35 @@ const ScheduleEdit = () => {
       fetchScheduleData();
     }
   }, [seasonId, dispatch]);
+
+  // Scroll to first unlocked week after initial data loads (only once)
+  useEffect(() => {
+    if (state.weeks && Object.keys(state.weeks).length > 0 && state.lockedWeeks && !state.isLoading) {
+      // Small delay to ensure DOM is rendered
+      const scrollTimeout = setTimeout(() => {
+        // Find first unlocked week
+        const sortedWeeks = Object.values(state.weeks)
+          .filter(week => !week.isOffWeek)
+          .sort((a, b) => a.week_number - b.week_number);
+        
+        const firstUnlockedWeek = sortedWeeks.find(week => !state.lockedWeeks.has(week.week_number));
+        
+        if (firstUnlockedWeek) {
+          const weekElement = document.querySelector(`[data-week-id="${firstUnlockedWeek.week_number}"]`);
+          if (weekElement) {
+            const elementTop = weekElement.offsetTop - 100;
+            window.scrollTo({
+              top: elementTop,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 500);
+      
+      // Cleanup timeout on unmount
+      return () => clearTimeout(scrollTimeout);
+    }
+  }, [seasonId]); // Only trigger on seasonId change (initial load)
 
 
   const handleEditToggle = (enabled) => {

@@ -22,6 +22,7 @@ export const DELETE_WEEK = 'DELETE_WEEK';
 export const ADD_OFF_WEEK = 'ADD_OFF_WEEK';
 export const MARK_CHANGED = 'MARK_CHANGED';
 export const RESET_CHANGE_TRACKING = 'RESET_CHANGE_TRACKING';
+export const TOGGLE_WEEK_LOCK = 'TOGGLE_WEEK_LOCK';
 
 // Initial state
 const initialState = {
@@ -41,7 +42,8 @@ const initialState = {
   editingEnabled: false,
   changedGames: new Set(),
   newGames: new Set(),
-  changedWeeks: new Set()
+  changedWeeks: new Set(),
+  lockedWeeks: new Set()
 };
 
 // Reducer function
@@ -77,13 +79,42 @@ const scheduleReducer = (state, action) => {
 
           initializedWeeks[weekId] = {
             ...week,
-            games: initializedGames
+            games: initializedGames,
+            // Ensure isOffWeek is preserved from API data
+            isOffWeek: week.isOffWeek || false
           };
+
+          // Debug logging for off weeks
+          if (week.isOffWeek) {
+            console.log('Off week detected:', week);
+          }
         }
         
 
         // The API uses teams_by_level but our internal structure uses teamsByLevel
         const teamsData = action.payload.teams_by_level || action.payload.teamsByLevel || {};
+        
+        // Initialize locked weeks - lock all weeks except the first one with no scores
+        const lockedWeeks = new Set();
+        const sortedWeeks = Object.values(initializedWeeks)
+          .sort((a, b) => a.week_number - b.week_number)
+          .filter(week => !week.isOffWeek); // Only consider non-off weeks
+        
+        let firstUnlockedFound = false;
+        for (const week of sortedWeeks) {
+          const hasScores = week.games.some(game => 
+            (game.team1_score && game.team1_score !== '') || 
+            (game.team2_score && game.team2_score !== '')
+          );
+          
+          if (!firstUnlockedFound && !hasScores) {
+            // This is the first week with no scores - leave it unlocked
+            firstUnlockedFound = true;
+          } else {
+            // Lock all other weeks
+            lockedWeeks.add(week.week_number);
+          }
+        }
         
         return {
           ...state,
@@ -92,6 +123,7 @@ const scheduleReducer = (state, action) => {
           levels: action.payload.levels,
           teamsByLevel: teamsData,
           courts: action.payload.courts,
+          lockedWeeks,
           isLoading: false
         };
       }
@@ -409,6 +441,22 @@ const scheduleReducer = (state, action) => {
         newGames: new Set(),
         changedWeeks: new Set()
       };
+
+    case TOGGLE_WEEK_LOCK: {
+      const { weekNumber } = action.payload;
+      const lockedWeeks = new Set(state.lockedWeeks);
+      
+      if (lockedWeeks.has(weekNumber)) {
+        lockedWeeks.delete(weekNumber);
+      } else {
+        lockedWeeks.add(weekNumber);
+      }
+      
+      return {
+        ...state,
+        lockedWeeks
+      };
+    }
       
     default:
       return state;

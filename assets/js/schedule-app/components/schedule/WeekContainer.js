@@ -1,11 +1,74 @@
 import React, { useState } from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
-import { UPDATE_WEEK_DATE, ADD_GAME, DELETE_WEEK, ADD_OFF_WEEK } from '../../contexts/ScheduleContext';
+import { UPDATE_WEEK_DATE, ADD_GAME, DELETE_WEEK, ADD_OFF_WEEK, TOGGLE_WEEK_LOCK } from '../../contexts/ScheduleContext';
 import GameRow from './GameRow';
 
 const WeekContainer = ({ weekData }) => {
   const { state, dispatch } = useSchedule();
-  const [collapsed, setCollapsed] = useState(false);
+  
+  // Debug logging for week data
+  if (weekData.isOffWeek) {
+    console.log('WeekContainer rendering off week:', weekData);
+  }
+  
+  // Check if this week is locked
+  const isLocked = state.lockedWeeks.has(weekData.week_number);
+  
+  // Determine if this is the first unlocked week
+  const isFirstUnlockedWeek = () => {
+    if (isLocked || weekData.isOffWeek) return false;
+    
+    const sortedWeeks = Object.values(state.weeks)
+      .filter(week => !week.isOffWeek)
+      .sort((a, b) => a.week_number - b.week_number);
+    
+    const firstUnlockedWeek = sortedWeeks.find(week => !state.lockedWeeks.has(week.week_number));
+    return firstUnlockedWeek?.week_number === weekData.week_number;
+  };
+  
+  const [collapsed, setCollapsed] = useState(!isFirstUnlockedWeek()); // Start expanded if first unlocked week
+  
+  // Check if this week has incomplete scores (not all games have scores AND week date is before today)
+  const hasIncompleteScores = () => {
+    if (weekData.isOffWeek || !weekData.games || weekData.games.length === 0) return false;
+    
+    // Check if week date is before today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    const weekDate = new Date(weekData.monday_date);
+    weekDate.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    if (weekDate >= today) return false; // Don't mark future weeks as incomplete
+    
+    const gamesWithBothScores = weekData.games.filter(game => 
+      !game.isDeleted && 
+      (game.team1_score && game.team1_score !== '') && 
+      (game.team2_score && game.team2_score !== '')
+    ).length;
+    
+    const totalActiveGames = weekData.games.filter(game => !game.isDeleted).length;
+    
+    // Return true if not all games have complete scores (both team1 and team2 scores)
+    return gamesWithBothScores < totalActiveGames;
+  };
+  
+  // Any locked week can be unlocked
+  const canBeUnlocked = () => {
+    return isLocked && !weekData.isOffWeek;
+  };
+  
+  const handleLockToggle = (e) => {
+    e.stopPropagation(); // Prevent triggering the week collapse/expand
+    
+    if (isLocked && !canBeUnlocked()) {
+      return; // Don't allow unlocking if conditions aren't met
+    }
+    
+    dispatch({
+      type: TOGGLE_WEEK_LOCK,
+      payload: { weekNumber: weekData.week_number }
+    });
+  };
   
   const handleDateChange = (e) => {
     const dateStr = e.target.value;
@@ -133,40 +196,61 @@ const WeekContainer = ({ weekData }) => {
       <div 
         className="week-header" 
         onClick={(e) => {
-          // Don't toggle collapse if they clicked on the date input or buttons
+          // Don't toggle collapse if they clicked on the date input, buttons, or lock button
           if (
             !e.target.closest('.week-date-input') && 
             !e.target.closest('.week-date-display') &&
-            !e.target.closest('.week-actions')
+            !e.target.closest('.week-actions') &&
+            !e.target.closest('.btn')
           ) {
             setCollapsed(!collapsed);
           }
         }}
       >
         <div className="d-flex justify-content-between align-items-center">
-          <h3 className="mb-0">
-            Week {weekData.week_number} - 
-            <span className="d-inline-flex align-items-center">
-              {!state.editingEnabled ? (
-                <span className="week-date-display">
-                  {new Date(weekData.monday_date).toLocaleDateString('en-GB', { 
-                    day: '2-digit', month: '2-digit', year: 'numeric' 
-                  })}
-                </span>
-              ) : (
-                <input 
-                  type="date"
-                  value={weekData.monday_date}
-                  className="form-control form-control-sm ms-2 week-date-input"
-                  onChange={handleDateChange}
-                  disabled={!state.editingEnabled}
-                />
+          <div className="d-flex align-items-center">
+            <h3 className="mb-0 me-3">
+              Week {weekData.week_number} - 
+              <span className="d-inline-flex align-items-center">
+                {!state.editingEnabled ? (
+                  <span className="week-date-display">
+                    {new Date(weekData.monday_date).toLocaleDateString('en-GB', { 
+                      day: '2-digit', month: '2-digit', year: 'numeric' 
+                    })}
+                  </span>
+                ) : (
+                  <input 
+                    type="date"
+                    value={weekData.monday_date}
+                    className="form-control form-control-sm ms-2 week-date-input"
+                    onChange={handleDateChange}
+                    disabled={!state.editingEnabled}
+                  />
+                )}
+              </span>
+              {weekData.isOffWeek && (
+                <span className="badge bg-warning ms-3">OFF WEEK</span>
               )}
-            </span>
-            {weekData.isOffWeek && (
-              <span className="badge bg-warning ms-3">OFF WEEK</span>
+              {hasIncompleteScores() && (
+                <span className="badge bg-warning ms-3" title="Some games missing scores">
+                  <i className="fas fa-exclamation-triangle"></i> Missing scores
+                </span>
+              )}
+            </h3>
+            
+            {/* Lock icon - only show for non-off weeks and when not in editing mode */}
+            {!weekData.isOffWeek && !state.editingEnabled && (
+              <button
+                type="button"
+                className={`btn btn-sm ${isLocked ? 'btn-outline-danger' : 'btn-outline-success'} me-2`}
+                title={isLocked ? (canBeUnlocked() ? 'Click to unlock week' : 'Week is locked (unlock previous weeks first)') : 'Click to lock week'}
+                onClick={handleLockToggle}
+                disabled={isLocked && !canBeUnlocked()}
+              >
+                <i className={`fas ${isLocked ? 'fa-lock' : 'fa-lock-open'}`}></i>
+              </button>
             )}
-          </h3>
+          </div>
           
           {state.editingEnabled && (
             <div className="week-actions d-flex gap-2">

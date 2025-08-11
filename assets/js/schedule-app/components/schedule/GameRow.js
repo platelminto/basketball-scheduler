@@ -21,6 +21,9 @@ const GameRow = ({ game, weekId }) => {
   const [score1Error, setScore1Error] = useState(false);
   const [score2Error, setScore2Error] = useState(false);
   
+  // Check if this week is locked for score editing
+  const isWeekLocked = state.lockedWeeks.has(weekId);
+  
   // Check if this game has been changed
   const isChanged = state.changedGames && state.changedGames.has(game.id) || 
                    (state.newGames && state.newGames.has(game.id));
@@ -250,7 +253,7 @@ const GameRow = ({ game, weekId }) => {
           pattern="[0-9]*"
           inputMode="numeric"
           placeholder="S1"
-          disabled={state.editingEnabled} // Disable score editing when schedule editing is enabled
+          disabled={state.editingEnabled || isWeekLocked} // Disable score editing when schedule editing is enabled or week is locked
         />
         <span className="vs-separator">-</span>
         <input 
@@ -277,7 +280,7 @@ const GameRow = ({ game, weekId }) => {
           pattern="[0-9]*"
           inputMode="numeric"
           placeholder="S2"
-          disabled={state.editingEnabled} // Disable score editing when schedule editing is enabled
+          disabled={state.editingEnabled || isWeekLocked} // Disable score editing when schedule editing is enabled or week is locked
         />
       </td>
       
