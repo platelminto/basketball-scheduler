@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
 import { UPDATE_WEEK_DATE, ADD_GAME, DELETE_WEEK, ADD_OFF_WEEK, TOGGLE_WEEK_LOCK } from '../../contexts/ScheduleContext';
 import GameRow from './GameRow';
+import GameCard from './GameCard';
 
-const WeekContainer = ({ weekData, mode = 'edit' }) => {
+const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
   const { state, dispatch } = useSchedule();
   
   // Debug logging for week data
@@ -331,47 +332,61 @@ const WeekContainer = ({ weekData, mode = 'edit' }) => {
       
       {!collapsed && !weekData.isOffWeek && (
         <div className="week-content">
-          <div className="table-responsive">
-            <table className="table table-striped table-bordered table-sm">
-              <thead className="table-light">
-                <tr>
-                  <th>Day</th>
-                  <th>Time</th>
-                  <th>Court</th>
-                  <th>Level</th>
-                  <th>Team 1</th>
-                  <th>Score</th>
-                  <th>Team 2</th>
-                  <th>Referee</th>
-                  {state.editingEnabled && <th>Action</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {weekData.games.map(game => (
-                  <GameRow 
-                    key={game.id} 
-                    game={game}
-                    weekId={weekData.week_number}
-                  />
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="add-game-row">
-                  <td colSpan={state.editingEnabled ? "9" : "8"} className="text-center">
-                    {state.editingEnabled && (
-                      <button 
-                        type="button" 
-                        className="btn btn-sm btn-primary add-game-btn"
-                        onClick={handleAddGame}
-                      >
-                        <i className="fas fa-plus"></i> Add Game
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          {useSimpleView && !state.editingEnabled ? (
+            // Simple card view - only when not editing
+            <div className="games-cards">
+              {weekData.games.map(game => (
+                <GameCard 
+                  key={game.id} 
+                  game={game}
+                  weekId={weekData.week_number}
+                />
+              ))}
+            </div>
+          ) : (
+            // Table view
+            <div className="table-responsive">
+              <table className="table table-striped table-bordered table-sm">
+                <thead className="table-light">
+                  <tr>
+                    <th>Day</th>
+                    <th>Time</th>
+                    <th>Court</th>
+                    <th>Level</th>
+                    <th>Team 1</th>
+                    <th>Score</th>
+                    <th>Team 2</th>
+                    <th>Referee</th>
+                    {state.editingEnabled && <th>Action</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekData.games.map(game => (
+                    <GameRow 
+                      key={game.id} 
+                      game={game}
+                      weekId={weekData.week_number}
+                    />
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="add-game-row">
+                    <td colSpan={state.editingEnabled ? "9" : "8"} className="text-center">
+                      {state.editingEnabled && (
+                        <button 
+                          type="button" 
+                          className="btn btn-sm btn-primary add-game-btn"
+                          onClick={handleAddGame}
+                        >
+                          <i className="fas fa-plus"></i> Add Game
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </div>
       )}
       

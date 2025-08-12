@@ -16,6 +16,10 @@ const ScheduleEdit = () => {
   const [validationPassed, setValidationPassed] = useState(false);
   const [validationResults, setValidationResults] = useState(null);
   const [ignoredFailures, setIgnoredFailures] = useState(new Set());
+  const [useSimpleView, setUseSimpleView] = useState(() => {
+    return window.innerWidth < 768;
+  });
+  const hasScrolledRef = useRef(false);
 
 
   // Reset change tracking when component mounts to prevent stale state
@@ -27,6 +31,9 @@ const ScheduleEdit = () => {
     setValidationResults(null);
     setIgnoredFailures(new Set());
     setValidationPassed(false);
+    
+    // Reset scroll tracking
+    hasScrolledRef.current = false;
   }, [dispatch]);
 
   // Clear validation results when schedule changes
@@ -99,9 +106,10 @@ const ScheduleEdit = () => {
     }
   }, [seasonId, dispatch]);
 
-  // Scroll to first unlocked week after initial data loads (only once)
+  // Scroll to most recent week after initial data loads (only once)
   useEffect(() => {
-    if (state.weeks && Object.keys(state.weeks).length > 0 && state.lockedWeeks && !state.isLoading) {
+    if (state.weeks && Object.keys(state.weeks).length > 0 && state.lockedWeeks && !state.isLoading && !hasScrolledRef.current) {
+      hasScrolledRef.current = true;
       // Small delay to ensure DOM is rendered
       const scrollTimeout = setTimeout(() => {
         // Find most recent week that has happened (today or in the past)
@@ -125,22 +133,38 @@ const ScheduleEdit = () => {
           }
         }
         
+        console.log('Attempting to scroll to week:', mostRecentHappenedWeek?.week_number);
+        
         if (mostRecentHappenedWeek) {
           const weekElement = document.querySelector(`[data-week-id="${mostRecentHappenedWeek.week_number}"]`);
+          console.log('Found week element:', weekElement);
+          
           if (weekElement) {
             const elementTop = weekElement.offsetTop - 100;
+            console.log('Scrolling to position:', elementTop);
+            
             window.scrollTo({
               top: elementTop,
               behavior: 'smooth'
             });
+          } else {
+            console.log('Week element not found, trying again...');
+            // Try again with a bit more delay
+            setTimeout(() => {
+              const retryElement = document.querySelector(`[data-week-id="${mostRecentHappenedWeek.week_number}"]`);
+              if (retryElement) {
+                console.log('Retry scroll successful');
+                retryElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 200);
           }
         }
-      }, 500);
+      }, 200); // Small delay
       
       // Cleanup timeout on unmount
       return () => clearTimeout(scrollTimeout);
     }
-  }, [seasonId]); // Only trigger on seasonId change (initial load)
+  }, [state.weeks, state.lockedWeeks, state.isLoading]); // Trigger when data is actually loaded
 
 
   const handleEditToggle = (enabled) => {
@@ -568,20 +592,34 @@ const ScheduleEdit = () => {
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h2>Edit Schedule/Scores: {state.season?.name}</h2>
 
-        <div className="form-check form-switch align-self-center"
-             title={!isEditingEnabled && state.changedGames.size > 0 ? "Save your score changes before enabling schedule editing" : ""}>
-          <input
-            className="form-check-input"
-            type="checkbox"
-            role="switch"
-            id="enableScheduleEditToggle"
-            checked={isEditingEnabled}
-            onChange={(e) => handleEditToggle(e.target.checked)}
-            disabled={!isEditingEnabled && state.changedGames.size > 0}
-          />
-          <label className="form-check-label" htmlFor="enableScheduleEditToggle">
-            Enable Schedule Editing
-          </label>
+        <div className="d-flex gap-3 align-items-center">
+          <div className="form-check form-switch"
+               title={!isEditingEnabled && state.changedGames.size > 0 ? "Save your score changes before enabling schedule editing" : ""}>
+            <input
+              className="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="enableScheduleEditToggle"
+              checked={isEditingEnabled}
+              onChange={(e) => handleEditToggle(e.target.checked)}
+              disabled={!isEditingEnabled && state.changedGames.size > 0}
+            />
+            <label className="form-check-label" htmlFor="enableScheduleEditToggle">
+              Enable Schedule Editing
+            </label>
+          </div>
+          
+          {!isEditingEnabled && (
+            <button
+              type="button"
+              className={`btn btn-sm ${useSimpleView ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setUseSimpleView(!useSimpleView)}
+              title="Toggle between simple card view and detailed table view"
+            >
+              <i className={`fas ${useSimpleView ? 'fa-table' : 'fa-th-large'}`}></i>
+              {useSimpleView ? ' Table View' : ' Simple View'}
+            </button>
+          )}
         </div>
 
         <div className="d-flex gap-2">
@@ -652,6 +690,7 @@ const ScheduleEdit = () => {
         showValidation={false}
         onSave={(scheduleData) => handleSaveChanges(scheduleData)}
         seasonId={seasonId}
+        useSimpleView={useSimpleView}
       />
     </div>
   );

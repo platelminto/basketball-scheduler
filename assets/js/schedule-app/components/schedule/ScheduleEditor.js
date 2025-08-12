@@ -20,6 +20,7 @@ const ScheduleEditor = ({
   onRandomFillComplete = null,
   isDevelopment = false,
   onAutoGenerate = null,
+  useSimpleView = false,
 }) => {
   const { state, dispatch } = useSchedule();
   const navigate = useNavigate();
@@ -290,7 +291,7 @@ const ScheduleEditor = ({
                 
                 {/* Week content */}
                 <div className="mb-4">
-                  <WeekContainer weekData={weekData} mode={mode} />
+                  <WeekContainer weekData={weekData} mode={mode} useSimpleView={useSimpleView} />
                 </div>
                 
                 {/* Add separator after each week (except the last one) */}

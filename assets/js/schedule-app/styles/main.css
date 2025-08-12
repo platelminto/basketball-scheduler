@@ -71,15 +71,15 @@
 
 /* Score inputs */
 .score-input {
-  width: 50px !important;
-  max-width: 50px !important;
-  min-width: 50px !important;
+  width: 60px !important;
+  max-width: 60px !important;
+  min-width: 60px !important;
   display: inline-block;
-  margin: 0 3px;
+  margin: 0 4px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  padding: 0.25rem 0.3rem;
-  font-size: 0.875rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 1.1rem;
   background-color: #fff;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   text-align: center;
@@ -269,6 +269,105 @@ th, td {
 
 .week-container.off-week .week-header {
   background-color: #fff3cd;
+}
+
+/* Game Cards Layout */
+.games-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 576px) {
+  .games-cards {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
+.game-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.game-card.changed {
+  border-color: #fbbf24;
+  background-color: #fffbeb;
+}
+
+.game-card.deleted {
+  border-color: #f87171;
+  background-color: #fecaca;
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+
+.game-card-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+
+.vs {
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.game-card-scores {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.score-separator {
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.game-card-info {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.game-time-court {
+  margin-bottom: 0.25rem;
+}
+
+.game-referee {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.add-game-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  transition: all 0.2s ease-in-out;
+}
+
+.add-game-card:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
 }
 
 /* Professional Button Styling */
