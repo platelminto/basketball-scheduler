@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/team-setup.css';
 
 const TeamCourtSetup = ({ 
   initialLevels = null, 
@@ -247,7 +246,7 @@ const TeamCourtSetup = ({
       {!editMode && (
         <button 
           type="button" 
-          className="delete-btn"
+          className="btn btn-icon btn-sm btn-danger"
           onClick={() => deleteTeam(levelId, team.id)}
         >
           &times;
@@ -269,7 +268,7 @@ const TeamCourtSetup = ({
       {!editMode && (
         <button 
           type="button" 
-          className="delete-btn"
+          className="btn btn-icon btn-sm btn-danger"
           onClick={() => deleteCourt(court.id)}
         >
           &times;

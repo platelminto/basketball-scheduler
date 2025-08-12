@@ -192,11 +192,10 @@ const SeasonList = () => {
   
   if (state.isLoading) {
     return (
-      <div className="container mt-4">
-        <div className="d-flex justify-content-center">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
+      <div className="page-container">
+        <div className="loading-container">
+          <div className="spinner" role="status"></div>
+          <span>Loading seasons...</span>
         </div>
       </div>
     );
@@ -204,11 +203,12 @@ const SeasonList = () => {
   
   if (state.error) {
     return (
-      <div className="container mt-4">
-        <div className="alert alert-danger" role="alert">
-          {state.error}
+      <div className="page-container">
+        <div className="alert alert-danger">
+          <h4>Error loading seasons</h4>
+          <p>{state.error}</p>
           <button 
-            className="btn btn-outline-primary ms-3" 
+            className="btn btn-primary" 
             onClick={() => window.location.reload()}
           >
             Try Again
@@ -219,78 +219,78 @@ const SeasonList = () => {
   }
   
   return (
-    <div className="container mt-4">
+    <div className="page-container">
       <h2>Seasons</h2>
 
       {state.seasons?.length > 0 ? (
-        <div className="accordion" id="seasonsAccordion">
+        <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '2rem' }}>
           {state.seasons.map(season => (
             <div 
               key={season.id} 
-              className={`accordion-item mb-2 ${season.is_active ? 'border border-success' : ''}`}
+              className={`card ${season.is_active ? 'active' : ''} ${expandedSeasons[season.id] ? 'expanded' : ''}`}
             >
-              <h2 className="accordion-header" id={`heading${season.id}`}>
-                <button 
-                  className={`accordion-button ${!expandedSeasons[season.id] ? 'collapsed' : ''} ${season.is_active ? 'bg-success-light' : ''}`} 
-                  type="button" 
-                  onClick={() => toggleExpanded(season.id)}
-                  aria-expanded={expandedSeasons[season.id] ? 'true' : 'false'} 
-                  aria-controls={`collapse${season.id}`}
-                >
-                  <span className="me-auto">
-                    {season.name} 
-                    {season.is_active && <span className="badge bg-success ms-2">Active</span>}
+              <div 
+                className={`card-header ${season.is_active ? 'active' : ''}`}
+                onClick={() => toggleExpanded(season.id)}
+              >
+                <div className="card-title">
+                  {season.name}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {season.is_active && (
+                      <span className="badge badge-success">
+                        <i className="fas fa-check-circle"></i> Active
+                      </span>
+                    )}
                     {season.is_active && incompleteWeeksCount[season.id] > 0 && (
-                      <span className="badge bg-warning ms-2" title={`${incompleteWeeksCount[season.id]} week(s) with incomplete scores`}>
+                      <span 
+                        className="badge badge-warning" 
+                        title={`${incompleteWeeksCount[season.id]} week(s) with incomplete scores`}
+                      >
                         <i className="fas fa-exclamation-triangle"></i> Missing scores
                       </span>
                     )}
-                  </span>
-                  <small className="text-muted">
-                    Created: {new Date(season.created_at).toISOString().split('T')[0]}
-                  </small>
-                </button>
-              </h2>
-              <div 
-                id={`collapse${season.id}`} 
-                className={`accordion-collapse collapse ${expandedSeasons[season.id] ? 'show' : ''}`} 
-                aria-labelledby={`heading${season.id}`}
-              >
-                <div className="accordion-body">
-                  {/* Action Buttons */}
-                  <div className="d-flex justify-content-between align-items-start gap-2 mb-3">
-                    <div>
-                      {!season.is_active ? (
-                        <button 
-                          className="btn btn-sm btn-success"
-                          onClick={() => handleActivateSeason(season.id)}
-                        >
-                          <i className="fas fa-check-circle me-1"></i> Make Active
-                        </button>
-                      ) : (
-                        <span className="badge bg-success p-2">
-                          <i className="fas fa-check-circle me-1"></i> Currently Active
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="d-flex gap-2">
-                      <Link
-                        to={`/schedule/${season.id}/edit`}
-                        className="btn btn-sm btn-warning"
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  <span>Created: {new Date(season.created_at).toISOString().split('T')[0]}</span>
+                  <i className="fas fa-chevron-down expand-icon"></i>
+                </div>
+              </div>
+              
+              <div className="card-content">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                  <div>
+                    {!season.is_active ? (
+                      <button 
+                        className="btn btn-success"
+                        onClick={() => handleActivateSeason(season.id)}
                       >
-                        <i className="fas fa-calendar-alt me-1"></i> Edit Schedule/Scores
-                      </Link>
-                      <Link
-                        to={`/edit_season_structure/${season.id}`}
-                        className="btn btn-sm btn-info"
-                      >
-                        <i className="fas fa-users-cog me-1"></i> Edit Teams/Levels
-                      </Link>
-                    </div>
+                        <i className="fas fa-check-circle"></i> Make Active
+                      </button>
+                    ) : (
+                      <div className="current-active-indicator">
+                        <i className="fas fa-check-circle"></i> Currently Active
+                      </div>
+                    )}
                   </div>
                   
-                  {/* Standings */}
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <Link
+                      to={`/schedule/${season.id}/edit`}
+                      className="btn btn-warning"
+                    >
+                      <i className="fas fa-calendar-alt"></i> Edit Schedule/Scores
+                    </Link>
+                    <Link
+                      to={`/edit_season_structure/${season.id}`}
+                      className="btn btn-info"
+                    >
+                      <i className="fas fa-users-cog"></i> Edit Teams/Levels
+                    </Link>
+                  </div>
+                </div>
+                
+                <div style={{ marginTop: '1rem' }}>
                   {season.levels && season.levels.length > 0 ? (
                     seasonScheduleData[season.id] ? (
                       <SeasonStandings 
@@ -298,20 +298,15 @@ const SeasonList = () => {
                         levels={season.levels}
                       />
                     ) : (
-                      <div className="d-flex justify-content-center">
-                        <div className="spinner-border spinner-border-sm text-primary" role="status">
-                          <span className="visually-hidden">Loading standings...</span>
-                        </div>
-                        <span className="ms-2">Loading standings...</span>
+                      <div className="loading-container">
+                        <div className="spinner"></div>
+                        <span>Loading standings...</span>
                       </div>
                     )
                   ) : (
-                    <div className="alert alert-light border" role="alert">
+                    <div className="alert alert-warning">
                       No levels or teams have been defined for this season yet.
-                      <Link
-                        to={`/edit_season_structure/${season.id}`}
-                        className="alert-link"
-                      > Edit Teams/Levels</Link> to add some.
+                      <Link to={`/edit_season_structure/${season.id}`}> Edit Teams/Levels</Link> to add some.
                     </div>
                   )}
                 </div>
@@ -320,13 +315,17 @@ const SeasonList = () => {
           ))}
         </div>
       ) : (
-        <p className="alert alert-info">No seasons found.</p>
+        <div className="alert alert-info" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+          <h4>No seasons found</h4>
+          <p>Create your first season to get started with scheduling games.</p>
+        </div>
       )}
 
-      <hr />
-      <Link to="/season/create/team-setup" className="btn btn-primary">
-        Create New Season
-      </Link>
+      <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border-primary)', textAlign: 'center' }}>
+        <Link to="/season/create/team-setup" className="btn btn-primary">
+          <i className="fas fa-plus"></i> Create New Season
+        </Link>
+      </div>
     </div>
   );
 };

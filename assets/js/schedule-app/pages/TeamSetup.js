@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
 import { SET_TEAMS_DATA } from '../contexts/ScheduleContext';
 import TeamCourtSetup from '../components/TeamCourtSetup';
-import '../styles/team-setup.css';
 
 const TeamSetup = () => {
   const { dispatch } = useSchedule();
@@ -19,9 +18,9 @@ const TeamSetup = () => {
   };
   
   return (
-    <div className="container mt-4">
+    <div className="page-container">
       <h2>Step 1: Team & Court Setup</h2>
-      <p className="text-muted">Define the teams and courts before creating your schedule.</p>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>Define the teams and courts before creating your schedule.</p>
       
       <TeamCourtSetup
         onSubmit={handleSubmit}
