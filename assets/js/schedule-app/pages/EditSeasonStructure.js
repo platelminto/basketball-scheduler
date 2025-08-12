@@ -132,6 +132,7 @@ const EditSeasonStructure = () => {
         submitButtonText="Update Teams & Levels"
         cancelButtonText="Back to Seasons"
         showCancelButton={true}
+        editMode={true}
       />
     </div>
   );

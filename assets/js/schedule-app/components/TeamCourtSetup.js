@@ -8,7 +8,8 @@ const TeamCourtSetup = ({
   onCancel, 
   submitButtonText = "Continue", 
   cancelButtonText = "Cancel",
-  showCancelButton = true 
+  showCancelButton = true,
+  editMode = false
 }) => {
   // Default levels
   const defaultLevels = [
@@ -216,36 +217,42 @@ const TeamCourtSetup = ({
           onChange={(e) => updateLevelName(level.id, e.target.value)}
           required
         />
-        <button 
-          type="button" 
-          className="btn btn-outline-danger btn-sm delete-level-btn"
-          onClick={() => deleteLevel(level.id)}
-        >
-          ×
-        </button>
+        {!editMode && (
+          <button 
+            type="button" 
+            className="btn btn-outline-danger btn-sm delete-level-btn"
+            onClick={() => deleteLevel(level.id)}
+          >
+            ×
+          </button>
+        )}
       </div>
       <div className="teams-container">
         {level.teams.map(team => renderTeamRow(level.id, team))}
       </div>
-      <button 
-        type="button" 
-        className="btn btn-outline-secondary btn-sm mt-2 add-team-btn"
-        onClick={() => addTeam(level.id)}
-      >
-        + Add Team
-      </button>
+      {!editMode && (
+        <button 
+          type="button" 
+          className="btn btn-outline-secondary btn-sm mt-2 add-team-btn"
+          onClick={() => addTeam(level.id)}
+        >
+          + Add Team
+        </button>
+      )}
     </div>
   );
   
   const renderTeamRow = (levelId, team) => (
     <div className="team-row" key={team.id}>
-      <button 
-        type="button" 
-        className="delete-btn"
-        onClick={() => deleteTeam(levelId, team.id)}
-      >
-        &times;
-      </button>
+      {!editMode && (
+        <button 
+          type="button" 
+          className="delete-btn"
+          onClick={() => deleteTeam(levelId, team.id)}
+        >
+          &times;
+        </button>
+      )}
       <input 
         type="text" 
         className="form-control team-input" 
@@ -259,13 +266,15 @@ const TeamCourtSetup = ({
   
   const renderCourtRow = (court) => (
     <div className="team-row" key={court.id}>
-      <button 
-        type="button" 
-        className="delete-btn"
-        onClick={() => deleteCourt(court.id)}
-      >
-        &times;
-      </button>
+      {!editMode && (
+        <button 
+          type="button" 
+          className="delete-btn"
+          onClick={() => deleteCourt(court.id)}
+        >
+          &times;
+        </button>
+      )}
       <input 
         type="text" 
         className="form-control court-input" 
@@ -283,13 +292,15 @@ const TeamCourtSetup = ({
       <div className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h4>Team Levels</h4>
-          <button 
-            type="button" 
-            className="btn btn-outline-primary btn-sm" 
-            onClick={addLevel}
-          >
-            + Add Level
-          </button>
+          {!editMode && (
+            <button 
+              type="button" 
+              className="btn btn-outline-primary btn-sm" 
+              onClick={addLevel}
+            >
+              + Add Level
+            </button>
+          )}
         </div>
         
         <div id="teamLevelsContainer" className="team-levels-container">
@@ -301,13 +312,15 @@ const TeamCourtSetup = ({
       <div className="court-section">
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h4>Court Names</h4>
-          <button 
-            type="button" 
-            className="btn btn-outline-primary btn-sm" 
-            onClick={() => addCourt()}
-          >
-            + Add Court
-          </button>
+          {!editMode && (
+            <button 
+              type="button" 
+              className="btn btn-outline-primary btn-sm" 
+              onClick={() => addCourt()}
+            >
+              + Add Court
+            </button>
+          )}
         </div>
         
         <div id="courtsContainer" className="courts-container">
