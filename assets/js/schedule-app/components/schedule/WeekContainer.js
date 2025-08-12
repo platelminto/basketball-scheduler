@@ -343,7 +343,7 @@ const WeekContainer = ({ weekData, mode = 'edit' }) => {
                   <th>Score</th>
                   <th>Team 2</th>
                   <th>Referee</th>
-                  <th>Action</th>
+                  {state.editingEnabled && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -357,7 +357,7 @@ const WeekContainer = ({ weekData, mode = 'edit' }) => {
               </tbody>
               <tfoot>
                 <tr className="add-game-row">
-                  <td colSpan="9" className="text-center">
+                  <td colSpan={state.editingEnabled ? "9" : "8"} className="text-center">
                     {state.editingEnabled && (
                       <button 
                         type="button" 

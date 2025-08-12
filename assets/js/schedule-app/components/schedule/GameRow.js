@@ -117,174 +117,152 @@ const GameRow = ({ game, weekId }) => {
     });
   };
 
-  // Get time slot color for games happening at the same day/time
-  const getTimeSlotColor = () => {
-    if (game.isDeleted || (game.day_of_week !== 0 && !game.day_of_week) || !game.time) {
-      return null;
-    }
-    
-    // Find the current week's games
-    const currentWeek = Object.values(state.weeks).find(week => 
-      week.games.some(g => g.id === game.id)
-    );
-    
-    if (!currentWeek) return null;
-    
-    // Get all unique day/time combinations in this week
-    const timeSlots = [];
-    currentWeek.games.forEach(g => {
-      if (!g.isDeleted && g.day_of_week !== null && g.day_of_week !== undefined && g.time) {
-        const slot = `${g.day_of_week}-${g.time}`;
-        if (!timeSlots.includes(slot)) {
-          timeSlots.push(slot);
-        }
-      }
-    });
-    
-    // Sort time slots for consistent color assignment
-    timeSlots.sort();
-    
-    const currentSlot = `${game.day_of_week}-${game.time}`;
-    const slotIndex = timeSlots.indexOf(currentSlot);
-    
-    // Only assign colors if there are multiple games in this time slot
-    const gamesInSlot = currentWeek.games.filter(g => 
-      !g.isDeleted && 
-      g.day_of_week === game.day_of_week && 
-      g.time === game.time &&
-      g.day_of_week !== null && g.day_of_week !== undefined &&
-      g.time !== ''
-    );
-    
-    if (gamesInSlot.length > 1 && slotIndex >= 0) {
-      return slotIndex % 6; // Cycle through 6 different colors
-    }
-    
-    return null;
-  };
-
   // Check if the game is marked as deleted
   const isDeleted = game.isDeleted;
-  const timeSlotColorIndex = getTimeSlotColor();
   
-  // Build row class - combine time slot color with changed/deleted states
+  // Build row class - only use changed/deleted states
   let rowClass = '';
   if (isDeleted) {
     rowClass = 'row-deleted';
   } else if (isChanged) {
-    // For changed games, add both row-changed and time slot class if applicable
     rowClass = 'row-changed';
-    if (timeSlotColorIndex !== null) {
-      rowClass += ` row-time-slot-${timeSlotColorIndex}`;
-    }
-  } else if (timeSlotColorIndex !== null) {
-    rowClass = `row-time-slot-${timeSlotColorIndex}`;
   }
 
   return (
     <tr data-game-id={game.id} className={rowClass}>
       {/* Day of Week */}
       <td>
-        <select
-          name={`day_${game.id}`}
-          className="form-select form-select-sm schedule-input"
-          value={game.day_of_week !== undefined && game.day_of_week !== null ? game.day_of_week : ''}
-          onChange={(e) => handleChange('day_of_week', e.target.value ? parseInt(e.target.value, 10) : '')}
-          disabled={!state.editingEnabled}
-          required
-        >
-          <option value="">---------</option>
-          {DAYS_OF_WEEK.map(day => (
-            <option key={day.value} value={day.value}>
-              {day.label}
-            </option>
-          ))}
-        </select>
+        {state.editingEnabled ? (
+          <select
+            name={`day_${game.id}`}
+            className="form-select form-select-sm schedule-input"
+            value={game.day_of_week !== undefined && game.day_of_week !== null ? game.day_of_week : ''}
+            onChange={(e) => handleChange('day_of_week', e.target.value ? parseInt(e.target.value, 10) : '')}
+            required
+          >
+            <option value="">---------</option>
+            {DAYS_OF_WEEK.map(day => (
+              <option key={day.value} value={day.value}>
+                {day.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="schedule-text-readonly">
+            {game.day_of_week !== undefined && game.day_of_week !== null
+              ? DAYS_OF_WEEK.find(day => day.value === game.day_of_week)?.label || ''
+              : ''}
+          </span>
+        )}
       </td>
       
       {/* Time */}
       <td>
-        <input 
-          type="time"
-          name={`time_${game.id}`}
-          className="form-control form-control-sm schedule-input"
-          value={game.time || ''}
-          onChange={(e) => handleChange('time', e.target.value)}
-          disabled={!state.editingEnabled}
-          required
-        />
+        {state.editingEnabled ? (
+          <input 
+            type="time"
+            name={`time_${game.id}`}
+            className="form-control form-control-sm schedule-input"
+            value={game.time || ''}
+            onChange={(e) => handleChange('time', e.target.value)}
+            required
+          />
+        ) : (
+          <span className="schedule-text-readonly">
+            {game.time || ''}
+          </span>
+        )}
       </td>
       
       {/* Court */}
       <td>
-        <select 
-          name={`court_${game.id}`}
-          className="form-select form-select-sm schedule-input"
-          value={game.court || ''}
-          onChange={(e) => handleChange('court', e.target.value)}
-          disabled={!state.editingEnabled}
-        >
-          <option value="">---------</option>
-          {state.courts && state.courts.map(court => (
-            <option key={court} value={court}>
-              {court}
-            </option>
-          ))}
-          {game.court && state.courts && !state.courts.includes(game.court) && (
-            <option value={game.court}>(!) {game.court}</option>
-          )}
-        </select>
+        {state.editingEnabled ? (
+          <select 
+            name={`court_${game.id}`}
+            className="form-select form-select-sm schedule-input"
+            value={game.court || ''}
+            onChange={(e) => handleChange('court', e.target.value)}
+          >
+            <option value="">---------</option>
+            {state.courts && state.courts.map(court => (
+              <option key={court} value={court}>
+                {court}
+              </option>
+            ))}
+            {game.court && state.courts && !state.courts.includes(game.court) && (
+              <option value={game.court}>(!) {game.court}</option>
+            )}
+          </select>
+        ) : (
+          <span className="schedule-text-readonly">
+            {game.court || ''}
+          </span>
+        )}
       </td>
       
       {/* Level */}
       <td>
-        <select 
-          name={`level_${game.id}`}
-          className="form-select form-select-sm level-select schedule-input"
-          value={game.level_id || ''}
-          onChange={handleLevelChange}
-          disabled={!state.editingEnabled}
-        >
-          <option value="">---------</option>
-          {state.levels && state.levels.map(level => (
-            <option key={level.id} value={level.id}>
-              {level.name}
-            </option>
-          ))}
-        </select>
+        {state.editingEnabled ? (
+          <select 
+            name={`level_${game.id}`}
+            className="form-select form-select-sm level-select schedule-input"
+            value={game.level_id || ''}
+            onChange={handleLevelChange}
+          >
+            <option value="">---------</option>
+            {state.levels && state.levels.map(level => (
+              <option key={level.id} value={level.id}>
+                {level.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="schedule-text-readonly">
+            {game.level_id && state.levels
+              ? state.levels.find(level => level.id === game.level_id)?.name || ''
+              : ''}
+          </span>
+        )}
       </td>
       
       {/* Team 1 */}
       <td>
-        <select 
-          name={`team1_${game.id}`}
-          className="form-select form-select-sm team-select team1-select schedule-input"
-          value={game.team1_id || ''}
-          onChange={(e) => {
-            const value = e.target.value;
-            // Preserve the same type as team IDs in the data - check a sample team
-            const sampleTeam = game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] && state.teamsByLevel[game.level_id][0];
-            const shouldParseAsInt = sampleTeam && typeof sampleTeam.id === 'number';
-            const finalValue = value && shouldParseAsInt ? parseInt(value, 10) : value;
-            handleChange('team1_id', finalValue);
-          }}
-          disabled={!state.editingEnabled}
-        >
-          <option value="">---------</option>
-          {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
-            state.teamsByLevel[game.level_id].map(team => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))
-          ) : (
-            game.level_id ? (
-              <option value="" disabled>No teams in level</option>
+        {state.editingEnabled ? (
+          <select 
+            name={`team1_${game.id}`}
+            className="form-select form-select-sm team-select team1-select schedule-input"
+            value={game.team1_id || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Preserve the same type as team IDs in the data - check a sample team
+              const sampleTeam = game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] && state.teamsByLevel[game.level_id][0];
+              const shouldParseAsInt = sampleTeam && typeof sampleTeam.id === 'number';
+              const finalValue = value && shouldParseAsInt ? parseInt(value, 10) : value;
+              handleChange('team1_id', finalValue);
+            }}
+          >
+            <option value="">---------</option>
+            {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
+              state.teamsByLevel[game.level_id].map(team => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))
             ) : (
-              <option value="" disabled>Select level first</option>
-            )
-          )}
-        </select>
+              game.level_id ? (
+                <option value="" disabled>No teams in level</option>
+              ) : (
+                <option value="" disabled>Select level first</option>
+              )
+            )}
+          </select>
+        ) : (
+          <span className="schedule-text-readonly">
+            {game.team1_id && game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id]
+              ? state.teamsByLevel[game.level_id].find(team => team.id === game.team1_id)?.name || ''
+              : ''}
+          </span>
+        )}
       </td>
       
       {/* Score */}
@@ -346,78 +324,93 @@ const GameRow = ({ game, weekId }) => {
       
       {/* Team 2 */}
       <td>
-        <select 
-          name={`team2_${game.id}`}
-          className="form-select form-select-sm team-select team2-select schedule-input"
-          value={game.team2_id || ''}
-          onChange={(e) => {
-            const value = e.target.value;
-            // Preserve the same type as team IDs in the data - check a sample team
-            const sampleTeam = game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] && state.teamsByLevel[game.level_id][0];
-            const shouldParseAsInt = sampleTeam && typeof sampleTeam.id === 'number';
-            const finalValue = value && shouldParseAsInt ? parseInt(value, 10) : value;
-            handleChange('team2_id', finalValue);
-          }}
-          disabled={!state.editingEnabled}
-        >
-          <option value="">---------</option>
-          {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
-            state.teamsByLevel[game.level_id].map(team => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))
-          ) : (
-            game.level_id ? (
-              <option value="" disabled>No teams in level</option>
+        {state.editingEnabled ? (
+          <select 
+            name={`team2_${game.id}`}
+            className="form-select form-select-sm team-select team2-select schedule-input"
+            value={game.team2_id || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Preserve the same type as team IDs in the data - check a sample team
+              const sampleTeam = game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] && state.teamsByLevel[game.level_id][0];
+              const shouldParseAsInt = sampleTeam && typeof sampleTeam.id === 'number';
+              const finalValue = value && shouldParseAsInt ? parseInt(value, 10) : value;
+              handleChange('team2_id', finalValue);
+            }}
+          >
+            <option value="">---------</option>
+            {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
+              state.teamsByLevel[game.level_id].map(team => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))
             ) : (
-              <option value="" disabled>Select level first</option>
-            )
-          )}
-        </select>
+              game.level_id ? (
+                <option value="" disabled>No teams in level</option>
+              ) : (
+                <option value="" disabled>Select level first</option>
+              )
+            )}
+          </select>
+        ) : (
+          <span className="schedule-text-readonly">
+            {game.team2_id && game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id]
+              ? state.teamsByLevel[game.level_id].find(team => team.id === game.team2_id)?.name || ''
+              : ''}
+          </span>
+        )}
       </td>
       
       {/* Referee */}
       <td>
-        <select 
-          name={`referee_${game.id}`}
-          className="form-select form-select-sm team-select ref-select schedule-input"
-          value={game.referee_team_id || (showRefereeNameInput ? 'other' : '')}
-          onChange={handleRefereeChange}
-          disabled={!state.editingEnabled}
-        >
-          <option value="">---------</option>
-          {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
-            state.teamsByLevel[game.level_id].map(team => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))
-          ) : (
-            game.level_id ? (
-              <option value="" disabled>No teams in level</option>
-            ) : (
-              <option value="" disabled>Select level first</option>
-            )
-          )}
-          <option value="other">Other...</option>
-        </select>
-        {showRefereeNameInput && (
-          <input 
-            type="text"
-            name={`referee_name_${game.id}`}
-            className="form-control form-control-sm mt-1 ref-other-input schedule-input"
-            value={game.referee_name || ''}
-            onChange={(e) => handleChange('referee_name', e.target.value)}
-            placeholder="Enter referee name"
-            disabled={!state.editingEnabled}
-          />
+        {state.editingEnabled ? (
+          <>
+            <select 
+              name={`referee_${game.id}`}
+              className="form-select form-select-sm team-select ref-select schedule-input"
+              value={game.referee_team_id || (showRefereeNameInput ? 'other' : '')}
+              onChange={handleRefereeChange}
+            >
+              <option value="">---------</option>
+              {game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id] ? (
+                state.teamsByLevel[game.level_id].map(team => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))
+              ) : (
+                game.level_id ? (
+                  <option value="" disabled>No teams in level</option>
+                ) : (
+                  <option value="" disabled>Select level first</option>
+                )
+              )}
+              <option value="other">Other...</option>
+            </select>
+            {showRefereeNameInput && (
+              <input 
+                type="text"
+                name={`referee_name_${game.id}`}
+                className="form-control form-control-sm mt-1 ref-other-input schedule-input"
+                value={game.referee_name || ''}
+                onChange={(e) => handleChange('referee_name', e.target.value)}
+                placeholder="Enter referee name"
+              />
+            )}
+          </>
+        ) : (
+          <span className="schedule-text-readonly">
+            {game.referee_team_id && game.level_id && state.teamsByLevel && state.teamsByLevel[game.level_id]
+              ? state.teamsByLevel[game.level_id].find(team => team.id === game.referee_team_id)?.name || ''
+              : game.referee_name || ''}
+          </span>
         )}
       </td>
       
       {/* Delete/Restore Button */}
-      <td className="text-center">
-        {state.editingEnabled && (
+      {state.editingEnabled && (
+        <td className="text-center">
           <button
             type="button"
             className={`btn btn-sm ${game.id.toString().includes("new_") ? 'btn-danger' : (isDeleted ? 'btn-success' : 'btn-danger')}`}
@@ -427,9 +420,8 @@ const GameRow = ({ game, weekId }) => {
             <i className={`fas ${game.id.toString().includes("new_") ? 'fa-times' : (isDeleted ? 'fa-undo' : 'fa-times')}`}></i>
             {isDeleted && !game.id.toString().includes("new_") ? ' Restore' : ''}
           </button>
-        )}
-        
-      </td>
+        </td>
+      )}
     </tr>
   );
 };

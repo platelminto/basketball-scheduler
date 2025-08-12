@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
+import { useStandings } from '../hooks/useStandings';
+import StandingsTable from '../components/StandingsTable';
 import { SET_SEASON_LIST, SET_LOADING, SET_ERROR } from '../contexts/ScheduleContext';
 
 const SeasonList = () => {
@@ -8,6 +10,7 @@ const SeasonList = () => {
   const navigate = useNavigate();
   const [expandedSeasons, setExpandedSeasons] = useState({});
   const [incompleteWeeksCount, setIncompleteWeeksCount] = useState({});
+  const [seasonScheduleData, setSeasonScheduleData] = useState({});
   
   // Function to check for incomplete scores in a season
   const checkIncompleteScores = async (seasonId) => {
@@ -76,11 +79,14 @@ const SeasonList = () => {
         });
         setExpandedSeasons(expandedStates);
         
-        // Check for incomplete scores in active season
+        // Check for incomplete scores in active season and fetch its schedule data
         const activeSeason = data.find(season => season.is_active);
         if (activeSeason) {
           const incompleteCount = await checkIncompleteScores(activeSeason.id);
           setIncompleteWeeksCount({ [activeSeason.id]: incompleteCount });
+          
+          // Fetch schedule data for active season to show standings
+          await fetchSeasonSchedule(activeSeason.id);
         }
       } catch (error) {
         console.error('Error fetching seasons:', error);
@@ -91,7 +97,24 @@ const SeasonList = () => {
     fetchSeasons();
   }, [dispatch]);
   
-  const toggleExpanded = (seasonId) => {
+  const fetchSeasonSchedule = async (seasonId) => {
+    try {
+      const response = await fetch(`/scheduler/api/schedule/${seasonId}/`);
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      setSeasonScheduleData(prev => ({
+        ...prev,
+        [seasonId]: data
+      }));
+      return data;
+    } catch (error) {
+      console.error('Error fetching season schedule:', error);
+      return null;
+    }
+  };
+
+  const toggleExpanded = async (seasonId) => {
     setExpandedSeasons(prev => {
       // If this season was already expanded and is being clicked again, collapse it
       if (prev[seasonId]) {
@@ -112,6 +135,11 @@ const SeasonList = () => {
         [seasonId]: true
       };
     });
+
+    // Fetch schedule data when expanding if not already loaded
+    if (!seasonScheduleData[seasonId]) {
+      await fetchSeasonSchedule(seasonId);
+    }
   };
   
   const handleActivateSeason = async (seasonId) => {
@@ -262,30 +290,21 @@ const SeasonList = () => {
                     </div>
                   </div>
                   
-                  {/* Levels and Teams */}
+                  {/* Standings */}
                   {season.levels && season.levels.length > 0 ? (
-                    <>
-                      <h6>Levels and Teams</h6>
-                      <div className="row">
-                        {season.levels.map(level => (
-                          <div key={level.id} className="col-md-6 col-lg-4 mb-3">
-                            <div className="card shadow-sm">
-                              <div className="card-header bg-light">
-                                <strong>{level.name}</strong>
-                              </div>
-                              <ul className="list-group list-group-flush">
-                                {level.teams && level.teams.length > 0 ? 
-                                  level.teams.map(team => (
-                                    <li key={team.id} className="list-group-item">{team.name}</li>
-                                  )) : 
-                                  <li className="list-group-item text-muted fst-italic">No teams in this level.</li>
-                                }
-                              </ul>
-                            </div>
-                          </div>
-                        ))}
+                    seasonScheduleData[season.id] ? (
+                      <SeasonStandings 
+                        scheduleData={seasonScheduleData[season.id]}
+                        levels={season.levels}
+                      />
+                    ) : (
+                      <div className="d-flex justify-content-center">
+                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                          <span className="visually-hidden">Loading standings...</span>
+                        </div>
+                        <span className="ms-2">Loading standings...</span>
                       </div>
-                    </>
+                    )
                   ) : (
                     <div className="alert alert-light border" role="alert">
                       No levels or teams have been defined for this season yet.
@@ -310,6 +329,20 @@ const SeasonList = () => {
       </Link>
     </div>
   );
+};
+
+const SeasonStandings = ({ scheduleData, levels }) => {
+  const standings = useStandings(scheduleData);
+  
+  if (!standings || standings.length === 0) {
+    return (
+      <div className="alert alert-info">
+        No standings available yet. Games need to be completed to calculate standings.
+      </div>
+    );
+  }
+  
+  return <StandingsTable standings={standings} levels={levels} showBoth={false} mode="summary" />;
 };
 
 export default SeasonList;
