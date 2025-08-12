@@ -94,24 +94,43 @@ const scheduleReducer = (state, action) => {
         // The API uses teams_by_level but our internal structure uses teamsByLevel
         const teamsData = action.payload.teams_by_level || action.payload.teamsByLevel || {};
         
-        // Initialize locked weeks - lock all weeks except the first one with no scores
+        // Initialize locked weeks - lock all weeks except the most recent one with incomplete scores
         const lockedWeeks = new Set();
         const sortedWeeks = Object.values(initializedWeeks)
           .sort((a, b) => a.week_number - b.week_number)
           .filter(week => !week.isOffWeek); // Only consider non-off weeks
         
-        let firstUnlockedFound = false;
-        for (const week of sortedWeeks) {
-          const hasScores = week.games.some(game => 
-            (game.team1_score && game.team1_score !== '') || 
-            (game.team2_score && game.team2_score !== '')
-          );
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day
+        
+        // Find the most recent week (today or in the past) that has incomplete scores
+        let mostRecentIncompleteWeek = null;
+        for (let i = sortedWeeks.length - 1; i >= 0; i--) {
+          const week = sortedWeeks[i];
+          const weekDate = new Date(week.monday_date);
+          weekDate.setHours(0, 0, 0, 0);
           
-          if (!firstUnlockedFound && !hasScores) {
-            // This is the first week with no scores - leave it unlocked
-            firstUnlockedFound = true;
-          } else {
-            // Lock all other weeks
+          // Only consider weeks that have happened (today or past)
+          if (weekDate > today) continue;
+          
+          const gamesWithBothScores = week.games.filter(game => 
+            !game.isDeleted && 
+            (game.team1_score && game.team1_score !== '') && 
+            (game.team2_score && game.team2_score !== '')
+          ).length;
+          
+          const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
+          const hasIncompleteScores = totalActiveGames > 0 && gamesWithBothScores < totalActiveGames;
+          
+          if (hasIncompleteScores) {
+            mostRecentIncompleteWeek = week;
+            break; // Found the most recent one, stop searching
+          }
+        }
+        
+        // Lock all weeks except the most recent incomplete one
+        for (const week of sortedWeeks) {
+          if (!mostRecentIncompleteWeek || week.week_number !== mostRecentIncompleteWeek.week_number) {
             lockedWeeks.add(week.week_number);
           }
         }

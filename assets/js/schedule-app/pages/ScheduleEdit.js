@@ -104,15 +104,29 @@ const ScheduleEdit = () => {
     if (state.weeks && Object.keys(state.weeks).length > 0 && state.lockedWeeks && !state.isLoading) {
       // Small delay to ensure DOM is rendered
       const scrollTimeout = setTimeout(() => {
-        // Find first unlocked week
+        // Find most recent week that has happened (today or in the past)
         const sortedWeeks = Object.values(state.weeks)
           .filter(week => !week.isOffWeek)
           .sort((a, b) => a.week_number - b.week_number);
         
-        const firstUnlockedWeek = sortedWeeks.find(week => !state.lockedWeeks.has(week.week_number));
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         
-        if (firstUnlockedWeek) {
-          const weekElement = document.querySelector(`[data-week-id="${firstUnlockedWeek.week_number}"]`);
+        let mostRecentHappenedWeek = null;
+        for (let i = sortedWeeks.length - 1; i >= 0; i--) {
+          const week = sortedWeeks[i];
+          const weekDate = new Date(week.monday_date);
+          weekDate.setHours(0, 0, 0, 0);
+          
+          // Only consider weeks that have happened (today or past)
+          if (weekDate <= today) {
+            mostRecentHappenedWeek = week;
+            break;
+          }
+        }
+        
+        if (mostRecentHappenedWeek) {
+          const weekElement = document.querySelector(`[data-week-id="${mostRecentHappenedWeek.week_number}"]`);
           if (weekElement) {
             const elementTop = weekElement.offsetTop - 100;
             window.scrollTo({
@@ -509,7 +523,10 @@ const ScheduleEdit = () => {
       const data = await response.json();
 
       if (data.status === 'success') {
-        alert(data.message);
+        // Only show success alert for schedule editing, not for score-only updates
+        if (isEditingEnabled) {
+          alert(data.message);
+        }
         window.location.reload();
       } else {
         alert(`Error: ${data.message || 'Unknown error'}`);
@@ -572,38 +589,37 @@ const ScheduleEdit = () => {
             Back to Seasons List
           </Link>
           
+          {/* Reset Changes button - always available */}
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => {
+              if (window.confirm('Are you sure you want to reset all changes? This will reload the page and discard any unsaved changes.')) {
+                window.location.reload();
+              }
+            }}
+          >
+            Reset Changes
+          </button>
+          
           {/* Button logic based on editing state and validation */}
           {isEditingEnabled ? (
-            <>
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() => {
-                  if (window.confirm('Are you sure you want to reset all changes? This will reload the page and discard any unsaved changes.')) {
-                    window.location.reload();
-                  }
-                }}
-              >
-                Reset Changes
-              </button>
-              
-              {/* When schedule editing is enabled, show Validate or Save button based on validation status */}
-              <button
-                type="button"
-                className={validationPassed ? "btn btn-success" : "btn btn-primary"}
-                onClick={validationPassed ? () => handleSaveChanges(null) : validateSchedule}
-                disabled={isValidating}
-              >
-                {isValidating ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Validating...
-                  </>
-                ) : (
-                  validationPassed ? 'Save Schedule Changes' : 'Validate Schedule'
-                )}
-              </button>
-            </>
+            // When schedule editing is enabled, show Validate or Save button based on validation status
+            <button
+              type="button"
+              className={validationPassed ? "btn btn-success" : "btn btn-primary"}
+              onClick={validationPassed ? () => handleSaveChanges(null) : validateSchedule}
+              disabled={isValidating}
+            >
+              {isValidating ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Validating...
+                </>
+              ) : (
+                validationPassed ? 'Save Schedule Changes' : 'Validate Schedule'
+              )}
+            </button>
           ) : (
             // When only score editing is enabled, just show Save Score Changes button
             <button

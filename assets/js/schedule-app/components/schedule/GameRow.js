@@ -117,9 +117,69 @@ const GameRow = ({ game, weekId }) => {
     });
   };
 
+  // Get time slot color for games happening at the same day/time
+  const getTimeSlotColor = () => {
+    if (game.isDeleted || (game.day_of_week !== 0 && !game.day_of_week) || !game.time) {
+      return null;
+    }
+    
+    // Find the current week's games
+    const currentWeek = Object.values(state.weeks).find(week => 
+      week.games.some(g => g.id === game.id)
+    );
+    
+    if (!currentWeek) return null;
+    
+    // Get all unique day/time combinations in this week
+    const timeSlots = [];
+    currentWeek.games.forEach(g => {
+      if (!g.isDeleted && g.day_of_week !== null && g.day_of_week !== undefined && g.time) {
+        const slot = `${g.day_of_week}-${g.time}`;
+        if (!timeSlots.includes(slot)) {
+          timeSlots.push(slot);
+        }
+      }
+    });
+    
+    // Sort time slots for consistent color assignment
+    timeSlots.sort();
+    
+    const currentSlot = `${game.day_of_week}-${game.time}`;
+    const slotIndex = timeSlots.indexOf(currentSlot);
+    
+    // Only assign colors if there are multiple games in this time slot
+    const gamesInSlot = currentWeek.games.filter(g => 
+      !g.isDeleted && 
+      g.day_of_week === game.day_of_week && 
+      g.time === game.time &&
+      g.day_of_week !== null && g.day_of_week !== undefined &&
+      g.time !== ''
+    );
+    
+    if (gamesInSlot.length > 1 && slotIndex >= 0) {
+      return slotIndex % 6; // Cycle through 6 different colors
+    }
+    
+    return null;
+  };
+
   // Check if the game is marked as deleted
   const isDeleted = game.isDeleted;
-  const rowClass = isDeleted ? 'row-deleted' : (isChanged ? 'row-changed' : '');
+  const timeSlotColorIndex = getTimeSlotColor();
+  
+  // Build row class - combine time slot color with changed/deleted states
+  let rowClass = '';
+  if (isDeleted) {
+    rowClass = 'row-deleted';
+  } else if (isChanged) {
+    // For changed games, add both row-changed and time slot class if applicable
+    rowClass = 'row-changed';
+    if (timeSlotColorIndex !== null) {
+      rowClass += ` row-time-slot-${timeSlotColorIndex}`;
+    }
+  } else if (timeSlotColorIndex !== null) {
+    rowClass = `row-time-slot-${timeSlotColorIndex}`;
+  }
 
   return (
     <tr data-game-id={game.id} className={rowClass}>
@@ -368,6 +428,7 @@ const GameRow = ({ game, weekId }) => {
             {isDeleted && !game.id.toString().includes("new_") ? ' Restore' : ''}
           </button>
         )}
+        
       </td>
     </tr>
   );

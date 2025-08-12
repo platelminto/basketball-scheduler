@@ -14,20 +14,81 @@ const WeekContainer = ({ weekData, mode = 'edit' }) => {
   // Check if this week is locked
   const isLocked = state.lockedWeeks.has(weekData.week_number);
   
-  // Determine if this is the first unlocked week
-  const isFirstUnlockedWeek = () => {
-    if (isLocked || weekData.isOffWeek) return false;
+  // Determine if this is the most recent week with incomplete scores
+  const isMostRecentIncompleteWeek = () => {
+    if (weekData.isOffWeek) return false;
     
     const sortedWeeks = Object.values(state.weeks)
       .filter(week => !week.isOffWeek)
       .sort((a, b) => a.week_number - b.week_number);
     
-    const firstUnlockedWeek = sortedWeeks.find(week => !state.lockedWeeks.has(week.week_number));
-    return firstUnlockedWeek?.week_number === weekData.week_number;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Find the most recent week (today or in the past) that has incomplete scores
+    for (let i = sortedWeeks.length - 1; i >= 0; i--) {
+      const week = sortedWeeks[i];
+      const weekDate = new Date(week.monday_date);
+      weekDate.setHours(0, 0, 0, 0);
+      
+      // Only consider weeks that have happened (today or past)
+      if (weekDate > today) continue;
+      
+      if (week.games.length === 0) continue;
+      
+      const gamesWithBothScores = week.games.filter(game => 
+        !game.isDeleted && 
+        (game.team1_score && game.team1_score !== '') && 
+        (game.team2_score && game.team2_score !== '')
+      ).length;
+      
+      const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
+      const hasIncompleteScores = totalActiveGames > 0 && gamesWithBothScores < totalActiveGames;
+      
+      if (hasIncompleteScores) {
+        return week.week_number === weekData.week_number;
+      }
+    }
+    
+    return false;
   };
   
-  // In create mode: start all weeks expanded, in edit mode: start collapsed except first unlocked
-  const [collapsed, setCollapsed] = useState(mode === 'create' ? false : !isFirstUnlockedWeek());
+  // Determine if this week should be expanded by default
+  const shouldBeExpandedByDefault = () => {
+    if (weekData.isOffWeek) return false;
+    
+    const sortedWeeks = Object.values(state.weeks)
+      .filter(week => !week.isOffWeek)
+      .sort((a, b) => a.week_number - b.week_number);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Find the most recent week that has happened (today or past)
+    let mostRecentHappenedWeek = null;
+    for (let i = sortedWeeks.length - 1; i >= 0; i--) {
+      const week = sortedWeeks[i];
+      const weekDate = new Date(week.monday_date);
+      weekDate.setHours(0, 0, 0, 0);
+      
+      // Only consider weeks that have happened (today or past)
+      if (weekDate <= today) {
+        mostRecentHappenedWeek = week;
+        break;
+      }
+    }
+    
+    // If we found a most recent happened week, check if this is it
+    if (mostRecentHappenedWeek) {
+      return weekData.week_number === mostRecentHappenedWeek.week_number;
+    }
+    
+    // If no week has happened yet, expand the first week
+    return sortedWeeks.length > 0 && weekData.week_number === sortedWeeks[0].week_number;
+  };
+
+  // In create mode: start all weeks expanded, in edit mode: start collapsed except the week that should be expanded
+  const [collapsed, setCollapsed] = useState(mode === 'create' ? false : !shouldBeExpandedByDefault());
   
   // Check if this week has incomplete scores (not all games have scores AND week date is before today)
   const hasIncompleteScores = () => {

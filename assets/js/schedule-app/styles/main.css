@@ -91,7 +91,38 @@ th, td {
 
 /* Changed row highlighting */
 .row-changed {
-  background-color: #fff3cd !important; /* Light yellow background for changed rows */
+  border: 2px solid #ffc107 !important; /* Yellow border all around for changed rows */
+}
+
+/* Changed rows with time slot colors - combine border with background */
+.row-changed.row-time-slot-0 {
+  background-color: #ffe6f2 !important; /* Light rose */
+  border: 2px solid #ffc107 !important;
+}
+
+.row-changed.row-time-slot-1 {
+  background-color: #e6f3ff !important; /* Light sky blue */
+  border: 2px solid #ffc107 !important;
+}
+
+.row-changed.row-time-slot-2 {
+  background-color: #f0e6ff !important; /* Light lavender */
+  border: 2px solid #ffc107 !important;
+}
+
+.row-changed.row-time-slot-3 {
+  background-color: #e6ffe6 !important; /* Light mint */
+  border: 2px solid #ffc107 !important;
+}
+
+.row-changed.row-time-slot-4 {
+  background-color: #fff0e6 !important; /* Light peach */
+  border: 2px solid #ffc107 !important;
+}
+
+.row-changed.row-time-slot-5 {
+  background-color: #f5f5f5 !important; /* Light neutral */
+  border: 2px solid #ffc107 !important;
 }
 
 /* Deleted row highlighting */
@@ -99,6 +130,38 @@ th, td {
   background-color: #f8d7da !important; /* Light red background for deleted rows */
   text-decoration: line-through;
   opacity: 0.7;
+}
+
+/* Time slot color coding - different colors for different time slots */
+.row-time-slot-0 {
+  background-color: #ffe6f2 !important; /* Light rose */
+}
+
+.row-time-slot-1 {
+  background-color: #e6f3ff !important; /* Light sky blue */
+}
+
+.row-time-slot-2 {
+  background-color: #f0e6ff !important; /* Light lavender */
+}
+
+.row-time-slot-3 {
+  background-color: #e6ffe6 !important; /* Light mint */
+}
+
+.row-time-slot-4 {
+  background-color: #fff0e6 !important; /* Light peach */
+}
+
+.row-time-slot-5 {
+  background-color: #f5f5f5 !important; /* Light neutral */
+}
+
+/* Score edit indicator dot */
+.score-edit-dot {
+  color: #28a745; /* Green dot */
+  font-size: 1.2em;
+  font-weight: bold;
 }
 
 /* Collapsible Week Styles */

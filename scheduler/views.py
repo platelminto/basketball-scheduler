@@ -317,29 +317,13 @@ def save_or_update_schedule(
 
             # Handle week date updates, deletions, and off-week insertions
             if week_dates_data:
-                existing_weeks = {
-                    str(week.week_number): week
-                    for week in Week.objects.filter(season=season)
-                }
+                # Clear all existing off-weeks for this season first to avoid UNIQUE constraint issues
+                OffWeek.objects.filter(season=season).delete()
                 
-                # Get list of existing week numbers from database
-                existing_week_numbers = set(existing_weeks.keys())
+                # Clear all existing regular weeks too (games are already deleted above)
+                Week.objects.filter(season=season).delete()
                 
-                # Get list of week numbers from frontend data
-                frontend_week_numbers = set(str(week_date.get("id")) for week_date in week_dates_data if week_date.get("id"))
-                
-                # Find weeks to delete (exist in DB but not in frontend data)
-                weeks_to_delete = existing_week_numbers - frontend_week_numbers
-                
-                # Delete weeks that are no longer present
-                for week_number_str in weeks_to_delete:
-                    week_to_delete = existing_weeks[week_number_str]
-                    # Delete all games in this week first
-                    Game.objects.filter(week=week_to_delete).delete()
-                    # Delete the week
-                    week_to_delete.delete()
-                
-                # Process remaining weeks (updates and new weeks)
+                # Recreate all weeks from frontend data
                 for week_date in week_dates_data:
                     week_id = week_date.get("id")
                     new_date = week_date.get("date")
@@ -350,13 +334,7 @@ def save_or_update_schedule(
                             from datetime import datetime
                             parsed_date = datetime.strptime(new_date, "%Y-%m-%d").date()
                             
-                            existing_week = existing_weeks.get(str(week_id))
-                            
-                            if existing_week:
-                                # Update existing week
-                                existing_week.monday_date = parsed_date
-                                existing_week.save()
-                            elif is_off_week:
+                            if is_off_week:
                                 # Create new off week
                                 OffWeek.objects.create(
                                     season=season,
