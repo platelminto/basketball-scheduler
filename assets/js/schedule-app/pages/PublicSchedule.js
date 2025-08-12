@@ -17,6 +17,7 @@ const PublicSchedule = () => {
   const [hidePastGames, setHidePastGames] = useState(false);
   const [viewMode, setViewMode] = useState('both'); // 'both', 'standings', 'schedule'
   const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1400);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Fetch public schedule data
   useEffect(() => {
@@ -96,6 +97,7 @@ const PublicSchedule = () => {
   console.log('Most common week pattern:', commonWeekTimes);
   
   const canShowBoth = screenWidth >= 1200;
+  const isMobile = screenWidth < 768;
   const showBoth = canShowBoth && viewMode === 'both';
   const showStandingsOnly = viewMode === 'standings';
   const showScheduleOnly = viewMode === 'schedule' || (!canShowBoth && viewMode === 'both') || (!showStandingsOnly && !showBoth);
@@ -115,120 +117,31 @@ const PublicSchedule = () => {
           {scheduleData.season.name}
         </h1>
         
-        {/* Filter Controls */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-          gap: '15px',
-          marginBottom: '15px',
-          maxWidth: '600px'
-        }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
-              Levels
-            </label>
-            <MultiSelectDropdown
-              options={scheduleData.levels.map(level => ({ value: level.id.toString(), label: level.name }))}
-              selectedValues={selectedLevels}
-              onChange={setSelectedLevels}
-              allLabel="All Levels"
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
-              Courts
-            </label>
-            <MultiSelectDropdown
-              options={filterOptions.courts.map(court => ({ value: court, label: court }))}
-              selectedValues={selectedCourts}
-              onChange={setSelectedCourts}
-              allLabel="All Courts"
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
-              Referees
-            </label>
-            <MultiSelectDropdown
-              options={filterOptions.referees.map(ref => ({ value: ref, label: ref }))}
-              selectedValues={selectedReferees}
-              onChange={setSelectedReferees}
-              allLabel="All Referees"
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
-              Teams
-            </label>
-            <MultiSelectDropdown
-              options={filterOptions.teams.map(team => ({ value: team, label: team }))}
-              selectedValues={selectedTeams}
-              onChange={setSelectedTeams}
-              allLabel="All Teams"
-            />
-          </div>
-        </div>
-        
-        {/* Additional Controls */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* View Toggle - only show if we can't fit both */}
-          {!canShowBoth && (
-            <div style={{ display: 'flex', gap: '5px' }}>
-              <button
-                onClick={() => setViewMode('standings')}
-                style={{
-                  padding: '8px 16px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  background: showStandingsOnly ? '#333' : '#f5f5f5',
-                  color: showStandingsOnly ? 'white' : '#333',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Standings
-              </button>
-              <button
-                onClick={() => setViewMode('schedule')}
-                style={{
-                  padding: '8px 16px',
-                  border: 'none',
-                  borderRadius: '4px',
-                  background: showScheduleOnly ? '#333' : '#f5f5f5',
-                  color: showScheduleOnly ? 'white' : '#333',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-              >
-                Schedule
-              </button>
-            </div>
-          )}
-          
-          {/* Hide Past Games button - only show when viewing schedule */}
-          {(showScheduleOnly || showBoth) && (
+        {/* View Toggle - only show if we can't fit both - placed above content */}
+        {!canShowBoth && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
             <button
-              onClick={() => setHidePastGames(!hidePastGames)}
+              onClick={() => setViewMode(showStandingsOnly ? 'schedule' : 'standings')}
               style={{
-                padding: '8px 16px',
+                padding: '6px 12px',
                 border: 'none',
                 borderRadius: '4px',
-                background: hidePastGames ? '#333' : '#f5f5f5',
-                color: hidePastGames ? 'white' : '#333',
+                background: '#f5f5f5',
+                color: '#333',
                 cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
+                fontSize: '13px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                whiteSpace: 'nowrap'
               }}
             >
-              {hidePastGames ? '✓ Hide Past Games' : 'Hide Past Games'}
+              <span>{showStandingsOnly ? '📅' : '📊'}</span>
+              {showStandingsOnly ? 'Schedule' : 'Standings'}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content: Standings and Schedule */}
@@ -247,11 +160,127 @@ const PublicSchedule = () => {
         )}
 
         {(showBoth || showScheduleOnly) && (
-          <ScheduleDisplay 
-            scheduleData={scheduleData} 
-            filters={filters}
-            commonWeekTimes={commonWeekTimes}
-          />
+          <div>
+            {/* Mobile filter toggle button - only above schedule */}
+            {isMobile && (
+              <button
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 12px',
+                  marginBottom: '10px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  background: '#f8f9fa',
+                  color: '#333',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  width: '100%',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <span>🔍 Filters</span>
+                <span style={{ transform: filtersExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: '12px' }}>
+                  ▼
+                </span>
+              </button>
+            )}
+            
+            {/* Filter Controls - only above schedule */}
+            <div style={{ 
+              display: (isMobile && !filtersExpanded) ? 'none' : 'block',
+              marginBottom: '15px'
+            }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+                gap: '12px',
+                marginBottom: '15px',
+                maxWidth: '600px'
+              }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                    Teams
+                  </label>
+                  <MultiSelectDropdown
+                    options={filterOptions.teams.map(team => ({ value: team, label: team }))}
+                    selectedValues={selectedTeams}
+                    onChange={setSelectedTeams}
+                    allLabel="All Teams"
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                    Referees
+                  </label>
+                  <MultiSelectDropdown
+                    options={filterOptions.referees.map(ref => ({ value: ref, label: ref }))}
+                    selectedValues={selectedReferees}
+                    onChange={setSelectedReferees}
+                    allLabel="All Referees"
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                    Levels
+                  </label>
+                  <MultiSelectDropdown
+                    options={scheduleData.levels.map(level => ({ value: level.id.toString(), label: level.name }))}
+                    selectedValues={selectedLevels}
+                    onChange={setSelectedLevels}
+                    allLabel="All Levels"
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                    Courts
+                  </label>
+                  <MultiSelectDropdown
+                    options={filterOptions.courts.map(court => ({ value: court, label: court }))}
+                    selectedValues={selectedCourts}
+                    onChange={setSelectedCourts}
+                    allLabel="All Courts"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Upcoming Only button - positioned above schedule */}
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '15px' }}>
+              <button
+                onClick={() => setHidePastGames(!hidePastGames)}
+                style={{
+                  padding: '6px 12px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: hidePastGames ? '#333' : '#f5f5f5',
+                  color: hidePastGames ? 'white' : '#333',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <span>⏰</span>
+                Upcoming Only
+              </button>
+            </div>
+            
+            <ScheduleDisplay 
+              scheduleData={scheduleData} 
+              filters={filters}
+              commonWeekTimes={commonWeekTimes}
+            />
+          </div>
         )}
       </div>
     </div>

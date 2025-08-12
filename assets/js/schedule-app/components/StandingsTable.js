@@ -48,18 +48,20 @@ const StandingsTable = ({ standings, levels, showBoth }) => {
             <div style={{
               border: '1px solid #ddd',
               borderRadius: '6px',
-              overflow: 'hidden',
+              overflow: 'auto',
               fontSize: '12px',
-              maxWidth: showBoth ? 'none' : '600px'
+              maxWidth: showBoth ? 'none' : '600px',
+              minWidth: '320px'
             }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: showBoth ? '30px 150px 30px 25px 25px 25px 50px 35px 35px 35px' : '30px 1fr 30px 25px 25px 25px 50px 35px 35px 35px',
+                gridTemplateColumns: showBoth ? '30px 150px 30px 25px 25px 25px 50px 35px 35px 35px' : '30px minmax(160px, 1fr) 30px 25px 25px 25px 50px 35px 35px 35px',
                 background: '#f8f9fa',
                 padding: '8px 6px',
                 fontWeight: '600',
                 borderBottom: '1px solid #ddd',
-                gap: '4px'
+                gap: '4px',
+                minWidth: '320px'
               }}>
                 <div style={{ textAlign: 'center' }}>#</div>
                 <div>Team</div>
@@ -76,12 +78,13 @@ const StandingsTable = ({ standings, levels, showBoth }) => {
               {levelStandings.map((team, index) => (
                 <div key={team.id} style={{
                   display: 'grid',
-                  gridTemplateColumns: showBoth ? '30px 150px 30px 25px 25px 25px 50px 35px 35px 35px' : '30px 1fr 30px 25px 25px 25px 50px 35px 35px 35px',
+                  gridTemplateColumns: showBoth ? '30px 150px 30px 25px 25px 25px 50px 35px 35px 35px' : '30px minmax(160px, 1fr) 30px 25px 25px 25px 50px 35px 35px 35px',
                   padding: '6px 6px',
                   borderBottom: index < levelStandings.length - 1 ? '1px solid #eee' : 'none',
                   backgroundColor: index % 2 === 0 ? 'white' : '#fafafa',
                   gap: '4px',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  minWidth: '320px'
                 }}>
                   <div style={{ textAlign: 'center', fontWeight: '600', color: '#666' }}>
                     {index + 1}
