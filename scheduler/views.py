@@ -563,10 +563,27 @@ def schedule_edit_react(request, season_id):
     return redirect(f"/scheduler/app/schedule/{season_id}/edit")
 
 
+@ensure_csrf_cookie  
+def public_schedule_data(request):
+    """API endpoint for public schedule data - returns active season only"""
+    # Get the active season
+    active_season = Season.objects.filter(is_active=True).first()
+    if not active_season:
+        return JsonResponse({"error": "No active season found"}, status=404)
+    
+    # Reuse the existing schedule_data logic
+    return _get_schedule_data(request, active_season)
+
+
 @ensure_csrf_cookie
 def schedule_data(request, season_id):
     """API endpoint for schedule data used by React"""
     season = get_object_or_404(Season, pk=season_id)
+    return _get_schedule_data(request, season)
+
+
+def _get_schedule_data(request, season):
+    """Shared implementation for schedule data endpoints"""
 
     # Get all weeks in this season (both regular and off weeks)
     weeks = Week.objects.filter(season=season).order_by("week_number")

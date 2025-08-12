@@ -51,6 +51,7 @@ urlpatterns = [
         name="activate_season_api",
     ),
     path("api/schedule/<int:season_id>/", views.schedule_data, name="schedule_data"),
+    path("api/public/schedule/", views.public_schedule_data, name="public_schedule_data"),
     path("api/update_teams_levels/<int:season_id>/", views.update_teams_levels, name="update_teams_levels"),
     # Routes for the unified React SPA
     path("app/", views.schedule_app, name="schedule_app"),

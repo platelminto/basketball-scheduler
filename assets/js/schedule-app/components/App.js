@@ -6,6 +6,7 @@ import TeamSetup from '../pages/TeamSetup';
 import ScheduleCreate from '../pages/ScheduleCreate';
 import ScheduleEdit from '../pages/ScheduleEdit';
 import EditSeasonStructure from '../pages/EditSeasonStructure';
+import PublicSchedule from '../pages/PublicSchedule';
 
 const App = () => {
   return (
@@ -19,6 +20,7 @@ const App = () => {
           <Route path="/season/create/schedule" element={<ScheduleCreate />} />
           <Route path="/schedule/:seasonId/edit" element={<ScheduleEdit />} />
           <Route path="/edit_season_structure/:seasonId" element={<EditSeasonStructure />} />
+          <Route path="/public" element={<PublicSchedule />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

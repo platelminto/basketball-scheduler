@@ -27,6 +27,13 @@ const NavBar = () => {
                 Create Season
               </Link>
             </li>
+            <li className="nav-item">
+              <Link
+                className={`nav-link ${location.pathname === '/public' ? 'active' : ''}`}
+                to="/public">
+                Public Schedule
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
