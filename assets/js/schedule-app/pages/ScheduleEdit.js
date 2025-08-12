@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
 import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE, SET_LOADING, SET_ERROR, RESET_CHANGE_TRACKING } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
@@ -9,7 +9,6 @@ import { webToScheduleFormat } from '../utils/scheduleDataTransforms';
 const ScheduleEdit = () => {
   // Get seasonId from Router params
   const { seasonId } = useParams();
-  const navigate = useNavigate();
   const { state, dispatch } = useSchedule();
   const [isEditingEnabled, setIsEditingEnabled] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -616,8 +615,8 @@ const ScheduleEdit = () => {
               onClick={() => setUseSimpleView(!useSimpleView)}
               title="Toggle between simple card view and detailed table view"
             >
-              <i className={`fas ${useSimpleView ? 'fa-table' : 'fa-th-large'}`}></i>
-              {useSimpleView ? ' Table View' : ' Simple View'}
+              <i className={`fas ${useSimpleView ? 'fa-table' : 'fa-th-large'} me-2`}></i>
+              {useSimpleView ? 'Table View' : 'Simple View'}
             </button>
           )}
         </div>

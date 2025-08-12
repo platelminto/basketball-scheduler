@@ -273,7 +273,7 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center">
             <h3 className="mb-0 me-3">
-              Week {weekData.week_number} - 
+              Week {weekData.week_number} -{' '}
               <span className="d-inline-flex align-items-center">
                 {!state.editingEnabled ? (
                   <span className="week-date-display">
