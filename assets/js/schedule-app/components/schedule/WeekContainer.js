@@ -293,7 +293,7 @@ const WeekContainer = ({ weekData, mode = 'edit' }) => {
               {weekData.isOffWeek && (
                 <span className="badge bg-warning ms-3">OFF WEEK</span>
               )}
-              {hasIncompleteScores() && (
+              {mode === 'edit' && hasIncompleteScores() && (
                 <span className="badge bg-warning ms-3" title="Some games missing scores">
                   <i className="fas fa-exclamation-triangle"></i> Missing scores
                 </span>
