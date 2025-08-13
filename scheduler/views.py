@@ -3,7 +3,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpRequest
 import json
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
-from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.http import require_POST
 from django.db import transaction, IntegrityError
 from django.db.models import Q
 from datetime import datetime
@@ -331,12 +331,15 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
         else:
             season = get_object_or_404(Season, pk=season_id)
 
+            # Delete existing games first (before weeks, since week FK is now PROTECT)
+            deleted_count, _ = Game.objects.filter(level__season=season).delete()
+            
             # Handle week date updates, deletions, and off-week insertions
             if week_dates_data:
                 # Clear all existing off-weeks for this season first to avoid UNIQUE constraint issues
                 OffWeek.objects.filter(season=season).delete()
                 
-                # Clear all existing regular weeks too (games are already deleted above)
+                # Clear all existing regular weeks (games already deleted above)
                 Week.objects.filter(season=season).delete()
                 
                 # Recreate all weeks from frontend data
@@ -373,8 +376,7 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
                                 status=400,
                             )
 
-            # Delete existing games and build lookups
-            deleted_count, _ = Game.objects.filter(level__season=season).delete()
+            # Build lookups for new game creation (games already deleted above)
             valid_levels = {
                 str(level.id): level for level in Level.objects.filter(season=season)
             }
@@ -499,53 +501,8 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
         )
 
 
-@require_GET
-def get_season_schedule_data(request: HttpRequest, season_id: int):
-    """API endpoint to fetch current data for all games in a season."""
-    # Basic permission check (optional, enhance as needed)
-    # if not request.user.is_staff:
-    #     return JsonResponse({"error": "Permission denied"}, status=403)
-
-    season = get_object_or_404(Season, pk=season_id)
-    games = Game.objects.filter(level__season=season).select_related(
-        "level", "team1", "team2", "referee_team", "week"
-    )
-
-    game_data = []
-    for game in games:
-        # Handle referee (team or string name)
-        referee_value = ""
-        if game.referee_team:
-            referee_value = str(game.referee_team.id)
-        elif game.referee_name:
-            # Add a prefix to indicate this is a string name, not an ID
-            referee_value = "name:" + game.referee_name
-
-        game_data.append(
-            {
-                "id": str(game.id),  # Use string IDs for consistency with JS
-                "week": str(game.week.week_number),
-                "day": str(game.day_of_week) if game.day_of_week is not None else "",
-                "time": game.time.strftime("%H:%M") if game.time else "",
-                "court": game.court or "",  # Ensure consistent type (string)
-                "level": str(game.level.id),
-                "team1": str(game.team1.id),
-                "team2": str(game.team2.id),
-                "referee": referee_value,
-                "score1": str(game.team1_score) if game.team1_score is not None else "",
-                "score2": str(game.team2_score) if game.team2_score is not None else "",
-            }
-        )
-
-    return JsonResponse({"games": game_data})
 
 
-def schedule_edit_react(request, season_id):
-    """Schedule edit view that redirects to the unified React SPA"""
-    from django.shortcuts import redirect
-
-    # Redirect to the SPA with the correct route
-    return redirect(f"/scheduler/app/schedule/{season_id}/edit")
 
 
 @ensure_csrf_cookie  

@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Single Page Application (SPA) for the scheduler interface
 - Uses React Router for client-side routing
 - Context API for state management
+- Uses `uv` - all `python` commands should use `uv run`.
 
 ## Build Commands
 - Run Django server: `python manage.py runserver`
@@ -15,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Create superuser: `python manage.py createsuperuser`
 - Build frontend assets: `npm run build` (webpack in production mode)
 - Watch frontend assets for development: `npm run dev` (webpack in development mode)
+- IMPORTANT: Don't try and run a lot of these commands yourself, I'm usually running them in the background already. Tell me to run them if you want.
 
 ## Testing
 - Run Django tests: `python manage.py test scheduler`
@@ -37,13 +39,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## URL Structure
 - Django routes: `/scheduler/...`
 - SPA base route: `/scheduler/app/`
-- Schedule edit routes: `/scheduler/app/schedule/:seasonId/edit`
 - All React routes under `/scheduler/app/` are handled by the React Router
 
 ## API Endpoints
-- Season data: `/scheduler/api/seasons/`
-- Schedule data: `/scheduler/api/schedule/:seasonId/`
-- Update schedule: `/scheduler/schedule/:seasonId/update/`
+- Seasons: `/scheduler/api/seasons/`
+- Season details: `/scheduler/api/seasons/{season_id}/`
+- Activate season: `/scheduler/api/seasons/{season_id}/activate/`
+- Validate schedule: `/scheduler/api/seasons/{season_id}/validate/`
+- Generate schedule: `/scheduler/api/seasons/{season_id}/generate/`
+- Update teams/levels: `/scheduler/api/seasons/{season_id}/teams/`
+- Save/update schedule: `/scheduler/api/seasons/{season_id}/schedule/`
+- Public schedule: `/scheduler/api/public/schedule/`
+- Edit scores redirect: `/scheduler/edit-scores/`
 
 ## Code Style Guidelines
 - **Python**: 4-space indentation, max line length ~88 chars

@@ -33,7 +33,7 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
       const minimalConfig = prepareValidationConfig(state);
       
       // Call validation API
-      const response = await fetch('/scheduler/validate_schedule/', {
+      const response = await fetch('/scheduler/api/seasons/validate/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

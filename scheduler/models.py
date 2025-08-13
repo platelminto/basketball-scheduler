@@ -116,7 +116,7 @@ class Game(models.Model):
     """Represents a single game scheduled within a season."""
 
     level = models.ForeignKey(Level, related_name="games", on_delete=models.CASCADE)
-    week = models.ForeignKey(Week, related_name="games", on_delete=models.CASCADE)
+    week = models.ForeignKey(Week, related_name="games", on_delete=models.PROTECT)
 
     # Team relationships
     team1 = models.ForeignKey(

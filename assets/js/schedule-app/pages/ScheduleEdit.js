@@ -233,7 +233,7 @@ const ScheduleEdit = () => {
       console.log('Validation - Config:', minimalConfig);
       
       // Call validation API
-      const response = await fetch(`/scheduler/api/seasons/${seasonId}/validate/`, {
+      const response = await fetch('/scheduler/api/seasons/validate/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
