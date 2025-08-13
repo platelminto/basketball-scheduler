@@ -120,8 +120,12 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                 </div>
               )}
               
-              {filteredGames.map(game => {
+              {filteredGames.map((game, index) => {
                 const winnerInfo = getWinnerInfo(game);
+                const nextGame = filteredGames[index + 1];
+                const hasTimeChange = nextGame && game.time !== nextGame.time;
+                const isFirstGame = index === 0;
+                const isLastGame = index === filteredGames.length - 1;
                 
                 if (isMobile) {
                   return (
@@ -129,7 +133,8 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                       key={game.id} 
                       style={{ 
                         padding: '12px 0',
-                        borderBottom: '1px solid #eee'
+                        borderTop: isFirstGame ? '1px solid #ddd' : 'none',
+                        borderBottom: (hasTimeChange || isLastGame) ? '1px solid #ddd' : '1px solid #eee'
                       }}
                     >
                       {/* Top row: Time/Day/Court and Level */}
@@ -252,7 +257,8 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                         gridTemplateColumns: 'auto 1fr auto 1fr auto',
                         alignItems: 'center',
                         padding: '10px 0',
-                        borderBottom: '1px solid #eee',
+                        borderTop: isFirstGame ? '1px solid #ddd' : 'none',
+                        borderBottom: (hasTimeChange || isLastGame) ? '1px solid #ddd' : '1px solid #eee',
                         gap: '15px'
                       }}
                     >
