@@ -774,7 +774,7 @@ class ViewTests(TestCase):
         }
         
         response = self.client.post(
-            reverse('scheduler:validate_schedule'),
+            reverse('scheduler:validate_schedule_legacy'),
             json.dumps(data),
             content_type='application/json'
         )
@@ -813,7 +813,7 @@ class ViewTests(TestCase):
         }
         
         response = self.client.post(
-            reverse('scheduler:validate_schedule'),
+            reverse('scheduler:validate_schedule_legacy'),
             json.dumps(data),
             content_type='application/json'
         )
@@ -878,7 +878,7 @@ class ViewTests(TestCase):
         }
         
         response = self.client.post(
-            reverse('scheduler:validate_schedule'),
+            reverse('scheduler:validate_schedule_legacy'),
             json.dumps(data),
             content_type='application/json'
         )

@@ -15,7 +15,7 @@ const SeasonList = () => {
   // Function to check for incomplete scores in a season
   const checkIncompleteScores = async (seasonId) => {
     try {
-      const response = await fetch(`/scheduler/api/schedule/${seasonId}/`);
+      const response = await fetch(`/scheduler/api/seasons/${seasonId}/`);
       if (!response.ok) return 0;
       
       const data = await response.json();
@@ -99,7 +99,7 @@ const SeasonList = () => {
   
   const fetchSeasonSchedule = async (seasonId) => {
     try {
-      const response = await fetch(`/scheduler/api/schedule/${seasonId}/`);
+      const response = await fetch(`/scheduler/api/seasons/${seasonId}/`);
       if (!response.ok) return null;
       
       const data = await response.json();
@@ -276,13 +276,13 @@ const SeasonList = () => {
                   
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <Link
-                      to={`/schedule/${season.id}/edit`}
+                      to={`/seasons/${season.id}/edit`}
                       className="btn btn-warning"
                     >
                       <i className="fas fa-calendar-alt"></i> Edit Schedule/Scores
                     </Link>
                     <Link
-                      to={`/edit_season_structure/${season.id}`}
+                      to={`/seasons/${season.id}/structure`}
                       className="btn btn-info"
                     >
                       <i className="fas fa-users-cog"></i> Edit Teams/Levels
@@ -306,7 +306,7 @@ const SeasonList = () => {
                   ) : (
                     <div className="alert alert-warning">
                       No levels or teams have been defined for this season yet.
-                      <Link to={`/edit_season_structure/${season.id}`}> Edit Teams/Levels</Link> to add some.
+                      <Link to={`/seasons/${season.id}/structure`}> Edit Teams/Levels</Link> to add some.
                     </div>
                   )}
                 </div>
@@ -322,7 +322,7 @@ const SeasonList = () => {
       )}
 
       <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border-primary)', textAlign: 'center' }}>
-        <Link to="/season/create/team-setup" className="btn btn-primary">
+        <Link to="/seasons/create/setup" className="btn btn-primary">
           <i className="fas fa-plus"></i> Create New Season
         </Link>
       </div>

@@ -326,7 +326,7 @@ const ScheduleEditor = ({
             <button type="button" className="btn btn-outline-secondary" onClick={() => addWeek()}>
               + Add New Week
             </button>
-            <button type="button" className="btn btn-secondary" onClick={addOffWeek}>
+            <button type="button" className="btn btn-warning" onClick={addOffWeek}>
               + Add Off Week
             </button>
             

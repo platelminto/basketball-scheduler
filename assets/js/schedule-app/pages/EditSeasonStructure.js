@@ -17,7 +17,7 @@ const EditSeasonStructure = () => {
       setIsLoading(true);
       
       try {
-        const response = await fetch(`/scheduler/api/schedule/${seasonId}/`);
+        const response = await fetch(`/scheduler/api/seasons/${seasonId}/`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -63,7 +63,7 @@ const EditSeasonStructure = () => {
   // Handle form submission
   const handleSubmit = async (setupData) => {
     try {
-      const response = await fetch(`/scheduler/api/update_teams_levels/${seasonId}/`, {
+      const response = await fetch(`/scheduler/api/seasons/${seasonId}/teams/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

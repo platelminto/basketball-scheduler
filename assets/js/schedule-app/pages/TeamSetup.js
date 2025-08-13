@@ -14,7 +14,7 @@ const TeamSetup = () => {
     dispatch({ type: SET_TEAMS_DATA, payload: setupData });
     
     // Navigate to schedule create
-    navigate('/season/create/schedule', { state: { setupData } });
+    navigate('/seasons/create/schedule', { state: { setupData } });
   };
   
   return (

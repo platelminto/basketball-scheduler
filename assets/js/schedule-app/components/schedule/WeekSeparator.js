@@ -69,7 +69,7 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'edit' }) => 
     <div className="week-separator text-center my-3">
       <button
         type="button"
-        className="btn btn-sm btn-outline-success"
+        className="btn btn-sm btn-outline-warning"
         title="Add off week here"
         onClick={handleAddOffWeek}
       >

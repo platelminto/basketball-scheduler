@@ -159,7 +159,7 @@ const ScheduleCreate = () => {
     }
 
     try {
-      const response = await fetch('/scheduler/auto_generate_schedule/', {
+      const response = await fetch('/scheduler/api/seasons/0/generate/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -359,7 +359,7 @@ const ScheduleCreate = () => {
     };
 
     try {
-      const response = await fetch('/scheduler/save_or_update_schedule/', {
+      const response = await fetch('/scheduler/api/seasons/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -76,11 +76,11 @@ const ScheduleEdit = () => {
       dispatch({ type: SET_LOADING, payload: true });
 
       try {
-        console.log(`Fetching data from: /scheduler/api/schedule/${seasonId}/`);
-        const response = await fetch(`/scheduler/api/schedule/${seasonId}/`);
+        console.log(`Fetching data from: /scheduler/api/seasons/${seasonId}/`);
+        const response = await fetch(`/scheduler/api/seasons/${seasonId}/`);
 
         if (!response.ok) {
-          console.error(`API Error: ${response.status} ${response.statusText}, URL: /scheduler/api/schedule/${seasonId}/`);
+          console.error(`API Error: ${response.status} ${response.statusText}, URL: /scheduler/api/seasons/${seasonId}/`);
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
 
@@ -233,7 +233,7 @@ const ScheduleEdit = () => {
       console.log('Validation - Config:', minimalConfig);
       
       // Call validation API
-      const response = await fetch('/scheduler/validate_schedule/', {
+      const response = await fetch(`/scheduler/api/seasons/${seasonId}/validate/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -530,7 +530,7 @@ const ScheduleEdit = () => {
         off_weeks: offWeeks
       });
 
-      const response = await fetch(`/scheduler/save_or_update_schedule/${seasonId}/`, {
+      const response = await fetch(`/scheduler/api/seasons/${seasonId}/schedule/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

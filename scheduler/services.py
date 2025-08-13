@@ -6,14 +6,7 @@ following Django best practices of separating business logic from HTTP handling.
 """
 
 from datetime import datetime
-from collections import defaultdict
 from scheduler.models import Week
-from tests import (
-    pairing_tests,
-    cycle_pairing_test,
-    referee_player_test,
-    adjacent_slot_test,
-)
 
 
 def normalize_game_data(assignment, is_create, lookups=None):
@@ -142,134 +135,6 @@ def resolve_game_objects(game_data, is_create, lookups):
             errors.append(f"Invalid week number: {game_data['week_number']}")
 
     return level_obj, team1_obj, team2_obj, referee_obj, referee_name, week_obj, errors
-
-
-def convert_to_validation_format(game_assignments, is_create, lookups):
-    """
-    Convert game assignments to the format expected by validation functions.
-    Returns (schedule_data, config_data, errors)
-    """
-    week_groups = {}
-    levels = set()
-    teams_per_level = defaultdict(set)
-    errors = []
-
-    for idx, assignment in enumerate(game_assignments):
-        try:
-            # Get normalized data
-            game_data = normalize_game_data(assignment, is_create, lookups)
-
-            # Extract team/level names based on mode
-            if is_create:
-                level_instances, team_instances, season = lookups
-                level_name = game_data["level_name"]
-                team1_name = game_data["team1_name"]
-                team2_name = game_data["team2_name"]
-                ref_name = game_data["referee_name"] or "External Ref"
-
-                # Basic validation for create mode
-                if not all([level_name, team1_name, team2_name]):
-                    errors.append(f"Game #{idx+1}: Missing required fields")
-                    continue
-
-            else:
-                valid_levels, valid_teams, valid_weeks = lookups
-                level_obj = valid_levels.get(str(game_data["level_id"]))
-                team1_obj = valid_teams.get(str(game_data["team1_id"]))
-                team2_obj = valid_teams.get(str(game_data["team2_id"]))
-
-                if not all([level_obj, team1_obj, team2_obj]):
-                    errors.append(f"Game #{idx+1}: Invalid level or team IDs")
-                    continue
-
-                level_name = level_obj.name
-                team1_name = team1_obj.name
-                team2_name = team2_obj.name
-
-                # Handle referee
-                ref_name = "External Ref"
-                if game_data["referee_value"]:
-                    # Convert referee_value to string to handle both string and integer IDs
-                    referee_str = str(game_data["referee_value"])
-                    if referee_str.startswith("name:"):
-                        ref_name = referee_str[5:]
-                    else:
-                        ref_obj = valid_teams.get(referee_str)
-                        ref_name = ref_obj.name if ref_obj else "External Ref"
-
-            week_key = game_data["week_number"]
-
-            # Initialize week group
-            if week_key not in week_groups:
-                week_groups[week_key] = {"week": week_key, "slots": {}}
-
-            # Create slot (use day_of_week or default to 1)
-            slot_num = str(game_data.get("day_of_week", "1"))
-            if slot_num not in week_groups[week_key]["slots"]:
-                week_groups[week_key]["slots"][slot_num] = []
-
-            # Add game to slot
-            week_groups[week_key]["slots"][slot_num].append(
-                {
-                    "level": level_name,
-                    "teams": [team1_name, team2_name],
-                    "ref": ref_name,
-                }
-            )
-
-            # Track levels and teams for config
-            levels.add(level_name)
-            teams_per_level[level_name].add(team1_name)
-            teams_per_level[level_name].add(team2_name)
-
-        except Exception as e:
-            errors.append(f"Game #{idx+1}: Error processing - {str(e)}")
-
-    # Convert to list format
-    schedule_data = list(week_groups.values())
-
-    # Create config
-    config_data = {
-        "levels": list(levels),
-        "teams_per_level": {
-            level: len(teams) for level, teams in teams_per_level.items()
-        },
-    }
-
-    return schedule_data, config_data, errors
-
-
-def run_validation_tests(schedule_data, config_data):
-    """Run the existing validation functions and collect all errors."""
-    all_errors = []
-
-    try:
-        levels = config_data["levels"]
-        teams_per_level = config_data["teams_per_level"]
-
-        # Run all validation tests (same as validate_schedule view)
-        pt_passed, pt_errors = pairing_tests(schedule_data, levels, teams_per_level)
-        if not pt_passed and pt_errors:
-            all_errors.extend([f"Pairing: {err}" for err in pt_errors])
-
-        cpt_passed, cpt_errors = cycle_pairing_test(
-            schedule_data, levels, teams_per_level
-        )
-        if not cpt_passed and cpt_errors:
-            all_errors.extend([f"Cycle: {err}" for err in cpt_errors])
-
-        rpt_passed, rpt_errors = referee_player_test(schedule_data)
-        if not rpt_passed and rpt_errors:
-            all_errors.extend([f"Referee-Player: {err}" for err in rpt_errors])
-
-        ast_passed, ast_errors = adjacent_slot_test(schedule_data)
-        if not ast_passed and ast_errors:
-            all_errors.extend([f"Adjacent Slots: {err}" for err in ast_errors])
-
-    except Exception as e:
-        all_errors.append(f"Validation error: {str(e)}")
-
-    return all_errors
 
 
 def parse_game_fields(game_data, is_create):

@@ -25,8 +25,6 @@ from utils import get_config_from_schedule_creator
 from scheduler.services import (
     normalize_game_data,
     resolve_game_objects,
-    convert_to_validation_format,
-    run_validation_tests,
     parse_game_fields,
 )
 
@@ -38,6 +36,26 @@ def schedule_app(request, path=None):
     all routes are handled by React Router on the client side.
     """
     return render(request, "scheduler/schedule_app_standalone.html")
+
+
+def edit_scores_redirect(request):
+    """Redirect to the edit scores page for the current active season."""
+    active_season = Season.objects.filter(is_active=True).first()
+    if not active_season:
+        messages.error(request, "No active season found.")
+        return redirect("scheduler:schedule_app")
+    
+    return redirect("scheduler:schedule_app_paths", path=f"seasons/{active_season.id}/edit")
+
+
+def seasons_endpoint(request):
+    """Unified seasons endpoint - GET for listing, POST for creating"""
+    if request.method == 'GET':
+        return get_seasons(request)
+    elif request.method == 'POST':
+        return save_or_update_schedule(request, season_id=None)
+    else:
+        return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
 def get_seasons(request):
@@ -102,7 +120,7 @@ def activate_season(request, season_id):
 
 
 @ensure_csrf_cookie
-def validate_schedule(request):
+def validate_schedule(request, season_id=None):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -165,7 +183,7 @@ def validate_schedule(request):
 
 
 @ensure_csrf_cookie
-def auto_generate_schedule(request):
+def auto_generate_schedule(request, season_id=None):
     """
     View to get configuration from the schedule creator and generate a schedule
     """
@@ -232,15 +250,12 @@ def auto_generate_schedule(request):
 
 @require_POST
 @transaction.atomic
-def save_or_update_schedule(
-    request: HttpRequest, season_id=None, skip_validation=False
-):
+def save_or_update_schedule(request: HttpRequest, season_id=None):
     """
     Unified endpoint to create or update a schedule.
     - For create: requires season_name and setupData
     - For update: uses existing season_id
     - Always recreates all games for the season
-    - skip_validation: Optional flag to skip comprehensive validation
     """
     try:
         data = json.loads(request.body)
@@ -372,37 +387,7 @@ def save_or_update_schedule(
             }
             lookups = (valid_levels, valid_teams, valid_weeks)
 
-        # Run validation using existing functions (unless skipped for testing)
-        if not skip_validation:
-            schedule_data, config_data, conversion_errors = (
-                convert_to_validation_format(game_assignments, is_create, lookups)
-            )
-
-            if conversion_errors:
-                transaction.set_rollback(True)
-                return JsonResponse(
-                    {
-                        "status": "error",
-                        "message": f"Schedule had conversion errors and was not saved.",
-                        "errors": conversion_errors,
-                    },
-                    status=400,
-                )
-
-            # Run comprehensive validation
-            validation_errors = run_validation_tests(schedule_data, config_data)
-            if validation_errors:
-                transaction.set_rollback(True)
-                return JsonResponse(
-                    {
-                        "status": "error",
-                        "message": f"Schedule failed validation tests. Please fix all errors and try again.",
-                        "errors": validation_errors,
-                    },
-                    status=400,
-                )
-
-        # Process games - validation passed, now create them
+        # Process games
         created_games_count = 0
         creation_errors = []
 

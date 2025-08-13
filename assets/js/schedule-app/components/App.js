@@ -15,11 +15,10 @@ const App = () => {
       <div className="content-container">
         <Routes>
           <Route path="/" element={<SeasonList />} />
-          <Route path="/seasons" element={<SeasonList />} />
-          <Route path="/season/create/team-setup" element={<TeamSetup />} />
-          <Route path="/season/create/schedule" element={<ScheduleCreate />} />
-          <Route path="/schedule/:seasonId/edit" element={<ScheduleEdit />} />
-          <Route path="/edit_season_structure/:seasonId" element={<EditSeasonStructure />} />
+          <Route path="/seasons/create/setup" element={<TeamSetup />} />
+          <Route path="/seasons/create/schedule" element={<ScheduleCreate />} />
+          <Route path="/seasons/:seasonId/edit" element={<ScheduleEdit />} />
+          <Route path="/seasons/:seasonId/structure" element={<EditSeasonStructure />} />
           <Route path="/public" element={<PublicSchedule />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

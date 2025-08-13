@@ -198,10 +198,24 @@ export const createDefaultWeek = (startDate = null) => {
  * @param {number|string} weekId - Week ID to scroll to
  */
 export const scrollToWeek = (weekId) => {
+  // Short timeout to let React re-render the new week
   setTimeout(() => {
-    const weekElement = document.querySelector(`[data-week-id="${weekId}"]`);
-    if (weekElement) {
-      weekElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const buttonsElement = document.querySelector('.week-management-controls');
+    if (buttonsElement) {
+      // Scroll a bit past the buttons to give more breathing room
+      const buttonRect = buttonsElement.getBoundingClientRect();
+      const extraScroll = 80; // Add some padding below buttons
+      
+      window.scrollTo({
+        top: window.scrollY + buttonRect.bottom + extraScroll - window.innerHeight,
+        behavior: 'smooth'
+      });
+    } else {
+      // Fallback to week element
+      const weekElement = document.querySelector(`[data-week-id="${weekId}"]`);
+      if (weekElement) {
+        weekElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
-  }, 100);
+  }, 50); // Shorter timeout - just enough for DOM update
 };
