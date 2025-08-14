@@ -2,11 +2,11 @@ import React from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
 import { ADD_OFF_WEEK } from '../../contexts/ScheduleContext';
 
-const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'edit' }) => {
+const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) => {
   const { state, dispatch } = useSchedule();
 
   const handleAddOffWeek = () => {
-    if (!state.editingEnabled) return;
+    if (mode !== 'create' && mode !== 'schedule-edit') return;
     
     // Calculate the appropriate date for the off week
     let offWeekDate;
@@ -60,8 +60,8 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'edit' }) => 
     });
   };
 
-  // Only show if editing is enabled (always show in create mode)
-  if (!state.editingEnabled && mode !== 'create') {
+  // Only show if in schedule editing mode
+  if (mode !== 'create' && mode !== 'schedule-edit') {
     return null;
   }
 

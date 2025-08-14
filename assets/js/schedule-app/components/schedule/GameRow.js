@@ -13,7 +13,7 @@ const DAYS_OF_WEEK = [
   { value: 6, label: 'Sunday' }
 ];
 
-const GameRow = ({ game, weekId }) => {
+const GameRow = ({ game, weekId, mode = 'score-edit' }) => {
   const { state, dispatch } = useSchedule();
   const [showRefereeNameInput, setShowRefereeNameInput] = useState(
     !game.referee_team_id && game.referee_name
@@ -132,7 +132,7 @@ const GameRow = ({ game, weekId }) => {
     <tr data-game-id={game.id} className={rowClass}>
       {/* Day of Week */}
       <td>
-        {state.editingEnabled ? (
+        {(mode === 'schedule-edit' || mode === 'create') ? (
           <select
             name={`day_${game.id}`}
             className="form-select form-select-sm schedule-input"
@@ -158,7 +158,7 @@ const GameRow = ({ game, weekId }) => {
       
       {/* Time */}
       <td>
-        {state.editingEnabled ? (
+        {(mode === 'schedule-edit' || mode === 'create') ? (
           <input 
             type="time"
             name={`time_${game.id}`}
@@ -176,7 +176,7 @@ const GameRow = ({ game, weekId }) => {
       
       {/* Court */}
       <td>
-        {state.editingEnabled ? (
+        {(mode === 'schedule-edit' || mode === 'create') ? (
           <select 
             name={`court_${game.id}`}
             className="form-select form-select-sm schedule-input"
@@ -202,7 +202,7 @@ const GameRow = ({ game, weekId }) => {
       
       {/* Level */}
       <td>
-        {state.editingEnabled ? (
+        {(mode === 'schedule-edit' || mode === 'create') ? (
           <select 
             name={`level_${game.id}`}
             className="form-select form-select-sm level-select schedule-input"
@@ -227,7 +227,7 @@ const GameRow = ({ game, weekId }) => {
       
       {/* Team 1 */}
       <td>
-        {state.editingEnabled ? (
+        {(mode === 'schedule-edit' || mode === 'create') ? (
           <select 
             name={`team1_${game.id}`}
             className="form-select form-select-sm team-select team1-select schedule-input"
@@ -267,64 +267,76 @@ const GameRow = ({ game, weekId }) => {
       
       {/* Score */}
       <td className="text-center">
-        <input 
-          type="text"
-          name={`score1_${game.id}`}
-          className={`form-control form-control-sm score-input schedule-input ${score1Error ? 'is-invalid' : ''}`}
-          value={game.team1_score || ''}
-          onChange={(e) => {
-            // Ensure the value is a valid non-negative integer
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              handleChange('team1_score', value);
-              setScore1Error(false);
-            } else {
-              setScore1Error(true);
-              // Show error for 2 seconds then clear the invalid input
-              setTimeout(() => {
-                setScore1Error(false);
-              }, 1500);
-            }
-          }}
-          onBlur={() => setScore1Error(false)}
-          min="0"
-          pattern="[0-9]*"
-          inputMode="numeric"
-          placeholder="S1"
-          disabled={state.editingEnabled || isWeekLocked} // Disable score editing when schedule editing is enabled or week is locked
-        />
-        <span className="vs-separator">-</span>
-        <input 
-          type="text"
-          name={`score2_${game.id}`}
-          className={`form-control form-control-sm score-input schedule-input ${score2Error ? 'is-invalid' : ''}`}
-          value={game.team2_score || ''}
-          onChange={(e) => {
-            // Ensure the value is a valid non-negative integer
-            const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
-              handleChange('team2_score', value);
-              setScore2Error(false);
-            } else {
-              setScore2Error(true);
-              // Show error for 2 seconds then clear the invalid input
-              setTimeout(() => {
-                setScore2Error(false);
-              }, 1500);
-            }
-          }}
-          onBlur={() => setScore2Error(false)}
-          min="0"
-          pattern="[0-9]*"
-          inputMode="numeric"
-          placeholder="S2"
-          disabled={state.editingEnabled || isWeekLocked} // Disable score editing when schedule editing is enabled or week is locked
-        />
+        {(mode === 'schedule-edit' || mode === 'create') ? (
+          // In schedule editing mode, show scores as readonly text
+          <span className="schedule-text-readonly">
+            {(game.team1_score || game.team1_score === 0) ? game.team1_score : '-'}
+            <span className="vs-separator"> - </span>
+            {(game.team2_score || game.team2_score === 0) ? game.team2_score : '-'}
+          </span>
+        ) : (
+          // In score editing mode, show editable inputs
+          <>
+            <input 
+              type="text"
+              name={`score1_${game.id}`}
+              className={`form-control form-control-sm score-input schedule-input ${score1Error ? 'is-invalid' : ''}`}
+              value={game.team1_score || ''}
+              onChange={(e) => {
+                // Ensure the value is a valid non-negative integer
+                const value = e.target.value;
+                if (value === '' || /^\d+$/.test(value)) {
+                  handleChange('team1_score', value);
+                  setScore1Error(false);
+                } else {
+                  setScore1Error(true);
+                  // Show error for 2 seconds then clear the invalid input
+                  setTimeout(() => {
+                    setScore1Error(false);
+                  }, 1500);
+                }
+              }}
+              onBlur={() => setScore1Error(false)}
+              min="0"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              placeholder="S1"
+              disabled={isWeekLocked} // Only disable if week is locked (not for schedule editing)
+            />
+            <span className="vs-separator">-</span>
+            <input 
+              type="text"
+              name={`score2_${game.id}`}
+              className={`form-control form-control-sm score-input schedule-input ${score2Error ? 'is-invalid' : ''}`}
+              value={game.team2_score || ''}
+              onChange={(e) => {
+                // Ensure the value is a valid non-negative integer
+                const value = e.target.value;
+                if (value === '' || /^\d+$/.test(value)) {
+                  handleChange('team2_score', value);
+                  setScore2Error(false);
+                } else {
+                  setScore2Error(true);
+                  // Show error for 2 seconds then clear the invalid input
+                  setTimeout(() => {
+                    setScore2Error(false);
+                  }, 1500);
+                }
+              }}
+              onBlur={() => setScore2Error(false)}
+              min="0"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              placeholder="S2"
+              disabled={isWeekLocked} // Only disable if week is locked (not for schedule editing)
+            />
+          </>
+        )}
       </td>
       
       {/* Team 2 */}
       <td>
-        {state.editingEnabled ? (
+        {(mode === 'schedule-edit' || mode === 'create') ? (
           <select 
             name={`team2_${game.id}`}
             className="form-select form-select-sm team-select team2-select schedule-input"
@@ -364,7 +376,7 @@ const GameRow = ({ game, weekId }) => {
       
       {/* Referee */}
       <td>
-        {state.editingEnabled ? (
+        {(mode === 'schedule-edit' || mode === 'create') ? (
           <>
             <select 
               name={`referee_${game.id}`}
@@ -409,7 +421,7 @@ const GameRow = ({ game, weekId }) => {
       </td>
       
       {/* Delete/Restore Button */}
-      {state.editingEnabled && (
+      {(mode === 'schedule-edit' || mode === 'create') && (
         <td className="text-center">
           <button
             type="button"

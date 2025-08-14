@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSchedule } from '../../hooks/useSchedule';
 import { useScheduleValidation } from '../../hooks/useScheduleValidation';
 import { useRandomFill } from '../../hooks/useRandomFill';
-import { TOGGLE_EDIT_MODE, ADD_GAME, SET_SCHEDULE_DATA } from '../../contexts/ScheduleContext';
+import { ADD_GAME, SET_SCHEDULE_DATA } from '../../contexts/ScheduleContext';
 import { createNewWeek, createOffWeek, findLastNormalWeek, createDefaultWeek, scrollToWeek } from '../../utils/weekUtils';
 import { collectGameAssignments, collectWeekData } from '../../utils/scheduleDataTransforms';
 import WeekContainer from './WeekContainer';
@@ -12,7 +12,7 @@ import ValidationResults from './ValidationResults';
 
 const ScheduleEditor = ({ 
   initialData = null, 
-  mode = 'create', // 'create' or 'edit'
+  mode = 'create', // 'create', 'schedule-edit', or 'score-edit'
   seasonId = null,
   onSave,
   showValidation = false,
@@ -27,7 +27,7 @@ const ScheduleEditor = ({
   const [renderKey, setRenderKey] = useState(0); // Used to force re-render
   
   // Custom hooks for validation and random fill
-  const validation = useScheduleValidation(state, showValidation, mode === 'edit');
+  const validation = useScheduleValidation(state, showValidation, mode === 'schedule-edit');
   const randomFill = useRandomFill(state, dispatch);
   
   // Extract validation results for the clearing effect (to match original pattern)
@@ -43,15 +43,11 @@ const ScheduleEditor = ({
          state.changedWeeks.size > 0 ||
          Object.values(state.weeks).some(week => week.games && week.games.some(game => game.isDeleted)))) {
       
-      validation.resetValidationState(mode === 'edit');
+      validation.resetValidationState(mode === 'schedule-edit');
     }
   }, [state.changedGames, state.newGames, state.changedWeeks, state.weeks, mode]);
 
-  // Initialize editing mode based on the component mode
-  useEffect(() => {
-    const isCreating = mode === 'create';
-    dispatch({ type: TOGGLE_EDIT_MODE, payload: isCreating ? true : false });
-  }, [mode, dispatch]);
+  // No need for global editing state - components use mode prop
 
 
   // Week management functions
@@ -317,7 +313,7 @@ const ScheduleEditor = ({
       )}
       
       {/* Week management buttons - moved to bottom */}
-      {(mode === 'create' || state.editingEnabled) && (
+      {(mode === 'create' || mode === 'schedule-edit') && (
         <div className="week-management-controls mt-4">
           <div className="d-flex flex-wrap gap-2 justify-content-center">
             <button type="button" className="btn btn-primary" onClick={copyLastWeek}>

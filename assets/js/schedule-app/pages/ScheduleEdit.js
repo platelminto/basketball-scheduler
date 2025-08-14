@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
-import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE, SET_LOADING, SET_ERROR, RESET_CHANGE_TRACKING } from '../contexts/ScheduleContext';
+import { SET_SCHEDULE_DATA, SET_LOADING, SET_ERROR, RESET_CHANGE_TRACKING } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
 import ValidationResults from '../components/schedule/ValidationResults';
 import { webToScheduleFormat } from '../utils/scheduleDataTransforms';
@@ -10,14 +10,13 @@ const ScheduleEdit = () => {
   // Get seasonId from Router params
   const { seasonId } = useParams();
   const { state, dispatch } = useSchedule();
-  const [isEditingEnabled, setIsEditingEnabled] = useState(false);
+  // Schedule editing is always enabled in this component
   const [isValidating, setIsValidating] = useState(false);
   const [validationPassed, setValidationPassed] = useState(false);
   const [validationResults, setValidationResults] = useState(null);
   const [ignoredFailures, setIgnoredFailures] = useState(new Set());
-  const [useSimpleView, setUseSimpleView] = useState(() => {
-    return window.innerWidth < 768;
-  });
+  // Schedule editing uses table view by default
+  const [useSimpleView, setUseSimpleView] = useState(false);
   const hasScrolledRef = useRef(false);
 
 
@@ -93,7 +92,7 @@ const ScheduleEdit = () => {
             console.log('Found off week in API response:', weekId, week);
           }
         });
-        dispatch({ type: SET_SCHEDULE_DATA, payload: data });
+        dispatch({ type: SET_SCHEDULE_DATA, payload: { ...data, disableLocks: true } });
       } catch (error) {
         console.error('Error fetching schedule data:', error);
         dispatch({ type: SET_ERROR, payload: 'Failed to load schedule data. Please try again.' });
@@ -105,99 +104,10 @@ const ScheduleEdit = () => {
     }
   }, [seasonId, dispatch]);
 
-  // Scroll to most recent week after initial data loads (only once)
-  useEffect(() => {
-    if (state.weeks && Object.keys(state.weeks).length > 0 && state.lockedWeeks && !state.isLoading && !hasScrolledRef.current) {
-      hasScrolledRef.current = true;
-      // Small delay to ensure DOM is rendered
-      const scrollTimeout = setTimeout(() => {
-        // Find most recent week that has happened (today or in the past)
-        const sortedWeeks = Object.values(state.weeks)
-          .filter(week => !week.isOffWeek)
-          .sort((a, b) => a.week_number - b.week_number);
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        let mostRecentHappenedWeek = null;
-        for (let i = sortedWeeks.length - 1; i >= 0; i--) {
-          const week = sortedWeeks[i];
-          const weekDate = new Date(week.monday_date);
-          weekDate.setHours(0, 0, 0, 0);
-          
-          // Only consider weeks that have happened (today or past)
-          if (weekDate <= today) {
-            mostRecentHappenedWeek = week;
-            break;
-          }
-        }
-        
-        console.log('Attempting to scroll to week:', mostRecentHappenedWeek?.week_number);
-        
-        if (mostRecentHappenedWeek) {
-          const weekElement = document.querySelector(`[data-week-id="${mostRecentHappenedWeek.week_number}"]`);
-          console.log('Found week element:', weekElement);
-          
-          if (weekElement) {
-            const elementTop = weekElement.offsetTop - 100;
-            console.log('Scrolling to position:', elementTop);
-            
-            window.scrollTo({
-              top: elementTop,
-              behavior: 'smooth'
-            });
-          } else {
-            console.log('Week element not found, trying again...');
-            // Try again with a bit more delay
-            setTimeout(() => {
-              const retryElement = document.querySelector(`[data-week-id="${mostRecentHappenedWeek.week_number}"]`);
-              if (retryElement) {
-                console.log('Retry scroll successful');
-                retryElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }, 200);
-          }
-        }
-      }, 200); // Small delay
-      
-      // Cleanup timeout on unmount
-      return () => clearTimeout(scrollTimeout);
-    }
-  }, [state.weeks, state.lockedWeeks, state.isLoading]); // Trigger when data is actually loaded
+  // No auto-scroll for schedule editing page - let users navigate manually
 
 
-  const handleEditToggle = (enabled) => {
-    // Don't allow enabling schedule editing if there are unsaved score changes
-    if (enabled && state.changedGames.size > 0) {
-      alert("Please save your score changes before enabling schedule editing.");
-      return;
-    }
-    
-    // If turning off editing with schedule changes, ask for confirmation
-    if (!enabled && (state.changedGames.size > 0 || state.newGames.size > 0 || 
-        Object.values(state.weeks).some(week => week.games && week.games.some(game => game.isDeleted)) ||
-        state.changedWeeks.size > 0)) {
-      
-      const confirmDisable = window.confirm(
-        "Turning off schedule editing will discard any unsaved schedule changes. Are you sure you want to continue?"
-      );
-      
-      if (!confirmDisable) {
-        return; // Don't disable editing if user cancels
-      }
-      
-      // User confirmed - reload the page to discard all changes
-      window.location.reload();
-      return;
-    }
-    
-    setIsEditingEnabled(enabled);
-    
-    // Reset validation status when toggling edit mode
-    setValidationPassed(false);
-    
-    dispatch({ type: TOGGLE_EDIT_MODE, payload: enabled });
-  };
+  // No toggle needed - components use mode prop instead of global editing state
   
   // Simple validation function that calls the backend
   const validateSchedule = async () => {
@@ -354,7 +264,7 @@ const ScheduleEdit = () => {
     }
     
     // For schedule changes, validate before saving if not already validated
-    if (isEditingEnabled && !validationPassed) {
+    if (!validationPassed) {
       alert('Please validate the schedule before saving.');
       return;
     }
@@ -474,51 +384,26 @@ const ScheduleEdit = () => {
         });
       }
 
-      // For editing mode, collect all week dates, not just changed ones
+      // For schedule editing mode, send all week dates to ensure backend has complete week information
       weekDateChanges = [];
       offWeeks = [];
       
-      if (isEditingEnabled) {
-        // When in editing mode, send all week dates to ensure backend has complete week information
-        for (const weekNum in state.weeks) {
-          const weekData = state.weeks[weekNum];
-          
-          weekDateChanges.push({
-            id: weekData.week_number, // Use week number as ID for consistency
-            date: weekData.monday_date,
-            isOffWeek: !!weekData.isOffWeek
-          });
-          
-          if (weekData.isOffWeek) {
-            offWeeks.push({
-              week_id: weekData.week_number,
-              week_number: weekData.week_number,
-              date: weekData.monday_date
-            });
-          }
-        }
-      } else {
-        // For score-only changes, only send changed weeks
-        Array.from(state.changedWeeks).forEach(weekId => {
-          const weekData = state.weeks[weekId];
-
-          if (weekData) {
-            weekDateChanges.push({
-              id: weekData.id,
-              date: weekData.monday_date,
-              isOffWeek: !!weekData.isOffWeek
-            });
-            
-            // Track off weeks separately
-            if (weekData.isOffWeek) {
-              offWeeks.push({
-                week_id: weekData.id,
-                week_number: weekData.week_number,
-                date: weekData.monday_date
-              });
-            }
-          }
+      for (const weekNum in state.weeks) {
+        const weekData = state.weeks[weekNum];
+        
+        weekDateChanges.push({
+          id: weekData.week_number, // Use week number as ID for consistency
+          date: weekData.monday_date,
+          isOffWeek: !!weekData.isOffWeek
         });
+        
+        if (weekData.isOffWeek) {
+          offWeeks.push({
+            week_id: weekData.week_number,
+            week_number: weekData.week_number,
+            date: weekData.monday_date
+          });
+        }
       }
     }
 
@@ -546,10 +431,7 @@ const ScheduleEdit = () => {
       const data = await response.json();
 
       if (data.status === 'success') {
-        // Only show success alert for schedule editing, not for score-only updates
-        if (isEditingEnabled) {
-          alert(data.message);
-        }
+        alert(data.message);
         window.location.reload();
       } else {
         alert(`Error: ${data.message || 'Unknown error'}`);
@@ -589,36 +471,9 @@ const ScheduleEdit = () => {
   return (
     <div className="container-fluid mt-4">
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h2>Edit Schedule/Scores: {state.season?.name}</h2>
+        <h2>Edit Schedule Structure: {state.season?.name}</h2>
 
         <div className="d-flex gap-3 align-items-center">
-          <div className="form-check form-switch"
-               title={!isEditingEnabled && state.changedGames.size > 0 ? "Save your score changes before enabling schedule editing" : ""}>
-            <input
-              className="form-check-input"
-              type="checkbox"
-              role="switch"
-              id="enableScheduleEditToggle"
-              checked={isEditingEnabled}
-              onChange={(e) => handleEditToggle(e.target.checked)}
-              disabled={!isEditingEnabled && state.changedGames.size > 0}
-            />
-            <label className="form-check-label" htmlFor="enableScheduleEditToggle">
-              Enable Schedule Editing
-            </label>
-          </div>
-          
-          {!isEditingEnabled && (
-            <button
-              type="button"
-              className={`btn btn-sm ${useSimpleView ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setUseSimpleView(!useSimpleView)}
-              title="Toggle between simple card view and detailed table view"
-            >
-              <i className={`fas ${useSimpleView ? 'fa-table' : 'fa-th-large'} me-2`}></i>
-              {useSimpleView ? 'Table View' : 'Simple View'}
-            </button>
-          )}
         </div>
 
         <div className="d-flex gap-2">
@@ -639,34 +494,22 @@ const ScheduleEdit = () => {
             Reset Changes
           </button>
           
-          {/* Button logic based on editing state and validation */}
-          {isEditingEnabled ? (
-            // When schedule editing is enabled, show Validate or Save button based on validation status
-            <button
-              type="button"
-              className={validationPassed ? "btn btn-success" : "btn btn-primary"}
-              onClick={validationPassed ? () => handleSaveChanges(null) : validateSchedule}
-              disabled={isValidating}
-            >
-              {isValidating ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Validating...
-                </>
-              ) : (
-                validationPassed ? 'Save Schedule Changes' : 'Validate Schedule'
-              )}
-            </button>
-          ) : (
-            // When only score editing is enabled, just show Save Score Changes button
-            <button
-              type="button"
-              className="btn btn-success"
-              onClick={() => handleSaveChanges(null)}
-            >
-              Save Score Changes
-            </button>
-          )}
+          {/* Schedule editing validation and save */}
+          <button
+            type="button"
+            className={validationPassed ? "btn btn-success" : "btn btn-primary"}
+            onClick={validationPassed ? () => handleSaveChanges(null) : validateSchedule}
+            disabled={isValidating}
+          >
+            {isValidating ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Validating...
+              </>
+            ) : (
+              validationPassed ? 'Save Schedule Changes' : 'Validate Schedule'
+            )}
+          </button>
         </div>
       </div>
 
@@ -685,7 +528,7 @@ const ScheduleEdit = () => {
 
       {/* Schedule Editor Component */}
       <ScheduleEditor 
-        mode="edit"
+        mode="schedule-edit"
         showValidation={false}
         onSave={(scheduleData) => handleSaveChanges(scheduleData)}
         seasonId={seasonId}

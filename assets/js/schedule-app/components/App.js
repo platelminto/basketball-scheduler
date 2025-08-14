@@ -5,6 +5,7 @@ import SeasonList from '../pages/SeasonList';
 import TeamSetup from '../pages/TeamSetup';
 import ScheduleCreate from '../pages/ScheduleCreate';
 import ScheduleEdit from '../pages/ScheduleEdit';
+import ScoreEdit from '../pages/ScoreEdit';
 import EditSeasonStructure from '../pages/EditSeasonStructure';
 import PublicSchedule from '../pages/PublicSchedule';
 
@@ -18,6 +19,7 @@ const App = () => {
           <Route path="/seasons/create/setup" element={<TeamSetup />} />
           <Route path="/seasons/create/schedule" element={<ScheduleCreate />} />
           <Route path="/seasons/:seasonId/edit" element={<ScheduleEdit />} />
+          <Route path="/seasons/:seasonId/scores" element={<ScoreEdit />} />
           <Route path="/seasons/:seasonId/structure" element={<EditSeasonStructure />} />
           <Route path="/public" element={<PublicSchedule />} />
           <Route path="*" element={<Navigate to="/" replace />} />

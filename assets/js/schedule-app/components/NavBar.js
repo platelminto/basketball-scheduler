@@ -15,7 +15,7 @@ const NavBar = () => {
           <ul className="navbar-nav">
             <li className="nav-item">
               <Link
-                className={`nav-link ${location.pathname === '/' || location.pathname.includes('/seasons') ? 'active' : ''}`}
+                className={`nav-link ${(location.pathname === '/' || location.pathname.includes('/seasons')) && !location.pathname.includes('/scores') ? 'active' : ''}`}
                 to="/">
                 Seasons
               </Link>
@@ -36,7 +36,7 @@ const NavBar = () => {
             </li>
             <li className="nav-item">
               <a
-                className={`nav-link ${location.pathname.includes('/edit') ? 'active' : ''}`}
+                className={`nav-link ${location.pathname.includes('/scores') ? 'active' : ''}`}
                 href="/scheduler/edit-scores/">
                 Edit Scores
               </a>

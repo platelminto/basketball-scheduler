@@ -121,7 +121,7 @@ const EditSeasonStructure = () => {
   
   return (
     <div className="container mt-4">
-      <h2>Edit Teams & Levels: {seasonData?.season?.name}</h2>
+      <h2>Edit Organization: {seasonData?.season?.name}</h2>
       <p className="text-muted">Update the teams and levels for this season.</p>
       
       <TeamCourtSetup
@@ -129,7 +129,7 @@ const EditSeasonStructure = () => {
         initialCourts={getCurrentTeamsLevels().courts}
         onSubmit={handleSubmit}
         onCancel={() => navigate(-1)}
-        submitButtonText="Update Teams & Levels"
+        submitButtonText="Update Organization"
         cancelButtonText="Back to Seasons"
         showCancelButton={true}
         editMode={true}

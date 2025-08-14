@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
-import { SET_SCHEDULE_DATA, TOGGLE_EDIT_MODE, RESET_CHANGE_TRACKING, UPDATE_GAME } from '../contexts/ScheduleContext';
+import { SET_SCHEDULE_DATA, RESET_CHANGE_TRACKING, UPDATE_GAME } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
 
 const ScheduleCreate = () => {
@@ -20,7 +20,7 @@ const ScheduleCreate = () => {
 
   // Initialize the component with the setup data from location state
   useEffect(() => {
-    dispatch({ type: TOGGLE_EDIT_MODE, payload: true });
+    // No need to toggle editing mode - ScheduleEditor uses mode prop
     
     // Check if we're in development mode
     const hostname = window.location.hostname;

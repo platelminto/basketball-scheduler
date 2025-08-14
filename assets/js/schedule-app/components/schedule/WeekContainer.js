@@ -4,7 +4,7 @@ import { UPDATE_WEEK_DATE, ADD_GAME, DELETE_WEEK, ADD_OFF_WEEK, TOGGLE_WEEK_LOCK
 import GameRow from './GameRow';
 import GameCard from './GameCard';
 
-const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
+const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false }) => {
   const { state, dispatch } = useSchedule();
   
   // Debug logging for week data
@@ -58,6 +58,9 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
   const shouldBeExpandedByDefault = () => {
     if (weekData.isOffWeek) return false;
     
+    // For schedule-edit mode, don't auto-expand any weeks
+    if (mode === 'schedule-edit') return false;
+    
     const sortedWeeks = Object.values(state.weeks)
       .filter(week => !week.isOffWeek)
       .sort((a, b) => a.week_number - b.week_number);
@@ -88,8 +91,8 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
     return sortedWeeks.length > 0 && weekData.week_number === sortedWeeks[0].week_number;
   };
 
-  // In create mode: start all weeks expanded, in edit mode: start collapsed except the week that should be expanded
-  const [collapsed, setCollapsed] = useState(mode === 'create' ? false : !shouldBeExpandedByDefault());
+  // In create mode and schedule-edit mode: start all weeks expanded, in other modes: start based on shouldBeExpandedByDefault
+  const [collapsed, setCollapsed] = useState((mode === 'create' || mode === 'schedule-edit') ? false : !shouldBeExpandedByDefault());
   
   // Check if this week has incomplete scores (not all games have scores AND week date is before today)
   const hasIncompleteScores = () => {
@@ -239,7 +242,7 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
   };
 
   const handleDeleteWeek = () => {
-    if (!state.editingEnabled) return;
+    if (mode !== 'create' && mode !== 'schedule-edit') return;
     
     const confirmDelete = window.confirm(
       `Are you sure you want to delete Week ${weekData.week_number}? This will remove all games in this week.`
@@ -275,7 +278,7 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
             <h3 className="mb-0 me-3">
               Week {weekData.week_number} -{' '}
               <span className="d-inline-flex align-items-center">
-                {!state.editingEnabled ? (
+                {mode === 'score-edit' ? (
                   <span className="week-date-display">
                     {new Date(weekData.monday_date).toLocaleDateString('en-GB', { 
                       day: '2-digit', month: '2-digit', year: 'numeric' 
@@ -287,14 +290,14 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
                     value={weekData.monday_date}
                     className="form-control form-control-sm ms-2 week-date-input"
                     onChange={handleDateChange}
-                    disabled={!state.editingEnabled}
+                    disabled={mode === 'score-edit'}
                   />
                 )}
               </span>
               {weekData.isOffWeek && (
                 <span className="badge bg-warning ms-3">OFF WEEK</span>
               )}
-              {mode === 'edit' && hasIncompleteScores() && (
+              {mode === 'score-edit' && hasIncompleteScores() && (
                 <span className="badge bg-warning ms-3" title="Some games missing scores">
                   <i className="fas fa-exclamation-triangle"></i> Missing scores
                 </span>
@@ -302,10 +305,11 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
             </h3>
             
             {/* Lock icon - only show for non-off weeks and when not in editing mode */}
-            {!weekData.isOffWeek && !state.editingEnabled && (
+            {!weekData.isOffWeek && mode === 'score-edit' && (
               <button
                 type="button"
-                className={`btn btn-sm ${isLocked ? 'btn-outline-danger' : 'btn-outline-success'} me-2`}
+                className={`btn ${isLocked ? 'btn-outline-danger' : 'btn-outline-success'} me-2`}
+                style={{ minHeight: '40px', border: '1px solid' }}
                 title={isLocked ? (canBeUnlocked() ? 'Click to unlock week' : 'Week is locked (unlock previous weeks first)') : 'Click to lock week'}
                 onClick={handleLockToggle}
                 disabled={isLocked && !canBeUnlocked()}
@@ -315,7 +319,7 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
             )}
           </div>
           
-          {state.editingEnabled && (
+          {(mode === 'create' || mode === 'schedule-edit') && (
             <div className="week-actions d-flex gap-2">
               <button
                 type="button"
@@ -332,7 +336,7 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
       
       {!collapsed && !weekData.isOffWeek && (
         <div className="week-content">
-          {useSimpleView && !state.editingEnabled ? (
+          {useSimpleView && mode === 'score-edit' ? (
             // Simple card view - only when not editing
             <div className="games-cards">
               {weekData.games.map(game => (
@@ -340,6 +344,7 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
                   key={game.id} 
                   game={game}
                   weekId={weekData.week_number}
+                  mode={mode}
                 />
               ))}
             </div>
@@ -357,7 +362,7 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
                     <th>Score</th>
                     <th>Team 2</th>
                     <th>Referee</th>
-                    {state.editingEnabled && <th>Action</th>}
+                    {(mode === 'create' || mode === 'schedule-edit') && <th>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -366,13 +371,14 @@ const WeekContainer = ({ weekData, mode = 'edit', useSimpleView = false }) => {
                       key={game.id} 
                       game={game}
                       weekId={weekData.week_number}
+                      mode={mode}
                     />
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="add-game-row">
-                    <td colSpan={state.editingEnabled ? "9" : "8"} className="text-center">
-                      {state.editingEnabled && (
+                    <td colSpan={mode === 'create' || mode === 'schedule-edit' ? "9" : "8"} className="text-center">
+                      {(mode === 'create' || mode === 'schedule-edit') && (
                         <button 
                           type="button" 
                           className="btn btn-sm btn-primary add-game-btn"

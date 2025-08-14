@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
 import { UPDATE_GAME, MARK_CHANGED, DELETE_GAME } from '../../contexts/ScheduleContext';
 
-const GameCard = ({ game, weekId }) => {
+const GameCard = ({ game, weekId, mode = 'score-edit' }) => {
   const { state, dispatch } = useSchedule();
   
   // Check if this week has multiple days
@@ -101,7 +101,7 @@ const GameCard = ({ game, weekId }) => {
           }}
           onBlur={() => setScore1Error(false)}
           placeholder=""
-          disabled={state.editingEnabled || isWeekLocked}
+          disabled={isWeekLocked}
         />
         <span className="score-separator">-</span>
         <input 
@@ -120,7 +120,7 @@ const GameCard = ({ game, weekId }) => {
           }}
           onBlur={() => setScore2Error(false)}
           placeholder=""
-          disabled={state.editingEnabled || isWeekLocked}
+          disabled={isWeekLocked}
         />
       </div>
       

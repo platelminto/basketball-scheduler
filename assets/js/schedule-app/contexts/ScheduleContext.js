@@ -13,7 +13,6 @@ export const SET_LOADING = 'SET_LOADING';
 export const SET_ERROR = 'SET_ERROR';
 
 // Schedule Edit actions
-export const TOGGLE_EDIT_MODE = 'TOGGLE_EDIT_MODE';
 export const UPDATE_GAME = 'UPDATE_GAME';
 export const ADD_GAME = 'ADD_GAME';
 export const DELETE_GAME = 'DELETE_GAME';
@@ -39,7 +38,6 @@ const initialState = {
   levels: [],
   teamsByLevel: {},
   courts: [],
-  editingEnabled: false,
   changedGames: new Set(),
   newGames: new Set(),
   changedWeeks: new Set(),
@@ -94,44 +92,47 @@ const scheduleReducer = (state, action) => {
         // The API uses teams_by_level but our internal structure uses teamsByLevel
         const teamsData = action.payload.teams_by_level || action.payload.teamsByLevel || {};
         
-        // Initialize locked weeks - lock all weeks except the most recent one with incomplete scores
+        // Initialize locked weeks - only if locks are not disabled
         const lockedWeeks = new Set();
-        const sortedWeeks = Object.values(initializedWeeks)
-          .sort((a, b) => a.week_number - b.week_number)
-          .filter(week => !week.isOffWeek); // Only consider non-off weeks
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Reset time to start of day
-        
-        // Find the most recent week (today or in the past) that has incomplete scores
-        let mostRecentIncompleteWeek = null;
-        for (let i = sortedWeeks.length - 1; i >= 0; i--) {
-          const week = sortedWeeks[i];
-          const weekDate = new Date(week.monday_date);
-          weekDate.setHours(0, 0, 0, 0);
+        if (!action.payload.disableLocks) {
+          const sortedWeeks = Object.values(initializedWeeks)
+            .sort((a, b) => a.week_number - b.week_number)
+            .filter(week => !week.isOffWeek); // Only consider non-off weeks
           
-          // Only consider weeks that have happened (today or past)
-          if (weekDate > today) continue;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); // Reset time to start of day
           
-          const gamesWithBothScores = week.games.filter(game => 
-            !game.isDeleted && 
-            (game.team1_score && game.team1_score !== '') && 
-            (game.team2_score && game.team2_score !== '')
-          ).length;
-          
-          const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
-          const hasIncompleteScores = totalActiveGames > 0 && gamesWithBothScores < totalActiveGames;
-          
-          if (hasIncompleteScores) {
-            mostRecentIncompleteWeek = week;
-            break; // Found the most recent one, stop searching
+          // Find the most recent week (today or in the past) that has incomplete scores
+          let mostRecentIncompleteWeek = null;
+          for (let i = sortedWeeks.length - 1; i >= 0; i--) {
+            const week = sortedWeeks[i];
+            const weekDate = new Date(week.monday_date);
+            weekDate.setHours(0, 0, 0, 0);
+            
+            // Only consider weeks that have happened (today or past)
+            if (weekDate > today) continue;
+            
+            const gamesWithBothScores = week.games.filter(game => 
+              !game.isDeleted && 
+              (game.team1_score && game.team1_score !== '') && 
+              (game.team2_score && game.team2_score !== '')
+            ).length;
+            
+            const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
+            const hasIncompleteScores = totalActiveGames > 0 && gamesWithBothScores < totalActiveGames;
+            
+            if (hasIncompleteScores) {
+              mostRecentIncompleteWeek = week;
+              break; // Found the most recent one, stop searching
+            }
           }
-        }
-        
-        // Lock all weeks except the most recent incomplete one
-        for (const week of sortedWeeks) {
-          if (!mostRecentIncompleteWeek || week.week_number !== mostRecentIncompleteWeek.week_number) {
-            lockedWeeks.add(week.week_number);
+          
+          // Lock all weeks except the most recent incomplete one
+          for (const week of sortedWeeks) {
+            if (!mostRecentIncompleteWeek || week.week_number !== mostRecentIncompleteWeek.week_number) {
+              lockedWeeks.add(week.week_number);
+            }
           }
         }
         
@@ -184,11 +185,6 @@ const scheduleReducer = (state, action) => {
         isLoading: false
       };
 
-    case TOGGLE_EDIT_MODE:
-      return {
-        ...state,
-        editingEnabled: action.payload
-      };
 
     case UPDATE_GAME: {
       const { gameId, field, value } = action.payload;

@@ -396,6 +396,15 @@
   padding: var(--space-sm) var(--space-md);
 }
 
+/* Smaller score inputs in table view (GameRow - has form-control class) */
+td.text-center input.form-control.form-control-sm.score-input.schedule-input {
+  font-size: 0.875rem !important;
+  width: 45px !important;
+  max-width: 45px !important;
+  min-width: 45px !important;
+  padding: 0.25rem 0.125rem !important;
+}
+
 .time-input {
   width: 80px !important;
 }

@@ -45,7 +45,7 @@ def edit_scores_redirect(request):
         messages.error(request, "No active season found.")
         return redirect("scheduler:schedule_app")
     
-    return redirect("scheduler:schedule_app_paths", path=f"seasons/{active_season.id}/edit")
+    return redirect("scheduler:schedule_app_paths", path=f"seasons/{active_season.id}/scores")
 
 
 def seasons_endpoint(request):

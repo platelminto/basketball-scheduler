@@ -259,19 +259,22 @@ const SeasonList = () => {
               
               <div className="card-content">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                  <div>
-                    {!season.is_active ? (
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {!season.is_active && (
                       <button 
-                        className="btn btn-success"
+                        className="btn btn-outline-success"
+                        style={{ border: '2px solid var(--success)' }}
                         onClick={() => handleActivateSeason(season.id)}
                       >
                         <i className="fas fa-check-circle"></i> Make Active
                       </button>
-                    ) : (
-                      <div className="current-active-indicator">
-                        <i className="fas fa-check-circle"></i> Currently Active
-                      </div>
                     )}
+                    <Link
+                      to={`/seasons/${season.id}/scores`}
+                      className="btn btn-success"
+                    >
+                      <i className="fas fa-edit"></i> Update Scores
+                    </Link>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -279,13 +282,13 @@ const SeasonList = () => {
                       to={`/seasons/${season.id}/edit`}
                       className="btn btn-warning"
                     >
-                      <i className="fas fa-calendar-alt"></i> Edit Schedule/Scores
+                      <i className="fas fa-calendar-alt"></i> Edit Schedule
                     </Link>
                     <Link
                       to={`/seasons/${season.id}/structure`}
                       className="btn btn-info"
                     >
-                      <i className="fas fa-users-cog"></i> Edit Teams/Levels
+                      <i className="fas fa-users-cog"></i> Edit Organization
                     </Link>
                   </div>
                 </div>
@@ -306,7 +309,7 @@ const SeasonList = () => {
                   ) : (
                     <div className="alert alert-warning">
                       No levels or teams have been defined for this season yet.
-                      <Link to={`/seasons/${season.id}/structure`}> Edit Teams/Levels</Link> to add some.
+                      <Link to={`/seasons/${season.id}/structure`}> Edit Organization</Link> to add some.
                     </div>
                   )}
                 </div>
