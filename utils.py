@@ -6,12 +6,14 @@ def convert_to_formatted_schedule(schedule, levels, config):
     """Convert internal schedule format to a more understandable format"""
 
     team_names_by_level = config["team_names_by_level"]
+    first_half_weeks = config.get("first_half_weeks", len(schedule) // 2)
 
     # Restructure the schedule for better readability
     formatted_schedule = []
 
     for week_num, week in enumerate(schedule, 1):
         week_data = {"week": week_num, "slots": {}}
+        is_second_half = week_num > first_half_weeks
 
         # Organize games by slot - use the configured number of slots
         for slot in range(1, config["num_slots"] + 1):
@@ -24,6 +26,11 @@ def convert_to_formatted_schedule(schedule, levels, config):
                 zip(distribution, pairing, ref_assignment)
             ):
                 team1_idx, team2_idx = pair
+                
+                # Flip team1 and team2 in the second half of the season
+                if is_second_half:
+                    team1_idx, team2_idx = team2_idx, team1_idx
+                
                 game = {
                     "level": level,
                     "teams": [
