@@ -254,7 +254,7 @@ const PublicSchedule = () => {
             </div>
             
             {/* Action buttons - positioned above schedule */}
-            <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '10px', marginBottom: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '15px' }}>
               <button
                 onClick={() => setHidePastGames(!hidePastGames)}
                 style={{

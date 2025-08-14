@@ -830,15 +830,32 @@ def team_calendar_export(request, team_id):
         
         # Determine event type and title
         if game.team1 == team or game.team2 == team:
-            # Playing game - always show as "TeamName vs Opponent" (consistent order)
-            if game.team1 == team:
-                event.add('summary', f"{team.name} vs {game.team2.name}")
-            else:
-                event.add('summary', f"{team.name} vs {game.team1.name}")
+            # Playing game - respect team1 vs team2 order
+            title = f"{game.team1.name} vs {game.team2.name}"
+            
+            # Add winner indicator to title if game is completed and scores are requested
+            if include_scores and game.team1_score is not None and game.team2_score is not None:
+                if game.team1_score > game.team2_score:
+                    title = f"{game.team1.name} (W) vs {game.team2.name}"
+                elif game.team2_score > game.team1_score:
+                    title = f"{game.team1.name} vs {game.team2.name} (W)"
+                # If tied, leave title as is
+            
+            event.add('summary', title)
             event.add('categories', 'Playing')
         else:
             # Reffing game - shortened format
-            event.add('summary', f"Ref: {game.team1.name} vs {game.team2.name}")
+            title = f"Ref: {game.team1.name} vs {game.team2.name}"
+            
+            # Add winner indicator to title if game is completed and scores are requested
+            if include_scores and game.team1_score is not None and game.team2_score is not None:
+                if game.team1_score > game.team2_score:
+                    title = f"Ref: {game.team1.name} (W) vs {game.team2.name}"
+                elif game.team2_score > game.team1_score:
+                    title = f"Ref: {game.team1.name} vs {game.team2.name} (W)"
+                # If tied, leave title as is
+            
+            event.add('summary', title)
             event.add('categories', 'Reffing')
         
         # Calculate datetime
@@ -865,9 +882,10 @@ def team_calendar_export(request, team_id):
         
         # Add scores if game is completed and scores are requested
         if include_scores and game.team1_score is not None and game.team2_score is not None:
-            description_parts.append(f"Final Score: {game.team1.name} {game.team1_score} - {game.team2_score} {game.team2.name}")
+            score_line = f"Final Score: {game.team1.name} {game.team1_score} - {game.team2_score} {game.team2.name}"
+            description_parts.append(score_line)
         
-        event.add('description', '\n'.join(description_parts))
+        event.add('description', '\n\n'.join(description_parts))
         
         # Add unique ID
         event.add('uid', f"game-{game.id}@basketballscheduler.local")
