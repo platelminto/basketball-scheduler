@@ -1,5 +1,6 @@
 import React from 'react';
 import { filterGames } from '../utils/filterUtils';
+import { getGameWeekNumbers } from '../utils/weekUtils';
 import { 
   formatWeekHeader, 
   areAllGamesSameDay, 
@@ -21,14 +22,7 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
   const isMobile = screenWidth < 768;
   const sortedWeeks = Object.values(scheduleData.weeks).sort((a, b) => a.week_number - b.week_number);
   
-  const weekNumbers = {};
-  let gameWeekCounter = 0;
-  sortedWeeks.forEach(week => {
-    if (!week.isOffWeek) {
-      gameWeekCounter++;
-      weekNumbers[week.week_number] = gameWeekCounter;
-    }
-  });
+  const weekNumbers = getGameWeekNumbers(scheduleData.weeks);
   
   return (
     <div>

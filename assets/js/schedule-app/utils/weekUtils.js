@@ -219,3 +219,24 @@ export const scrollToWeek = (weekId) => {
     }
   }, 50); // Shorter timeout - just enough for DOM update
 };
+
+/**
+ * Creates a mapping of actual week numbers to game week numbers (excluding off weeks)
+ * @param {Object} weeks - Weeks object from schedule data
+ * @returns {Object} Mapping of {actualWeekNumber: gameWeekNumber}
+ */
+export const getGameWeekNumbers = (weeks) => {
+  const sortedWeeks = Object.values(weeks).sort((a, b) => a.week_number - b.week_number);
+  
+  const weekNumbers = {};
+  let gameWeekCounter = 0;
+  
+  sortedWeeks.forEach(week => {
+    if (!week.isOffWeek) {
+      gameWeekCounter++;
+      weekNumbers[week.week_number] = gameWeekCounter;
+    }
+  });
+  
+  return weekNumbers;
+};

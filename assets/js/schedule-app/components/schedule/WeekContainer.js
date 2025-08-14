@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
 import { UPDATE_WEEK_DATE, ADD_GAME, DELETE_WEEK, ADD_OFF_WEEK, TOGGLE_WEEK_LOCK } from '../../contexts/ScheduleContext';
+import { getGameWeekNumbers } from '../../utils/weekUtils';
 import GameRow from './GameRow';
 import GameCard from './GameCard';
 
 const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false }) => {
   const { state, dispatch } = useSchedule();
+  
+  // Get game week numbers mapping
+  const gameWeekNumbers = getGameWeekNumbers(state.weeks);
+  const displayWeekNumber = weekData.isOffWeek ? null : gameWeekNumbers[weekData.week_number];
   
   // Debug logging for week data
   if (weekData.isOffWeek) {
@@ -245,7 +250,7 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
     if (mode !== 'create' && mode !== 'schedule-edit') return;
     
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete Week ${weekData.week_number}? This will remove all games in this week.`
+      `Are you sure you want to delete ${weekData.isOffWeek ? 'this Off Week' : `Week ${displayWeekNumber}`}? This will remove all games in this week.`
     );
     
     if (confirmDelete) {
@@ -276,7 +281,11 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center">
             <h3 className="mb-0 me-3">
-              Week {weekData.week_number} -{' '}
+              {weekData.isOffWeek ? (
+                'Off Week -'
+              ) : (
+                `Week ${displayWeekNumber} -`
+              )}{' '}
               <span className="d-inline-flex align-items-center">
                 {mode === 'score-edit' ? (
                   <span className="week-date-display">
