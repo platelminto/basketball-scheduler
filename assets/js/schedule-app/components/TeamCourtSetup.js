@@ -26,6 +26,7 @@ const TeamCourtSetup = ({
   
   const [levels, setLevels] = useState(initialLevels || defaultLevels);
   const [courts, setCourts] = useState(initialCourts || defaultCourts);
+  const [slotDuration, setSlotDuration] = useState(70);
   
   // Generate default teams for each level if not provided
   useEffect(() => {
@@ -195,6 +196,7 @@ const TeamCourtSetup = ({
       // New format with IDs for rename tracking
       levels: levelsData,
       courts: courtNames,
+      slot_duration_minutes: slotDuration,
       // Old format for backward compatibility
       teams: levelsData.reduce((acc, level) => {
         acc[level.name] = level.teams.map(team => team.name);
@@ -327,6 +329,32 @@ const TeamCourtSetup = ({
         
         <div id="courtsContainer" className="courts-container">
           {courts.map(renderCourtRow)}
+        </div>
+      </div>
+      
+      {/* Game Slot Duration Section */}
+      <div className="slot-duration-section mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4>Game Duration</h4>
+        </div>
+        <div className="form-section">
+          <label className="form-label" htmlFor="slotDuration">
+            Game Slot Duration (minutes)
+            <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 'normal', marginLeft: '8px' }}>
+              Includes game time + halftime + time between games
+            </span>
+          </label>
+          <input
+            id="slotDuration"
+            type="number"
+            className="form-control"
+            style={{ maxWidth: '200px' }}
+            value={slotDuration}
+            onChange={(e) => setSlotDuration(parseInt(e.target.value) || 70)}
+            min="30"
+            max="180"
+            required
+          />
         </div>
       </div>
       

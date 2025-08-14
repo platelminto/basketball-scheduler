@@ -1,12 +1,12 @@
 import traceback
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse, HttpRequest
+from django.http import JsonResponse, HttpRequest, HttpResponse
 import json
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db import transaction, IntegrityError
 from django.db.models import Q
-from datetime import datetime
+from datetime import datetime, timedelta
 from scheduler.models import OffWeek, Season, Level, Team, Game, Week
 from collections import defaultdict
 from django.utils.dateparse import parse_datetime
@@ -14,6 +14,8 @@ from django.utils.timezone import make_aware, get_current_timezone
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from icalendar import Calendar, Event
+from django.utils import timezone
 
 from tests import (
     pairing_tests,
@@ -292,7 +294,13 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
                     status=400,
                 )
 
-            season, created = Season.objects.get_or_create(name=season_name)
+            # Get slot duration from setup data, default to 70 minutes
+            slot_duration = setup_data.get("slot_duration_minutes", 70)
+            
+            season, created = Season.objects.get_or_create(
+                name=season_name,
+                defaults={'slot_duration_minutes': slot_duration}
+            )
             if not created:
                 return JsonResponse(
                     {
@@ -783,3 +791,95 @@ def update_teams_levels(request, season_id):
             'status': 'error',
             'message': str(e)
         }, status=400)
+
+
+def team_calendar_export(request, team_id):
+    """
+    Export team's game schedule as iCal calendar file
+    
+    Query parameters:
+    - include_reffing=true: include games where team is referee_team
+    - include_scores=true: show final scores for completed games
+    """
+    team = get_object_or_404(Team, pk=team_id)
+    
+    # Parse query parameters
+    include_reffing = request.GET.get('include_reffing', 'false').lower() == 'true'
+    include_scores = request.GET.get('include_scores', 'false').lower() == 'true'
+    
+    # Create calendar
+    cal = Calendar()
+    cal.add('prodid', '-//Basketball Scheduler//Team Calendar//EN')
+    cal.add('version', '2.0')
+    cal.add('calscale', 'GREGORIAN')
+    cal.add('method', 'PUBLISH')
+    cal.add('x-wr-calname', f"{team.name} - {team.level.season.name}")
+    cal.add('x-wr-caldesc', f"Basketball schedule for {team.name}")
+    
+    # Query for games
+    games_query = Q(team1=team) | Q(team2=team)
+    if include_reffing:
+        games_query |= Q(referee_team=team)
+    
+    games = Game.objects.filter(games_query).select_related(
+        'level', 'team1', 'team2', 'referee_team', 'week'
+    ).order_by('week__monday_date', 'day_of_week', 'time')
+    
+    for game in games:
+        event = Event()
+        
+        # Determine event type and title
+        if game.team1 == team or game.team2 == team:
+            # Playing game - always show as "TeamName vs Opponent" (consistent order)
+            if game.team1 == team:
+                event.add('summary', f"{team.name} vs {game.team2.name}")
+            else:
+                event.add('summary', f"{team.name} vs {game.team1.name}")
+            event.add('categories', 'Playing')
+        else:
+            # Reffing game - shortened format
+            event.add('summary', f"Ref: {game.team1.name} vs {game.team2.name}")
+            event.add('categories', 'Reffing')
+        
+        # Calculate datetime
+        if game.date_time:
+            start_time = game.date_time
+            # Use level's slot duration for event duration
+            duration = game.level.get_effective_slot_duration()
+            end_time = start_time + timedelta(minutes=duration)
+            
+            event.add('dtstart', start_time)
+            event.add('dtend', end_time)
+        
+        # Add location
+        if game.court:
+            event.add('location', game.court)
+        
+        # Build description
+        description_parts = [f"Level: {game.level.name}"]
+        
+        if game.referee_team:
+            description_parts.append(f"Referee: {game.referee_team.name}")
+        elif game.referee_name:
+            description_parts.append(f"Referee: {game.referee_name}")
+        
+        # Add scores if game is completed and scores are requested
+        if include_scores and game.team1_score is not None and game.team2_score is not None:
+            description_parts.append(f"Final Score: {game.team1.name} {game.team1_score} - {game.team2_score} {game.team2.name}")
+        
+        event.add('description', '\n'.join(description_parts))
+        
+        # Add unique ID
+        event.add('uid', f"game-{game.id}@basketballscheduler.local")
+        
+        # Add creation timestamp
+        event.add('dtstamp', timezone.now())
+        
+        cal.add_component(event)
+    
+    # Generate response
+    response = HttpResponse(cal.to_ical(), content_type='text/calendar; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{team.name}-schedule.ics"'
+    response['Cache-Control'] = 'max-age=3600'  # Cache for 1 hour
+    
+    return response

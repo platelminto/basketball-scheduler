@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import StandingsTable from '../components/StandingsTable';
 import ScheduleDisplay from '../components/ScheduleDisplay';
+import CalendarExportModal from '../components/CalendarExportModal';
 import { useStandings } from '../hooks/useStandings';
 import { getFilterOptions } from '../utils/filterUtils';
 import { getMostCommonWeekPattern } from '../utils/gameUtils';
@@ -18,6 +19,7 @@ const PublicSchedule = () => {
   const [viewMode, setViewMode] = useState('both'); // 'both', 'standings', 'schedule'
   const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1400);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   // Fetch public schedule data
   useEffect(() => {
@@ -251,8 +253,8 @@ const PublicSchedule = () => {
               </div>
             </div>
             
-            {/* Upcoming Only button - positioned above schedule */}
-            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '15px' }}>
+            {/* Action buttons - positioned above schedule */}
+            <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '10px', marginBottom: '15px' }}>
               <button
                 onClick={() => setHidePastGames(!hidePastGames)}
                 style={{
@@ -273,6 +275,27 @@ const PublicSchedule = () => {
                 <span>⏰</span>
                 Upcoming Only
               </button>
+              
+              <button
+                onClick={() => setCalendarModalOpen(true)}
+                style={{
+                  padding: '6px 12px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: '#f5f5f5',
+                  color: '#333',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <span>📅</span>
+                Team Calendars
+              </button>
             </div>
             
             <ScheduleDisplay 
@@ -283,6 +306,14 @@ const PublicSchedule = () => {
           </div>
         )}
       </div>
+      
+      {/* Calendar Export Modal */}
+      {calendarModalOpen && (
+        <CalendarExportModal
+          scheduleData={scheduleData}
+          onClose={() => setCalendarModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

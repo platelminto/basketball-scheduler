@@ -14,6 +14,7 @@ urlpatterns = [
     path("api/seasons/create/", views.save_or_update_schedule, name="create_schedule_api"),
     path("api/seasons/<int:season_id>/schedule/", views.save_or_update_schedule, name="update_schedule_api"),
     path("api/public/schedule/", views.public_schedule_data, name="public_schedule_api"),
+    path("api/teams/<int:team_id>/calendar.ics", views.team_calendar_export, name="team_calendar_export"),
     
     
     # Routes for the unified React SPA

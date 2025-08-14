@@ -992,7 +992,8 @@ td.text-center input.form-control.form-control-sm.score-input.schedule-input {
   gap: var(--space-sm);
 }
 
-.court-section {
+.court-section,
+.slot-duration-section {
   margin-top: var(--space-2xl);
   padding-top: var(--space-lg);
   border-top: 1px solid var(--border-primary);

@@ -7,4 +7,5 @@ requires-python = ">=3.10"
 dependencies = [
     "django>=5.2.3",
     "django-webpack-loader>=3.2.1",
+    "icalendar>=6.3.1",
 ]

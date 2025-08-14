@@ -75,13 +75,13 @@ const EditSeasonStructure = () => {
       const data = await response.json();
       
       if (response.ok) {
-        alert('Teams and levels updated successfully!');
+        alert('Organization updated successfully!');
         navigate(-1); // Go back to seasons list
       } else {
-        alert(`Error updating teams/levels: ${data.message || 'Unknown error'}`);
+        alert(`Error updating organization: ${data.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error updating teams/levels:', error);
+      console.error('Error updating organization:', error);
       alert(`Network error: ${error.message}`);
     }
   };
@@ -122,8 +122,8 @@ const EditSeasonStructure = () => {
   return (
     <div className="container mt-4">
       <h2>Edit Organization: {seasonData?.season?.name}</h2>
-      <p className="text-muted">Update the teams and levels for this season.</p>
-      
+      <p className="text-muted">Update organizational structure for this season.</p>
+
       <TeamCourtSetup
         initialLevels={getCurrentTeamsLevels().levels}
         initialCourts={getCurrentTeamsLevels().courts}

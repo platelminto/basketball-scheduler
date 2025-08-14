@@ -15,7 +15,7 @@ const NavBar = () => {
           <ul className="navbar-nav">
             <li className="nav-item">
               <Link
-                className={`nav-link ${(location.pathname === '/' || location.pathname.includes('/seasons')) && !location.pathname.includes('/scores') ? 'active' : ''}`}
+                className={`nav-link ${(location.pathname === '/' || (location.pathname.includes('/seasons') && !location.pathname.includes('/seasons/create/'))) && !location.pathname.includes('/scores') ? 'active' : ''}`}
                 to="/">
                 Seasons
               </Link>

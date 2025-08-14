@@ -13,6 +13,10 @@ class Season(models.Model):
         default=False,
         help_text="Designates this season as the currently active one (only one can be active).",
     )
+    slot_duration_minutes = models.PositiveIntegerField(
+        default=70,
+        help_text="Duration of each game slot in minutes (includes game time + halftime)"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -44,6 +48,11 @@ class Level(models.Model):
 
     season = models.ForeignKey(Season, related_name="levels", on_delete=models.CASCADE)
     name = models.CharField(max_length=50, help_text="e.g., Mid, High, Top, etc.")
+    slot_duration_minutes = models.PositiveIntegerField(
+        null=True, 
+        blank=True,
+        help_text="Duration override for this level (falls back to season default if not set)"
+    )
 
     class Meta:
         unique_together = (
@@ -53,6 +62,10 @@ class Level(models.Model):
 
     def __str__(self):
         return f"{self.name}"
+
+    def get_effective_slot_duration(self):
+        """Returns the slot duration for this level, falling back to season default"""
+        return self.slot_duration_minutes if self.slot_duration_minutes is not None else self.season.slot_duration_minutes
 
     @classmethod
     def get_active_season_levels(cls):

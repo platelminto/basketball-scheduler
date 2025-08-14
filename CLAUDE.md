@@ -25,6 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run specific validation test: `python -c "from tests import test_name; print(test_name(args))"`
 - DO NOT start the server to test web features - user will handle testing themselves
 - Make code changes, but let the user test the implementation with their own server instance
+- If you want to test something, don't just create and run something on the spot - actually create a test we can use long-term, and run that.
 
 ## Frontend Architecture
 - Main entry point: `/assets/js/schedule-app/index.js`
