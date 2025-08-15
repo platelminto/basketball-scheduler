@@ -7,254 +7,246 @@ from stats import print_statistics
 
 def get_round_robin_length(num_teams):
     """Calculates the number of weeks for one full round-robin."""
-    if num_teams % 2 == 0:
-        return num_teams - 1
-    else:
-        return num_teams
+    return num_teams - 1 if num_teams % 2 == 0 else num_teams
 
-def generate_schedule(config, team_names_by_level, optimize_for_balance=True):
+def phase_1_generate_matchups(config, team_names_by_level):
     """
-    Generates a league schedule using an MIP model.
-
-    This version includes multiple advanced optimizations:
-    - Cyclical Pairing Constraint: Enforces matchup repetition.
-    - Strengthened Weekly Play: Enforces teams in even-sized levels play exactly once per week.
-    - Symmetry Breaking: Adds a constraint to prune redundant solutions.
+    Solves for the weekly matchups only, ignoring slots and referees.
+    This is a feasibility problem and should be very fast.
     """
-    print("Starting schedule generation...")
-    print(">> RUNNING WITH ADVANCED OPTIMIZATIONS ENABLED <<")
-
-    # 1. Pre-computation and Setup
-    print("Step 1: Pre-computing parameters...")
+    print("\n--- Starting Phase 1: Generating Weekly Matchups ---")
+    
+    # --- Setup ---
+    total_weeks = config["total_weeks"]
     levels = config["levels"]
+    all_teams = sorted([team for teams in team_names_by_level.values() for team in teams])
+    team_to_level = {team: lvl for lvl, teams in team_names_by_level.items() for team in teams}
+    weeks_range = range(total_weeks)
+    
+    all_possible_pairs = [tuple(sorted(p)) for lvl in levels for p in itertools.combinations(team_names_by_level[lvl], 2)]
+
+    prob = pulp.LpProblem("MatchupScheduling", pulp.LpMinimize)
+
+    # --- Decision Variables ---
+    plays_in_week = pulp.LpVariable.dicts("PlaysInWeek", (all_possible_pairs, weeks_range), cat='Binary')
+    matchup_counts = pulp.LpVariable.dicts("MatchupCount", all_possible_pairs, cat='Integer')
+
+    # --- Constraints ---
+    # Flexible matchup counts
+    for level in levels:
+        teams = team_names_by_level[level]
+        num_teams = len(teams)
+        if num_teams < 2: continue
+        total_level_games = (num_teams * total_weeks) // 2
+        level_pairs = [p for p in all_possible_pairs if p[0] in teams]
+        min_plays = total_level_games // len(level_pairs)
+        
+        for pair in level_pairs:
+            matchup_counts[pair].lowBound = min_plays
+            matchup_counts[pair].upBound = min_plays + 1
+            prob += pulp.lpSum(plays_in_week[pair][w] for w in weeks_range) == matchup_counts[pair], f"Link_Count_{pair[0]}_{pair[1]}"
+        
+        prob += pulp.lpSum(matchup_counts[pair] for pair in level_pairs) == total_level_games, f"Total_Games_{level}"
+
+    # Strengthened Weekly Play constraint
+    for team in all_teams:
+        num_teams_in_level = len(team_names_by_level[team_to_level[team]])
+        for w in weeks_range:
+            games_in_week = pulp.lpSum(plays_in_week[p][w] for p in all_possible_pairs if team in p)
+            if num_teams_in_level % 2 == 0:
+                prob += games_in_week == 1, f"Weekly_Play_Exact_{team}_{w}"
+            else:
+                prob += games_in_week <= 1, f"Weekly_Play_Max_{team}_{w}"
+
+    # Cyclical Pairing constraint
+    for level in levels:
+        teams = team_names_by_level[level]
+        num_teams = len(teams)
+        if num_teams < 2: continue
+        rr_len = get_round_robin_length(num_teams)
+        level_pairs = [p for p in all_possible_pairs if p[0] in teams]
+        for pair in level_pairs:
+            for w in range(total_weeks - rr_len):
+                prob += plays_in_week[pair][w] == plays_in_week[pair][w + rr_len], f"Cycle_Pairing_{pair[0]}_{pair[1]}_{w}"
+
+    # --- Solve ---
+    solver = pulp.PULP_CBC_CMD(msg=0)
+    prob.solve(solver)
+
+    if pulp.LpStatus[prob.status] == "Optimal":
+        print("Phase 1 Successful: Found a valid matchup schedule.")
+        weekly_matchups = []
+        for w in weeks_range:
+            games = [pair for pair in all_possible_pairs if plays_in_week[pair][w].varValue > 0.5]
+            weekly_matchups.append({'week': w, 'games': games})
+        return weekly_matchups
+    else:
+        print(f"Phase 1 FAILED: Could not find a valid matchup schedule. Status: {pulp.LpStatus[prob.status]}")
+        return None
+
+def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit: float):
+    """
+    Takes a fixed weekly matchup schedule and assigns slots and referees.
+    This phase contains the optimization objectives.
+    """
+    print("\n--- Starting Phase 2: Assigning Slots and Referees ---")
+
+    # --- Setup ---
     total_weeks = config["total_weeks"]
     num_slots = config["num_slots"]
-
-    all_teams = sorted([team for level_teams in team_names_by_level.values() for team in level_teams])
-    team_to_level = {team: level for level, level_teams in team_names_by_level.items() for team in level_teams}
-    
+    all_teams = sorted([team for teams in team_names_by_level.values() for team in teams])
+    team_to_level = {team: lvl for lvl, teams in team_names_by_level.items() for team in teams}
     weeks_range = range(total_weeks)
     slots_range = range(1, num_slots + 1)
     
-    # This dictionary will now only contain all possible pairs, not a pre-calculated count.
-    all_possible_pairs = []
-    for level in levels:
-        teams_in_level = team_names_by_level[level]
-        if len(teams_in_level) < 2: continue
-        all_possible_pairs.extend(list(itertools.combinations(teams_in_level, 2)))
+    # Create a flat list of all games to be scheduled
+    all_games = [(g, w_data['week']) for w_data in weekly_matchups for g in w_data['games']]
+
+    prob = pulp.LpProblem("SlotAndRefAssignment", pulp.LpMinimize)
+
+    # --- Decision Variables ---
+    game_in_slot = pulp.LpVariable.dicts("GameInSlot", (all_games, slots_range), cat='Binary')
     
-    # Sort pairs for deterministic behavior
-    all_possible_pairs = [tuple(sorted(p)) for p in all_possible_pairs]
-
-    # 2. Initialize the MIP Model
-    print("Step 2: Initializing the MIP model...")
-    prob = pulp.LpProblem("LeagueScheduling_Optimized", pulp.LpMinimize)
-
-    # 3. Define Decision Variables
-    print("Step 3: Defining decision variables...")
-    match_keys = all_possible_pairs
-    matches = pulp.LpVariable.dicts("Match", (match_keys, weeks_range, slots_range), cat='Binary')
-    refs = pulp.LpVariable.dicts("Ref", (all_teams, match_keys, weeks_range, slots_range), cat='Binary')
-
-    is_playing = defaultdict(lambda: pulp.LpAffineExpression())
-    for t1, t2 in match_keys:
-        for w in weeks_range:
-            for s in slots_range:
-                match_var = matches[t1, t2][w][s]
-                is_playing[(t1, w, s)] += match_var
-                is_playing[(t2, w, s)] += match_var
-
+    # Define refs only for valid assignments (team reffing a game in its own level)
+    # and build the is_reffing helper at the same time.
+    refs = {}
     is_reffing = defaultdict(lambda: pulp.LpAffineExpression())
-    for t_ref in all_teams:
-        for t1, t2 in match_keys:
-            if team_to_level[t_ref] == team_to_level[t1]:
-                for w in weeks_range:
-                    for s in slots_range:
-                        is_reffing[(t_ref, w, s)] += refs[t_ref][t1, t2][w][s]
-
-    # 4. Add Constraints
-    print("Step 4: Adding constraints to the model...")
-    
-        # --- NEW: FLEXIBLE MATCHUP COUNT CONSTRAINTS ---
-    print("Step 4a: Defining flexible matchup count variables...")
-    
-    matchup_counts = pulp.LpVariable.dicts("MatchupCount", match_keys, cat='Integer')
-
-    for level in levels:
-        teams_in_level = team_names_by_level[level]
-        num_teams = len(teams_in_level)
-        if num_teams < 2: continue
-        
-        total_games_per_team = total_weeks
-        total_level_games = (num_teams * total_games_per_team) // 2
-        
-        level_pairs = [p for p in match_keys if p[0] in teams_in_level]
-        num_pairs = len(level_pairs)
-
-        # Calculate the lower and upper bounds for how many times a pair can play
-        min_plays = total_level_games // num_pairs
-        max_plays = min_plays + 1
-
-        for pair in level_pairs:
-            # Constrain the count for each pair
-            matchup_counts[pair].lowBound = min_plays
-            matchup_counts[pair].upBound = max_plays
-
-            # Link this count to the actual match variables
-            prob += pulp.lpSum(matches[pair][w][s] for w in weeks_range for s in slots_range) == matchup_counts[pair], f"Link_Match_Count_{pair[0]}_{pair[1]}"
-
-        # Ensure the sum of counts for the level is correct
-        prob += pulp.lpSum(matchup_counts[pair] for pair in level_pairs) == total_level_games, f"Total_Level_Games_{level}"
-    
-    # Strengthener 1: Total Games Constraint
-    for t in all_teams:
-        prob += pulp.lpSum(is_playing[(t, w, s)] for w in weeks_range for s in slots_range) == total_weeks, f"Total_Games_{t}"
-
-    # Hard Constraint: Cyclical Pairing
-    for level in levels:
-        teams_in_level = team_names_by_level[level]
-        num_teams = len(teams_in_level)
-        if num_teams < 2: continue
-        rr_len = get_round_robin_length(num_teams)
-        level_pairs = list(itertools.combinations(teams_in_level, 2))
-        for t1, t2 in level_pairs:
-            pair = tuple(sorted((t1, t2)))
-            for w in range(total_weeks - rr_len):
-                match_in_w = pulp.lpSum(matches[pair][w][s] for s in slots_range)
-                match_in_w_cycle = pulp.lpSum(matches[pair][w + rr_len][s] for s in slots_range)
-                prob += match_in_w == match_in_w_cycle, f"Cycle_Pairing_{t1}_{t2}_{w}"
-
-    # --- STRATEGY 1: STRENGTHENED WEEKLY PLAY CONSTRAINT ---
-    print("Step 4a: Adding Strengthened Weekly Play constraint...")
-    for t in all_teams:
-        level = team_to_level[t]
-        num_teams_in_level = len(team_names_by_level[level])
-        for w in weeks_range:
-            # If the number of teams in the level is even, a team MUST play every week.
-            # If odd, they must play AT MOST once (allowing for a bye week).
-            if num_teams_in_level % 2 == 0:
-                prob += pulp.lpSum(is_playing[(t, w, s)] for s in slots_range) == 1, f"Weekly_Play_Exact_{t}_{w}"
-            else:
-                prob += pulp.lpSum(is_playing[(t, w, s)] for s in slots_range) <= 1, f"Weekly_Play_Max_{t}_{w}"
-    
-    # --- STRATEGY 2: SYMMETRY BREAKING CONSTRAINT ---
-    print("Step 4b: Adding Symmetry Breaking constraint...")
-    # Find the first available game slot in the entire season
-    first_w, first_s = -1, -1
-    for w_search in weeks_range:
-        for s_search in slots_range:
-            if config["courts_per_slot"][s_search][w_search] > 0:
-                first_w, first_s = w_search, s_search
-                break
-        if first_w != -1:
-            break
-    
-    # If a valid slot exists, force the alphabetically first team to play in it.
-    # This prevents the solver from exploring identical schedules where team roles are swapped.
-    if first_w != -1:
-        first_team_in_league = all_teams[0]
-        prob += is_playing[(first_team_in_league, first_w, first_s)] == 1, f"Symmetry_Break_{first_team_in_league}"
-
-    # C3: Court Capacity
-    for w in weeks_range:
-        for s in slots_range:
-            prob += pulp.lpSum(matches[t1, t2][w][s] for t1, t2 in match_keys) <= config["courts_per_slot"][s][w], f"Court_Capacity_{w}_{s}"
-            
-    # Other core constraints... (C4, C5, C6, C7)
-    # (These are unchanged from the previous version)
-    for (t1, t2) in match_keys:
-        for w in weeks_range:
+    for game, week in all_games:
+        t1, t2 = game
+        level = team_to_level[t1]
+        possible_refs = [t for t in team_names_by_level[level] if t != t1 and t != t2]
+        for t_ref in possible_refs:
+            ref_vars = pulp.LpVariable.dicts(f"Ref_{t_ref}_{t1}_{t2}_{week}", slots_range, cat='Binary')
+            refs[(t_ref, game, week)] = ref_vars
             for s in slots_range:
-                level = team_to_level[t1]
-                possible_refs = [t for t in team_names_by_level[level] if t != t1 and t != t2]
-                prob += pulp.lpSum(refs[t_ref][t1, t2][w][s] for t_ref in possible_refs) == matches[t1, t2][w][s], f"Ref_Assignment_{t1}_{t2}_{w}_{s}"
+                is_reffing[(t_ref, week, s)] += ref_vars[s]
+
+    # --- Helper Expressions ---
+    is_playing = defaultdict(lambda: pulp.LpAffineExpression())
+    for (t1, t2), w in all_games:
+        for s in slots_range:
+            var = game_in_slot[(t1, t2), w][s]
+            is_playing[(t1, w, s)] += var
+            is_playing[(t2, w, s)] += var
+
+    # --- Constraints ---
+    # Each game must be assigned to exactly one slot
+    for game, week in all_games:
+        prob += pulp.lpSum(game_in_slot[game, week][s] for s in slots_range) == 1, f"Assign_Game_{game[0]}_{game[1]}_{week}"
+    
+    # Court Capacity
+    for w in weeks_range:
+        games_this_week = [g for g, week in all_games if week == w]
+        for s in slots_range:
+            prob += pulp.lpSum(game_in_slot[g, w][s] for g in games_this_week) <= config["courts_per_slot"][s][w], f"Court_Capacity_{w}_{s}"
+
+    # Referee Assignment (one ref per game)
+    for (t1, t2), w in all_games:
+        level = team_to_level[t1]
+        possible_refs = [t for t in team_names_by_level[level] if t != t1 and t != t2]
+        for s in slots_range:
+            # A ref must be assigned if the game is in this slot
+            prob += pulp.lpSum(refs[(tr, (t1,t2), w)][s] for tr in possible_refs) == game_in_slot[((t1,t2), w)][s], f"Assign_Ref_{t1}_{t2}_{w}_{s}"
+
+    # Referee Adjacency (a team can only ref if playing adjacently)
     for t_ref in all_teams:
         for w in weeks_range:
             for s in slots_range:
                 adjacent_play = pulp.LpAffineExpression()
                 if s > 1: adjacent_play += is_playing[(t_ref, w, s - 1)]
                 if s < num_slots: adjacent_play += is_playing[(t_ref, w, s + 1)]
+                
+                # The number of games a team refs in a slot (0 or 1) must be <= their adjacent play status (0, 1, or 2)
                 prob += is_reffing[(t_ref, w, s)] <= adjacent_play, f"Ref_Adjacency_{t_ref}_{w}_{s}"
+
+    # Season Slot & Referee Limits
     for t in all_teams:
-        for s in slots_range:
-            prob += pulp.lpSum(is_playing[(t, w, s)] for w in weeks_range) <= config["slot_limits"][s], f"Slot_Limit_{t}_{s}"
-    for t in all_teams:
+        # CORRECT: Use the is_reffing helper which is correctly scoped to same-level reffing.
         total_refs = pulp.lpSum(is_reffing[(t, w, s)] for w in weeks_range for s in slots_range)
         prob += total_refs >= config["min_referee_count"], f"Min_Ref_Count_{t}"
         prob += total_refs <= config["max_referee_count"], f"Max_Ref_Count_{t}"
-
-    # 5. Define the Objective Function (Conditional)
-    print("Step 5: Handling objective function...")
-    if optimize_for_balance:
-        # ... (Objective function code remains the same as the previous version) ...
-        print(">> Optimization is ENABLED. Building balancing objective.")
-        total_refs_per_team = {t: pulp.lpSum(is_reffing[(t, w, s)] for w in weeks_range for s in slots_range) for t in all_teams}
-        min_total_refs = pulp.LpVariable("MinTotalRefs", lowBound=0, cat='Integer')
-        max_total_refs = pulp.LpVariable("MaxTotalRefs", lowBound=0, cat='Integer')
-        for t in all_teams:
-            prob += total_refs_per_team[t] >= min_total_refs
-            prob += total_refs_per_team[t] <= max_total_refs
-        ref_imbalance = max_total_refs - min_total_refs
-        total_slot_games = defaultdict(int)
         for s in slots_range:
-            total_slot_games[s] = sum(config["courts_per_slot"][s])
-        slot_imbalances = []
-        for t in all_teams:
-            normalized_plays = []
-            for s in slots_range:
-                if total_slot_games[s] > 0:
-                    normalized_plays.append(pulp.lpSum(is_playing[(t, w, s)] for w in weeks_range) / total_slot_games[s])
-            if len(normalized_plays) > 1:
-                min_norm_play = pulp.LpVariable(f"MinNormPlay_{t}", lowBound=0, upBound=1)
-                max_norm_play = pulp.LpVariable(f"MaxNormPlay_{t}", lowBound=0, upBound=1)
-                for i, np in enumerate(normalized_plays):
-                    prob += np >= min_norm_play
-                    prob += np <= max_norm_play
-                slot_imbalances.append(max_norm_play - min_norm_play)
-        total_slot_imbalance = pulp.lpSum(slot_imbalances)
-        prob.setObjective(ref_imbalance + total_slot_imbalance)
-    else:
-        print(">> Optimization is DISABLED. Solving for feasibility only.")
-        pass
+            prob += pulp.lpSum(is_playing[(t, w, s)] for w in weeks_range) <= config["slot_limits"][s], f"Slot_Limit_{t}_{s}"
 
-    # 6. Solve the Problem
-    print("Step 6: Solving the model...")
-    solver = pulp.PULP_CBC_CMD(timeLimit=300, msg=1) 
-    prob.solve(solver)
+    # --- Objective Function ---    
+    # This will hold the slot count imbalance for each team
+    slot_imbalance_per_team = []
     
-    # 7. Post-processing and Output Formatting
-    # (This section is unchanged)
-    print("Step 7: Formatting the output...")
+    for t in all_teams:
+        # Get the raw count of games played by team 't' in each slot
+        plays_per_slot = {s: pulp.lpSum(is_playing[t,w,s] for w in weeks_range) for s in slots_range}
+        
+        # CRITICAL: Define Min/Max variables as Integers to represent the game counts
+        min_games_in_slot = pulp.LpVariable(f"MinGamesInSlot_{t}", cat='Integer')
+        max_games_in_slot = pulp.LpVariable(f"MaxGamesInSlot_{t}", cat='Integer')
+        
+        for s in slots_range:
+            # Force the min/max variables to bound the actual game counts
+            prob += plays_per_slot[s] >= min_games_in_slot
+            prob += plays_per_slot[s] <= max_games_in_slot
+        
+        # The imbalance for this team is the integer range of their slot counts
+        slot_imbalance_per_team.append(max_games_in_slot - min_games_in_slot)
+
+    # The final objective is to minimize the SUM of all teams' integer imbalances.
+    # This provides a strong, realistic bound for the solver.
+    prob.setObjective(pulp.lpSum(slot_imbalance_per_team))
+
+    # --- Solve ---
+    solver = pulp.PULP_CBC_CMD(timeLimit=time_limit, msg=1)
+    prob.solve(solver)
+
+    # --- Format Output ---
     if pulp.LpStatus[prob.status] in ["Optimal", "Feasible"]:
-        print(f"Solution Found! Status: {pulp.LpStatus[prob.status]}")
+        print(f"Phase 2 Successful! Status: {pulp.LpStatus[prob.status]}")
         schedule_output = []
         for w in weeks_range:
             week_data = {"week": w + 1, "slots": {str(s): [] for s in slots_range}}
+            games_this_week = [(g, wk) for g, wk in all_games if wk == w]
             for s in slots_range:
-                for (t1, t2) in match_keys:
-                    if matches[t1, t2][w][s].varValue > 0.5:
+                for game, week in games_this_week:
+                    if game_in_slot[(game, week)][s].varValue > 0.5:
+                        t1, t2 = game
                         game_ref = "N/A"
                         level = team_to_level[t1]
-                        possible_refs = [t for t in team_names_by_level[level] if t not in [t1, t2]]
+                        possible_refs = [t for t in team_names_by_level[level] if t != t1 and t != t2]
                         for t_ref in possible_refs:
-                            if refs[t_ref][t1, t2][w][s].varValue > 0.5:
+                            # --- THIS IS THE CORRECTED LINE ---
+                            # Access refs with the tuple key: (t_ref, game, week)
+                            if refs[(t_ref, game, week)][s].varValue > 0.5:
                                 game_ref = t_ref
                                 break
-                        game_entry = { "level": level, "teams": [t1, t2], "ref": game_ref }
-                        week_data["slots"][str(s)].append(game_entry)
+                        week_data["slots"][str(s)].append({"level": level, "teams": [t1, t2], "ref": game_ref})
             schedule_output.append(week_data)
         return schedule_output
     else:
-        print(f"Could not find a solution. Status: {pulp.LpStatus[prob.status]}")
+        print(f"Phase 2 FAILED: Could not assign slots/refs. Status: {pulp.LpStatus[prob.status]}")
         return None
 
-# The main execution block and validation function remain the same.
-# Just use them as they were in the previous version.
-if __name__ == '__main__':
-    # ... your CONFIG and TEAM_NAMES dictionaries ...
-    # ... your validation function ...
-    # ... call generate_schedule(...) ...
-    pass
+def generate_schedule(config, team_names_by_level, time_limit=5.0):
+    """
+    Generates a schedule using a two-phase optimization approach.
+    Phase 1: Determine weekly matchups.
+    Phase 2: Assign slots and referees to those matchups.
+    """
+    # Phase 1: Get the abstract weekly matchup schedule
+    weekly_matchups = phase_1_generate_matchups(config, team_names_by_level)
+    
+    if not weekly_matchups:
+        print("\nScheduling failed in Phase 1. No solution possible.")
+        return None
+        
+    # Phase 2: Assign slots and refs to the generated matchups
+    final_schedule = phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit=time_limit)
+
+    if not final_schedule:
+        print("\nScheduling failed in Phase 2.")
+        return None
+        
+    print("\nSuccessfully generated a complete schedule!")
+    return final_schedule
+
+
 
 def run_comprehensive_tests(schedule, config, team_names_by_level):
     """Run all tests from tests.py on the generated schedule."""
@@ -339,16 +331,16 @@ if __name__ == "__main__":
         #     3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
         #     4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
         # },
-        "slot_limits": {1: 4, 2: 6, 3: 6, 4: 4},
-        "min_referee_count": 3,
-        "max_referee_count": 7,
+        "slot_limits": {1: 3, 2: 5, 3: 5, 4: 4},
+        "min_referee_count": 4,
+        "max_referee_count": 6,
     }
     TEAM_NAMES = {
         "A": [f"TeamA{i}" for i in range(1, CONFIG["teams_per_level"]["A"] + 1)],
         "B": [f"TeamB{i}" for i in range(1, CONFIG["teams_per_level"]["B"] + 1)],
         "C": [f"TeamC{i}" for i in range(1, CONFIG["teams_per_level"]["C"] + 1)],
     }
-    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, False)
+    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, 5) # , optimize_for_balance=True, gapRel=0.2)
 
     if final_schedule:
         run_comprehensive_tests(final_schedule, CONFIG, TEAM_NAMES)
