@@ -9,7 +9,6 @@ def get_round_robin_length(num_teams):
     """Calculates the number of weeks for one full round-robin."""
     return num_teams - 1 if num_teams % 2 == 0 else num_teams
 
-### NEW/MODIFIED ###
 def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_find=5):
     """
     Solves for weekly matchups multiple times, finding a different valid
@@ -90,8 +89,7 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
             
     return found_blueprints
 
-### MODIFIED ###
-def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit: float):
+def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit: float, gapRel: float):
     """
     Takes a fixed weekly matchup schedule and assigns slots and referees.
     This phase contains the optimization objectives.
@@ -162,7 +160,7 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
     prob.setObjective(pulp.lpSum(slot_imbalance_per_team))
 
     # --- Solve ---
-    solver = pulp.PULP_CBC_CMD(timeLimit=time_limit, msg=0) # msg=0 to keep the output clean
+    solver = pulp.PULP_CBC_CMD(timeLimit=time_limit, gapRel=gapRel, msg=1) # msg=0 to keep the output clean
     prob.solve(solver)
 
     # --- Format Output ---
@@ -185,14 +183,11 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
                                 break
                         week_data["slots"][str(s)].append({"level": level, "teams": [t1, t2], "ref": game_ref})
             schedule_output.append(week_data)
-        ### NEW/MODIFIED ###
         return schedule_output, objective_score
     else:
-        ### NEW/MODIFIED ###
         return None, None
         
 def flip_teams_by_round(schedule, team_names_by_level):
-    # This function is unchanged
     if not schedule: return schedule
     rr_lengths = {level: get_round_robin_length(len(teams)) for level, teams in team_names_by_level.items()}
     for week_data in schedule:
@@ -206,7 +201,7 @@ def flip_teams_by_round(schedule, team_names_by_level):
     return schedule
 
 ### NEW/MODIFIED ###
-def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprints_to_generate=6):
+def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprints_to_generate=6, gapRel=0.25):
     """
     Generates a schedule by first finding multiple unique matchup blueprints,
     then running a timed optimization on each one to find the best final schedule.
@@ -229,9 +224,9 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
     
     for i, blueprint in enumerate(blueprints):
         print(f"  Optimizing for Blueprint #{i+1}/{len(blueprints)} (time limit: {time_per_run:.1f}s)...")
-        
-        schedule, score = phase_2_assign_slots_and_refs(config, team_names_by_level, blueprint, time_limit=time_per_run)
-        
+
+        schedule, score = phase_2_assign_slots_and_refs(config, team_names_by_level, blueprint, time_limit=time_per_run, gapRel=gapRel)
+
         if schedule and score is not None:
             print(f"    -> Result: Feasible, Imbalance Score: {score}")
             if score < best_score:
@@ -330,6 +325,12 @@ if __name__ == "__main__":
             3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
         },
+        # "courts_per_slot": {
+        #     1: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        #     2: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+        #     3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+        #     4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+        # },
         "slot_limits": {1: 3, 2: 4, 3: 4, 4: 4},
         "min_referee_count": 4,
         "max_referee_count": 6,
@@ -342,7 +343,7 @@ if __name__ == "__main__":
     
     ### NEW/MODIFIED ###
     # We now call the generator with a total time limit and the number of blueprints to try
-    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=600, num_blueprints_to_generate=60)
+    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=60, num_blueprints_to_generate=10, gapRel=0.25)
 
     if final_schedule:
         # These functions for testing and stats would be run as before
