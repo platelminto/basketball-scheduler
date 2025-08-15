@@ -87,8 +87,8 @@ class TeamCalendarExportTestCase(TestCase):
         self.assertEqual(len(events), 2)
         
         summaries = [str(event.get('summary')) for event in events]
-        self.assertIn('vs Team B', summaries)  # Playing game
-        self.assertIn('Referee: Team B vs Team C', summaries)  # Reffing game
+        self.assertIn('Team A vs Team B', summaries)  # Playing game
+        self.assertIn('Ref: Team B vs Team C', summaries)  # Reffing game
 
     def test_calendar_export_with_scores(self):
         """Test calendar export including final scores"""

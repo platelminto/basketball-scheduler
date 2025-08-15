@@ -6,14 +6,9 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db import transaction, IntegrityError
 from django.db.models import Q
-from datetime import datetime, timedelta
+from datetime import timedelta
 from scheduler.models import OffWeek, Season, Level, Team, Game, Week
-from collections import defaultdict
-from django.utils.dateparse import parse_datetime
-from django.utils.timezone import make_aware, get_current_timezone
-from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from icalendar import Calendar, Event
 from django.utils import timezone
 
@@ -198,18 +193,39 @@ def auto_generate_schedule(request, season_id=None):
             # Get configuration from the setup data
             config = get_config_from_schedule_creator(setup_data, week_data)
 
-            from schedule import Scheduler
+            from schedule import generate_schedule
 
-            # Create a scheduler with our config
-            scheduler = Scheduler(config)
+            config["slot_limits"] = {1: 3, 2: 5, 3: 5, 4: 4}
+            config["min_referee_count"] = 4
+            config["max_referee_count"] = 6
 
-            # Generate the schedule
-            schedule, _ = scheduler.find_schedule(
-                num_cores=1, use_saved_schedule=False, max_attempts=30000
-            )
+            schedule = generate_schedule(config, config["team_names_by_level"], time_limit=10.0)
 
             if not schedule:
                 return JsonResponse({"error": "No schedule found"}, status=400)
+
+            # Validate that court capacity matches expected games per week
+            seen_off_weeks = 0
+            for data_week in week_data.values():
+                if data_week.get("isOffWeek", False):
+                    seen_off_weeks += 1
+                    continue
+                
+                schedule_week = schedule[data_week["week_number"] - 1 - seen_off_weeks]
+                schedule_games = [
+                    game for slot in schedule_week["slots"].values() for game in slot
+                ]
+                
+                expected_games = len(data_week["games"])
+                actual_games = len(schedule_games)
+                
+                if expected_games != actual_games:
+                    return JsonResponse({
+                        "error": f"Court capacity mismatch in week {data_week['week_number']}: "
+                               f"Expected {expected_games} games based on court availability, "
+                               f"but schedule generator produced {actual_games} games. "
+                               f"Please adjust the number of time slots or courts to match the expected game count."
+                    }, status=400)
 
             scheduled_week_data = []
 
@@ -237,7 +253,7 @@ def auto_generate_schedule(request, season_id=None):
                 scheduled_week_data.append(week)
 
             return JsonResponse(
-                {"config": scheduler.config, "schedule": scheduled_week_data}
+                {"config": config, "schedule": scheduled_week_data}
             )
 
         except json.JSONDecodeError:

@@ -32,7 +32,7 @@ def create_teams_dict(teams, levels, config=None):
     """
     # Use global config if not provided
     if config is None:
-        from schedule import config
+        from schedule_old import config
 
     teams_dict = {}
 
@@ -95,7 +95,7 @@ def compute_team_play_counts(schedule, teams, levels, config=None):
     """
     # Use global config if not provided
     if config is None:
-        from schedule import config
+        from schedule_old import config
 
     # Create teams dictionary with mappings
     teams_data = create_teams_dict(teams, levels, config)
@@ -135,7 +135,7 @@ def compute_team_ref_counts(schedule, teams, levels, config=None):
     """
     # Use global config if not provided
     if config is None:
-        from schedule import config
+        from schedule_old import config
 
     # Create teams dictionary with mappings
     teams_data = create_teams_dict(teams, levels, config)
@@ -174,7 +174,7 @@ def compute_overall_ref_counts(schedule, teams, levels, config=None):
     """
     # Use global config if not provided
     if config is None:
-        from schedule import config
+        from schedule_old import config
 
     # Create teams dictionary with mappings
     teams_data = create_teams_dict(teams, levels, config)

@@ -1,5 +1,5 @@
 import unittest
-from schedule import Scheduler
+from schedule_old import Scheduler
 from tests import pairing_tests, referee_player_test, adjacent_slot_test
 
 class ScheduleGenerationTests(unittest.TestCase):

@@ -49,11 +49,6 @@ def convert_to_formatted_schedule(schedule, levels, config):
 def get_config_from_schedule_creator(team_setup, week_data) -> dict:
     config = {}
 
-    if len(set(len(team_names) for team_names in team_setup["teams"].values())) != 1:
-        raise ValueError(
-            "All levels must have the same number of teams to use the auto-generated schedule"
-        )
-
     config["levels"] = list(team_setup["teams"].keys())
 
     config["teams_per_level"] = {
@@ -75,7 +70,8 @@ def get_config_from_schedule_creator(team_setup, week_data) -> dict:
         current_n_slots = len(set(game["time"] for game in week["games"]))
         if current_n_slots != n_slots:
             raise ValueError(
-                "All days must have the same number of timeslots to use the auto-generated schedule"
+                "All days must have the same number of timeslots (where 4 timeslots means there's "
+                "at least 1 game at e.g. 10:00, 11:00, 12:00, 13:00) to use the auto-generated schedule"
             )
 
     # how many different times are there? check first week,
@@ -94,6 +90,22 @@ def get_config_from_schedule_creator(team_setup, week_data) -> dict:
     config["total_weeks"] = len(weeks)
 
     config["first_half_weeks"] = len(weeks) // 2
+    config["num_slots"] = n_slots
+
+    # Validate that court capacity matches expected games per week
+    expected_games_per_week = 0
+    for level, n_teams in config["teams_per_level"].items():
+        expected_games_per_week += n_teams // 2
+
+    for week in weeks:
+        available_games = len(week["games"])
+        if available_games != expected_games_per_week:
+            raise ValueError(
+                f"Court capacity mismatch in week {week.get('week_number', 'unknown')}: "
+                f"Available slots for {available_games} games, "
+                f"but team configuration requires {expected_games_per_week} games per week. "
+                f"Please adjust the number of time slots or courts to match the required game count."
+            )
 
     return config
 

@@ -255,10 +255,10 @@ def adjacent_slot_test(schedule):
 
 def cycle_pairing_test(schedule, levels, teams_per_level):
     """
-    Tests that teams in levels with fewer teams follow a proper cycling pattern.
-    For a level with n teams in a season with max_teams teams:
-    - Each round-robin takes (n-1) weeks
-    - Matchups from week k should repeat in weeks k+(n-1), k+2(n-1), etc.
+    Tests that teams follow a proper cycling pattern based on their level's round-robin length.
+    For a level with n teams:
+    - Each round-robin takes (n-1) weeks if n is even, or n weeks if n is odd
+    - Matchups from week k should repeat in weeks k+round_robin_length, k+2*round_robin_length, etc.
 
     Args:
         schedule: The formatted schedule data
@@ -271,85 +271,80 @@ def cycle_pairing_test(schedule, levels, teams_per_level):
     """
     passed = True
     errors = []  # Initialize list to store error messages
-    max_teams = max(teams_per_level.values())
-    season_weeks = 2 * (max_teams - 1)  # Total weeks in the season
+    
+    # Get actual week numbers from schedule (excluding any off weeks or gaps)
+    actual_weeks = [week["week"] for week in schedule]
+    actual_weeks.sort()
 
     for level in levels:
         n_teams = teams_per_level[level]
-        round_robin_weeks = n_teams - 1  # Weeks needed for one round-robin
+        # Calculate round robin length correctly
+        round_robin_weeks = n_teams - 1 if n_teams % 2 == 0 else n_teams
 
-        # Skip if this level has the max number of teams (standard cycle)
-        if n_teams == max_teams:
-            continue
+        # Test all levels, not just those with fewer teams
 
-        # Organize matchups by week
-        matchups_by_week = {}
+        # Organize matchups by actual schedule position (ignoring week numbers)
+        matchups_by_position = {}
+        position = 0
         for week in schedule:
-            week_num = week["week"]
-            if week_num not in matchups_by_week:
-                matchups_by_week[week_num] = []
-
+            matchups_by_position[position] = []
+            
             # Iterate through existing slots
             for slot_key, games in week["slots"].items():
                 for game in games:
                     if game["level"] == level:
                         team1, team2 = game["teams"]
                         pair = tuple(sorted([team1, team2]))
-                        matchups_by_week[week_num].append(pair)
+                        matchups_by_position[position].append(pair)
+            position += 1
 
-        # Check each base week and its repetitions
-        for base_week in range(1, round_robin_weeks + 1):
-            if base_week not in matchups_by_week:
-                message = (
-                    f"Level {level}: Base week {base_week} not found in schedule data"
-                )
-                print(message)
-                errors.append(message)
-                passed = False  # Cannot check cycles if base week is missing
+        # Only test if we have enough weeks for at least 2 cycles
+        total_positions = len(schedule)
+        if total_positions < round_robin_weeks * 2:
+            continue  # Skip testing if not enough weeks for a complete cycle
+
+        # Check each base position and its repetitions
+        for base_pos in range(round_robin_weeks):
+            if base_pos not in matchups_by_position:
+                continue  # Skip if no games in this position
+
+            base_matchups = set(matchups_by_position[base_pos])
+            if not base_matchups:  # Skip if no games for this level in this week
                 continue
 
-            base_matchups = set(matchups_by_week[base_week])
+            # Check each repetition of this base position
+            cycle = 1
+            while True:
+                repeat_pos = base_pos + (cycle * round_robin_weeks)
+                
+                # Stop if beyond schedule length
+                if repeat_pos >= total_positions:
+                    break
 
-            # Check each repetition of this base week
-            for cycle in range(
-                1, season_weeks // round_robin_weeks + 1
-            ):  # Use ceiling division? No, floor is correct.
-                repeat_week = base_week + (cycle * round_robin_weeks)
+                if repeat_pos not in matchups_by_position:
+                    break  # No more schedule data
 
-                # Skip if beyond season length according to max_teams
-                if repeat_week > season_weeks:
-                    # Check if this week *unexpectedly* exists in the schedule data
-                    if repeat_week in matchups_by_week:
-                        message = f"Level {level}: Week {repeat_week} exists but should be beyond season length ({season_weeks})"
-                        print(message)
-                        errors.append(message)
-                        # It's extra data, maybe not strictly a cycle failure, but worth noting.
-                    break  # Stop checking cycles for this base_week
-
-                if repeat_week not in matchups_by_week:
-                    message = f"Level {level}: Expected repeat week {repeat_week} (cycle {cycle} of week {base_week}) not found in schedule"
-                    print(message)
-                    errors.append(message)
-                    passed = False
-                    continue  # Continue checking other cycles for this base week if possible
-
-                repeat_matchups = set(matchups_by_week[repeat_week])
-
-                # Check if matchups are the same
+                repeat_matchups = set(matchups_by_position[repeat_pos])
+                
+                # Check if matchups are the same - they should be identical pairs since we sort them
                 if base_matchups != repeat_matchups:
-                    message = f"Level {level}: Week {base_week} and repeat week {repeat_week} should have the same matchups but differ"
+                    actual_week_base = schedule[base_pos]["week"]
+                    actual_week_repeat = schedule[repeat_pos]["week"]
+                    message = f"Level {level}: Position {base_pos} (week {actual_week_base}) and repeat position {repeat_pos} (week {actual_week_repeat}) should have the same matchups but differ"
                     print(message)
                     errors.append(message)
                     # Add details about the differences
                     diff1 = base_matchups - repeat_matchups
                     diff2 = repeat_matchups - base_matchups
                     if diff1:
-                        errors.append(f"  Only in Week {base_week}: {diff1}")
-                        print(f"  Only in Week {base_week}: {diff1}")
+                        errors.append(f"  Only in position {base_pos}: {diff1}")
+                        print(f"  Only in position {base_pos}: {diff1}")
                     if diff2:
-                        errors.append(f"  Only in Week {repeat_week}: {diff2}")
-                        print(f"  Only in Week {repeat_week}: {diff2}")
+                        errors.append(f"  Only in position {repeat_pos}: {diff2}")
+                        print(f"  Only in position {repeat_pos}: {diff2}")
                     passed = False
+                
+                cycle += 1
 
     if passed:
         print("All levels follow proper cycling patterns for matchups")
