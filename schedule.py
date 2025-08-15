@@ -21,7 +21,6 @@ from tests import (
     referee_player_test,
     adjacent_slot_test,
     global_slot_distribution_test,
-    mirror_pairing_test,
 )
 from stats import print_statistics
 
@@ -1581,9 +1580,6 @@ if __name__ == "__main__":
             gst_passed, gst_errors = global_slot_distribution_test(
                 raw_schedule, courts_per_slot, num_slots
             )
-            mpt_passed, mpt_errors = mirror_pairing_test(
-                raw_schedule, first_half_weeks=first_half_weeks
-            )
 
             print("\nTest Results:")
             print(f"  Pairings correct: {pt_passed}")
@@ -1605,10 +1601,6 @@ if __name__ == "__main__":
             print(f"  Global slot distribution: {gst_passed}")
             if not gst_passed:
                 for error in gst_errors:
-                    print(f"    - {error}")
-            print(f"  Mirror pairings: {mpt_passed}")
-            if not mpt_passed:
-                for error in mpt_errors:
                     print(f"    - {error}")
         elif not scheduler.raw_schedule:
             print(

@@ -273,7 +273,7 @@ const PublicSchedule = () => {
                 }}
               >
                 <span>⏰</span>
-                Upcoming Only
+                Upcoming Games
               </button>
               
               <button

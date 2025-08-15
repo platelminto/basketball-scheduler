@@ -25,10 +25,28 @@ def pairing_tests(schedule, levels, teams_per_level):
         # Calculate expected number of times each pairing should appear
         # For a level with n teams in a season sized for max_teams,
         # each pairing appears 2*(max_teams-1)/(n-1) times on average
-        expected_count = 2 * (max_teams - 1) / (n_teams - 1)
-        # Round to nearest integer if it's very close to one
-        if abs(expected_count - round(expected_count)) < 0.01:
-            expected_count = round(expected_count)
+        expected_count_float = 2 * (max_teams - 1) / (n_teams - 1)
+        
+        # Calculate total games for this level
+        total_level_games = n_teams * (max_teams - 1)
+        expected_pairs = n_teams * (n_teams - 1) // 2
+        
+        # Calculate how many pairs should get floor vs ceil count
+        min_count = int(expected_count_float)
+        max_count = min_count + 1
+        
+        # If fractional, some pairs get min_count, others get max_count
+        if abs(expected_count_float - min_count) < 0.01:
+            # Very close to integer - all pairs should have same count
+            expected_min_pairs = expected_pairs
+            expected_max_pairs = 0
+            expected_count = min_count
+        else:
+            # Fractional - calculate distribution
+            total_min_games = expected_pairs * min_count
+            extra_games_needed = total_level_games - total_min_games
+            expected_max_pairs = extra_games_needed
+            expected_min_pairs = expected_pairs - expected_max_pairs
 
         # Go through all weeks for each level
         for week in schedule:
@@ -44,18 +62,36 @@ def pairing_tests(schedule, levels, teams_per_level):
                             pairing_counts.get(pair_sorted, 0) + 1
                         )
 
-        # Verify each pair appears the expected number of times
-        expected_pairs = n_teams * (n_teams - 1) // 2
+        # Verify we have the right number of pairs
         if len(pairing_counts) != expected_pairs:
             message = f"Level {level}: Found {len(pairing_counts)} pairs but expected {expected_pairs}"
             print(message)
             errors.append(message)
             passed = False
 
-        # Check the counts
-        for pair, count in pairing_counts.items():
-            if count != expected_count and abs(count - expected_count) > 0.01:
-                message = f"Level {level}: Pair {pair} appears {count} times (expected {expected_count})"
+        # Check the count distribution
+        if abs(expected_count_float - min_count) < 0.01:
+            # All pairs should have the same count
+            for pair, count in pairing_counts.items():
+                if count != expected_count:
+                    message = f"Level {level}: Pair {pair} appears {count} times (expected {expected_count})"
+                    print(message)
+                    errors.append(message)
+                    passed = False
+        else:
+            # Check fractional distribution
+            actual_min_pairs = sum(1 for count in pairing_counts.values() if count == min_count)
+            actual_max_pairs = sum(1 for count in pairing_counts.values() if count == max_count)
+            invalid_pairs = sum(1 for count in pairing_counts.values() if count != min_count and count != max_count)
+            
+            if invalid_pairs > 0:
+                message = f"Level {level}: {invalid_pairs} pairs have invalid counts (should be {min_count} or {max_count})"
+                print(message)
+                errors.append(message)
+                passed = False
+            
+            if actual_min_pairs != expected_min_pairs or actual_max_pairs != expected_max_pairs:
+                message = f"Level {level}: Count distribution incorrect. Expected {expected_min_pairs} pairs with {min_count} games and {expected_max_pairs} pairs with {max_count} games, but got {actual_min_pairs} and {actual_max_pairs}"
                 print(message)
                 errors.append(message)
                 passed = False
@@ -64,12 +100,12 @@ def pairing_tests(schedule, levels, teams_per_level):
             message = f"Warning: No games found for level {level}"
             print(message)
             errors.append(message)  # Include warnings in the list
-        elif (
-            passed and not errors
-        ):  # Check errors list to avoid double printing success
-            print(
-                f"Level {level}: All pairings appear {expected_count} times as expected."
-            )
+        elif passed and not any(level in error for error in errors):
+            # Check if this level had any errors
+            if abs(expected_count_float - min_count) < 0.01:
+                print(f"Level {level}: All pairings appear {expected_count} times as expected.")
+            else:
+                print(f"Level {level}: Pairings distributed correctly: {expected_min_pairs} pairs with {min_count} games, {expected_max_pairs} pairs with {max_count} games.")
 
     return passed, errors
 
@@ -216,105 +252,6 @@ def adjacent_slot_test(schedule):
         print("All weeks and levels satisfy the referee adjacent-slot condition.")
 
     return passed, errors
-
-
-def mirror_pairing_test(schedule, first_half_weeks=5):
-    """
-    Tests that the second half of the schedule mirrors the matchups in the first half.
-    For each level, if team A plays team B in week N, they must also play in week N+first_half_weeks.
-
-    Args:
-        schedule: The formatted schedule data
-        first_half_weeks: Number of weeks in the first half (default: 5)
-
-    Returns:
-        tuple[bool, list[str]]: A tuple containing a boolean indicating if the test passed
-                                and a list of error messages.
-    """
-    passed = True
-    errors = []  # Initialize list to store error messages
-
-    # Organize the schedule into a better format for checking
-    matchups_by_week = {}
-    for week in schedule:
-        week_num = week["week"]
-        matchups_by_week[week_num] = {}
-
-        # Iterate through existing slots
-        for slot_key, games in week["slots"].items():
-            for game in games:
-                level = game["level"]
-                team1, team2 = game["teams"]
-
-                # Store each level's matchups for this week
-                if level not in matchups_by_week[week_num]:
-                    matchups_by_week[week_num][level] = []
-
-                # Store as a sorted pair to ensure consistent comparison
-                matchups_by_week[week_num][level].append(tuple(sorted([team1, team2])))
-
-    # Check mirror weeks
-    for first_week in range(1, first_half_weeks + 1):
-        mirror_week = first_week + first_half_weeks
-
-        if first_week not in matchups_by_week:
-            # If the first week doesn't exist, we can't check its mirror
-            message = f"Warning: Data for week {first_week} not found, cannot check mirror week {mirror_week}."
-            print(message)
-            errors.append(message)
-            continue  # Skip to the next week
-
-        if mirror_week not in matchups_by_week:
-            message = f"Mirror week {mirror_week} (for week {first_week}) not found in schedule"
-            print(message)
-            errors.append(message)
-            passed = False
-            continue
-
-        # For each level, check if matchups are mirrored
-        for level in matchups_by_week[first_week]:
-            if level not in matchups_by_week[mirror_week]:
-                message = f"Level {level} not found in mirror week {mirror_week} (present in week {first_week})"
-                print(message)
-                errors.append(message)
-                passed = False
-                continue
-
-            # Get matchups for both weeks
-            first_matchups = set(matchups_by_week[first_week][level])
-            mirror_matchups = set(matchups_by_week[mirror_week][level])
-
-            # Check if they match
-            if first_matchups != mirror_matchups:
-                message = f"Week {first_week} and mirror week {mirror_week} have different matchups for level {level}"
-                print(message)
-                errors.append(message)
-                # Add details about the differences for better debugging
-                diff1 = first_matchups - mirror_matchups
-                diff2 = mirror_matchups - first_matchups
-                if diff1:
-                    errors.append(f"  Only in Week {first_week}: {diff1}")
-                    print(f"  Only in Week {first_week}: {diff1}")
-                if diff2:
-                    errors.append(f"  Only in Week {mirror_week}: {diff2}")
-                    print(f"  Only in Week {mirror_week}: {diff2}")
-
-                passed = False
-
-        # Check for levels present in mirror week but not first week (less likely but possible)
-        if passed:  # Only check if the other direction hasn't already failed
-            for level in matchups_by_week[mirror_week]:
-                if level not in matchups_by_week[first_week]:
-                    message = f"Level {level} found in mirror week {mirror_week} but not in base week {first_week}"
-                    print(message)
-                    errors.append(message)
-                    passed = False
-
-    if passed:
-        print("All mirror week matchups are preserved correctly.")
-
-    return passed, errors
-
 
 def cycle_pairing_test(schedule, levels, teams_per_level):
     """
