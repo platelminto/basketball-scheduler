@@ -44,15 +44,17 @@ def edit_scores_redirect(request):
     if not active_season:
         messages.error(request, "No active season found.")
         return redirect("scheduler:schedule_app")
-    
-    return redirect("scheduler:schedule_app_paths", path=f"seasons/{active_season.id}/scores")
+
+    return redirect(
+        "scheduler:schedule_app_paths", path=f"seasons/{active_season.id}/scores"
+    )
 
 
 def seasons_endpoint(request):
     """Unified seasons endpoint - GET for listing, POST for creating"""
-    if request.method == 'GET':
+    if request.method == "GET":
         return get_seasons(request)
-    elif request.method == 'POST':
+    elif request.method == "POST":
         return save_or_update_schedule(request, season_id=None)
     else:
         return JsonResponse({"error": "Method not allowed"}, status=405)
@@ -202,64 +204,75 @@ def auto_generate_schedule(request, season_id=None):
             # Apply parameters from the frontend, with fallbacks to defaults
             config["min_referee_count"] = parameters.get("min_referee_count", 4)
             config["max_referee_count"] = parameters.get("max_referee_count", 6)
-            config["slot_limits"] = parameters.get("slot_limits", {1: 3, 2: 5, 3: 5, 4: 4})
-            
+            config["slot_limits"] = parameters.get(
+                "slot_limits", {1: 3, 2: 5, 3: 5, 4: 4}
+            )
+
             # Convert string keys to integers for slot_limits
             if isinstance(config["slot_limits"], dict):
-                config["slot_limits"] = {int(k): v for k, v in config["slot_limits"].items()}
-            
+                config["slot_limits"] = {
+                    int(k): v for k, v in config["slot_limits"].items()
+                }
+
             # Extract optimization parameters
             time_limit = parameters.get("time_limit", 10.0)
+            # If empty it's an empty string, which means the get() succeeds, so we can't just use default
             if not parameters.get("num_blueprints_to_generate"):
                 num_blueprints_to_generate = max(1, int(time_limit / 10))
+            else:
+                num_blueprints_to_generate = int(
+                    parameters["num_blueprints_to_generate"]
+                )
             gap_rel = parameters.get("gapRel", 0.25)
 
             # Create cancellation event and session key for this generation
             session_key = request.session.session_key or request.session.create()
             cancellation_key = f"schedule_generation_cancelled_{session_key}"
-            
+
             # Clear any existing cancellation flag
             cache.delete(cancellation_key)
-            
+
             # Create thread-safe result container
             result_container = {"schedule": None, "error": None}
             generation_event = threading.Event()
-            
+
             def generate_in_thread():
                 try:
                     # Create cancellation checker function
                     def is_cancelled():
                         return cache.get(cancellation_key, False)
-                    
+
                     schedule = generate_schedule(
-                        config, 
-                        config["team_names_by_level"], 
+                        config,
+                        config["team_names_by_level"],
                         time_limit=time_limit,
                         num_blueprints_to_generate=num_blueprints_to_generate,
                         gapRel=gap_rel,
-                        cancellation_checker=is_cancelled
+                        cancellation_checker=is_cancelled,
                     )
                     result_container["schedule"] = schedule
                 except Exception as e:
                     result_container["error"] = e
                 finally:
                     generation_event.set()
-            
+
             # Start generation in background thread
             generation_thread = threading.Thread(target=generate_in_thread)
             generation_thread.start()
-            
+
             # Wait for completion or timeout
             generation_event.wait(timeout=time_limit + 10)  # Add 10 seconds buffer
-            
+
             # Check if cancelled
             if cache.get(cancellation_key, False):
-                return JsonResponse({"error": "Schedule generation was cancelled"}, status=200)
-            
+                return JsonResponse(
+                    {"error": "Schedule generation was cancelled"}, status=200
+                )
+
             # Check for error
             if result_container["error"]:
                 raise result_container["error"]
-            
+
             schedule = result_container["schedule"]
 
             if not schedule:
@@ -271,22 +284,25 @@ def auto_generate_schedule(request, season_id=None):
                 if data_week.get("isOffWeek", False):
                     seen_off_weeks += 1
                     continue
-                
+
                 schedule_week = schedule[data_week["week_number"] - 1 - seen_off_weeks]
                 schedule_games = [
                     game for slot in schedule_week["slots"].values() for game in slot
                 ]
-                
+
                 expected_games = len(data_week["games"])
                 actual_games = len(schedule_games)
-                
+
                 if expected_games != actual_games:
-                    return JsonResponse({
-                        "error": f"Court capacity mismatch in week {data_week['week_number']}: "
-                               f"Expected {expected_games} games based on court availability, "
-                               f"but schedule generator produced {actual_games} games. "
-                               f"Please adjust the number of time slots or courts to match the expected game count."
-                    }, status=400)
+                    return JsonResponse(
+                        {
+                            "error": f"Court capacity mismatch in week {data_week['week_number']}: "
+                            f"Expected {expected_games} games based on court availability, "
+                            f"but schedule generator produced {actual_games} games. "
+                            f"Please adjust the number of time slots or courts to match the expected game count."
+                        },
+                        status=400,
+                    )
 
             scheduled_week_data = []
 
@@ -313,9 +329,7 @@ def auto_generate_schedule(request, season_id=None):
 
                 scheduled_week_data.append(week)
 
-            return JsonResponse(
-                {"config": config, "schedule": scheduled_week_data}
-            )
+            return JsonResponse({"config": config, "schedule": scheduled_week_data})
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON data"}, status=400)
@@ -343,7 +357,7 @@ def cancel_schedule_generation(request):
                 return JsonResponse({"error": "No active session"}, status=400)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
-    
+
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 
@@ -393,10 +407,9 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
 
             # Get slot duration from setup data, default to 70 minutes
             slot_duration = setup_data.get("slot_duration_minutes", 70)
-            
+
             season, created = Season.objects.get_or_create(
-                name=season_name,
-                defaults={'slot_duration_minutes': slot_duration}
+                name=season_name, defaults={"slot_duration_minutes": slot_duration}
             )
             if not created:
                 return JsonResponse(
@@ -438,40 +451,40 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
 
             # Delete existing games first (before weeks, since week FK is now PROTECT)
             deleted_count, _ = Game.objects.filter(level__season=season).delete()
-            
+
             # Handle week date updates, deletions, and off-week insertions
             if week_dates_data:
                 # Clear all existing off-weeks for this season first to avoid UNIQUE constraint issues
                 OffWeek.objects.filter(season=season).delete()
-                
+
                 # Clear all existing regular weeks (games already deleted above)
                 Week.objects.filter(season=season).delete()
-                
+
                 # Recreate all weeks from frontend data
                 for week_date in week_dates_data:
                     week_id = week_date.get("id")
                     new_date = week_date.get("date")
                     is_off_week = week_date.get("isOffWeek", False)
-                    
+
                     if week_id and new_date:
                         try:
                             from datetime import datetime
+
                             parsed_date = datetime.strptime(new_date, "%Y-%m-%d").date()
-                            
+
                             if is_off_week:
                                 # Create new off week
                                 OffWeek.objects.create(
-                                    season=season,
-                                    monday_date=parsed_date
+                                    season=season, monday_date=parsed_date
                                 )
                             else:
                                 # Create new regular week
                                 Week.objects.create(
                                     season=season,
                                     week_number=int(week_id),
-                                    monday_date=parsed_date
+                                    monday_date=parsed_date,
                                 )
-                                
+
                         except Exception as e:
                             return JsonResponse(
                                 {
@@ -606,18 +619,14 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
         )
 
 
-
-
-
-
-@ensure_csrf_cookie  
+@ensure_csrf_cookie
 def public_schedule_data(request):
     """API endpoint for public schedule data - returns active season only"""
     # Get the active season
     active_season = Season.objects.filter(is_active=True).first()
     if not active_season:
         return JsonResponse({"error": "No active season found"}, status=404)
-    
+
     # Reuse the existing schedule_data logic
     return _get_schedule_data(request, active_season)
 
@@ -638,31 +647,35 @@ def _get_schedule_data(request, season):
 
     # Create a combined list of all weeks (regular and off) sorted by date
     all_week_data = []
-    
+
     # Add regular weeks
     for week in weeks:
-        all_week_data.append({
-            'type': 'regular',
-            'date': week.monday_date,
-            'week_obj': week,
-        })
-    
+        all_week_data.append(
+            {
+                "type": "regular",
+                "date": week.monday_date,
+                "week_obj": week,
+            }
+        )
+
     # Add off weeks
     for off_week in off_weeks:
-        all_week_data.append({
-            'type': 'off',
-            'date': off_week.monday_date,
-            'week_obj': off_week,
-        })
-    
+        all_week_data.append(
+            {
+                "type": "off",
+                "date": off_week.monday_date,
+                "week_obj": off_week,
+            }
+        )
+
     # Sort all weeks by date
-    all_week_data.sort(key=lambda x: x['date'])
-    
+    all_week_data.sort(key=lambda x: x["date"])
+
     # Process weeks in chronological order and assign sequential week numbers
     games_by_week = {}
     for week_num, week_data in enumerate(all_week_data, 1):
-        if week_data['type'] == 'regular':
-            week = week_data['week_obj']
+        if week_data["type"] == "regular":
+            week = week_data["week_obj"]
             games = (
                 Game.objects.filter(week=week)
                 .select_related("level", "team1", "team2", "referee_team")
@@ -699,7 +712,7 @@ def _get_schedule_data(request, season):
                 "games": games_list,
             }
         else:  # off week
-            off_week = week_data['week_obj']
+            off_week = week_data["week_obj"]
             games_by_week[week_num] = {
                 "id": f"off_{off_week.id}",
                 "week_number": week_num,
@@ -746,39 +759,43 @@ def _get_schedule_data(request, season):
 @csrf_exempt
 def update_teams_levels(request, season_id):
     """API endpoint to update teams and levels for a season"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
-    
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST method allowed"}, status=405)
+
     try:
         data = json.loads(request.body)
         season = get_object_or_404(Season, pk=season_id)
-        
-        levels_data = data.get('levels', [])
-        teams_data = data.get('teams', {})  # Fallback to old format
-        
+
+        levels_data = data.get("levels", [])
+        teams_data = data.get("teams", {})  # Fallback to old format
+
         # Start transaction to ensure data consistency
         with transaction.atomic():
             # Get existing levels for this season
-            existing_levels_by_id = {level.id: level for level in Level.objects.filter(season=season)}
-            existing_levels_by_name = {level.name: level for level in Level.objects.filter(season=season)}
+            existing_levels_by_id = {
+                level.id: level for level in Level.objects.filter(season=season)
+            }
+            existing_levels_by_name = {
+                level.name: level for level in Level.objects.filter(season=season)
+            }
             processed_level_ids = set()
-            
+
             # Use new format if available, otherwise fall back to old format
             if levels_data:
                 # New format with IDs - can handle renames properly
                 for level_info in levels_data:
-                    level_id = level_info.get('id')
-                    level_name = level_info.get('name', '').strip()
-                    team_infos = level_info.get('teams', [])
-                    
+                    level_id = level_info.get("id")
+                    level_name = level_info.get("name", "").strip()
+                    team_infos = level_info.get("teams", [])
+
                     if not level_name:
                         continue
-                    
+
                     # Check if this is a rename or update of existing level
                     if level_id and level_id in existing_levels_by_id:
                         level = existing_levels_by_id[level_id]
                         processed_level_ids.add(level_id)
-                        
+
                         # Update level name if it changed
                         if level.name != level_name:
                             level.name = level_name
@@ -787,24 +804,28 @@ def update_teams_levels(request, season_id):
                         # This is a new level
                         level = Level.objects.create(season=season, name=level_name)
                         processed_level_ids.add(level.id)
-                    
+
                     # Process teams for this level
-                    existing_teams_by_id = {team.id: team for team in Team.objects.filter(level=level)}
-                    existing_teams_by_name = {team.name: team for team in Team.objects.filter(level=level)}
+                    existing_teams_by_id = {
+                        team.id: team for team in Team.objects.filter(level=level)
+                    }
+                    existing_teams_by_name = {
+                        team.name: team for team in Team.objects.filter(level=level)
+                    }
                     processed_team_ids = set()
-                    
+
                     for team_info in team_infos:
-                        team_id = team_info.get('id')
-                        team_name = team_info.get('name', '').strip()
-                        
+                        team_id = team_info.get("id")
+                        team_name = team_info.get("name", "").strip()
+
                         if not team_name:
                             continue
-                        
+
                         # Check if this is a rename or update of existing team
                         if team_id and team_id in existing_teams_by_id:
                             team = existing_teams_by_id[team_id]
                             processed_team_ids.add(team_id)
-                            
+
                             # Update team name if it changed
                             if team.name != team_name:
                                 team.name = team_name
@@ -813,26 +834,30 @@ def update_teams_levels(request, season_id):
                             # This is a new team
                             team = Team.objects.create(level=level, name=team_name)
                             processed_team_ids.add(team.id)
-                    
+
                     # Remove teams that are no longer present
-                    teams_to_remove = set(existing_teams_by_id.keys()) - processed_team_ids
+                    teams_to_remove = (
+                        set(existing_teams_by_id.keys()) - processed_team_ids
+                    )
                     for team_id in teams_to_remove:
                         team = existing_teams_by_id[team_id]
                         # Check if team has any games
-                        if Game.objects.filter(Q(team1=team) | Q(team2=team) | Q(referee_team=team)).exists():
+                        if Game.objects.filter(
+                            Q(team1=team) | Q(team2=team) | Q(referee_team=team)
+                        ).exists():
                             # Team has games, so we can't delete it
                             pass  # Keep the team
                         else:
                             # Safe to delete since no games reference it
                             team.delete()
-                            
+
             else:
                 # Old format fallback - only names provided
                 for level_name, team_names in teams_data.items():
                     level_name = level_name.strip()
                     if not level_name:
                         continue
-                        
+
                     # Get or create the level
                     if level_name in existing_levels_by_name:
                         level = existing_levels_by_name[level_name]
@@ -840,161 +865,179 @@ def update_teams_levels(request, season_id):
                     else:
                         level = Level.objects.create(season=season, name=level_name)
                         processed_level_ids.add(level.id)
-                    
+
                     # Process teams for this level (old format)
-                    existing_teams = {team.name: team for team in Team.objects.filter(level=level)}
+                    existing_teams = {
+                        team.name: team for team in Team.objects.filter(level=level)
+                    }
                     updated_teams = set()
-                    
+
                     for team_name in team_names:
                         if team_name.strip():
                             team_name = team_name.strip()
                             updated_teams.add(team_name)
-                            
+
                             if team_name not in existing_teams:
                                 Team.objects.create(level=level, name=team_name)
-                    
+
                     # Remove teams that are no longer present
                     teams_to_remove = set(existing_teams.keys()) - updated_teams
                     for team_name in teams_to_remove:
                         team = existing_teams[team_name]
-                        if Game.objects.filter(Q(team1=team) | Q(team2=team) | Q(referee_team=team)).exists():
+                        if Game.objects.filter(
+                            Q(team1=team) | Q(team2=team) | Q(referee_team=team)
+                        ).exists():
                             pass  # Keep the team
                         else:
                             team.delete()
-            
+
             # Remove levels that are no longer present
             levels_to_remove = set(existing_levels_by_id.keys()) - processed_level_ids
             for level_id in levels_to_remove:
                 level = existing_levels_by_id[level_id]
                 # Check if level has any teams with games
-                teams_with_games = Team.objects.filter(level=level).filter(
-                    Q(games_as_team1__isnull=False) | 
-                    Q(games_as_team2__isnull=False) | 
-                    Q(games_as_referee__isnull=False)
-                ).exists()
-                
+                teams_with_games = (
+                    Team.objects.filter(level=level)
+                    .filter(
+                        Q(games_as_team1__isnull=False)
+                        | Q(games_as_team2__isnull=False)
+                        | Q(games_as_referee__isnull=False)
+                    )
+                    .exists()
+                )
+
                 if not teams_with_games:
                     # Safe to delete the level and its teams
                     level.delete()  # This will cascade delete teams
                 # If teams have games, we keep the level
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': 'Teams and levels updated successfully'
-        })
-        
+
+        return JsonResponse(
+            {"status": "success", "message": "Teams and levels updated successfully"}
+        )
+
     except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
 def team_calendar_export(request, team_id):
     """
     Export team's game schedule as iCal calendar file
-    
+
     Query parameters:
     - include_reffing=true: include games where team is referee_team
     - include_scores=true: show final scores for completed games
     """
     team = get_object_or_404(Team, pk=team_id)
-    
+
     # Parse query parameters
-    include_reffing = request.GET.get('include_reffing', 'false').lower() == 'true'
-    include_scores = request.GET.get('include_scores', 'false').lower() == 'true'
-    
+    include_reffing = request.GET.get("include_reffing", "false").lower() == "true"
+    include_scores = request.GET.get("include_scores", "false").lower() == "true"
+
     # Create calendar
     cal = Calendar()
-    cal.add('prodid', '-//Basketball Scheduler//Team Calendar//EN')
-    cal.add('version', '2.0')
-    cal.add('calscale', 'GREGORIAN')
-    cal.add('method', 'PUBLISH')
-    cal.add('x-wr-calname', f"{team.name} - {team.level.season.name}")
-    cal.add('x-wr-caldesc', f"Basketball schedule for {team.name}")
-    
+    cal.add("prodid", "-//Basketball Scheduler//Team Calendar//EN")
+    cal.add("version", "2.0")
+    cal.add("calscale", "GREGORIAN")
+    cal.add("method", "PUBLISH")
+    cal.add("x-wr-calname", f"{team.name} - {team.level.season.name}")
+    cal.add("x-wr-caldesc", f"Basketball schedule for {team.name}")
+
     # Query for games
     games_query = Q(team1=team) | Q(team2=team)
     if include_reffing:
         games_query |= Q(referee_team=team)
-    
-    games = Game.objects.filter(games_query).select_related(
-        'level', 'team1', 'team2', 'referee_team', 'week'
-    ).order_by('week__monday_date', 'day_of_week', 'time')
-    
+
+    games = (
+        Game.objects.filter(games_query)
+        .select_related("level", "team1", "team2", "referee_team", "week")
+        .order_by("week__monday_date", "day_of_week", "time")
+    )
+
     for game in games:
         event = Event()
-        
+
         # Determine event type and title
         if game.team1 == team or game.team2 == team:
             # Playing game - respect team1 vs team2 order
             title = f"{game.team1.name} vs {game.team2.name}"
-            
+
             # Add winner indicator to title if game is completed and scores are requested
-            if include_scores and game.team1_score is not None and game.team2_score is not None:
+            if (
+                include_scores
+                and game.team1_score is not None
+                and game.team2_score is not None
+            ):
                 if game.team1_score > game.team2_score:
                     title = f"{game.team1.name} (W) vs {game.team2.name}"
                 elif game.team2_score > game.team1_score:
                     title = f"{game.team1.name} vs {game.team2.name} (W)"
                 # If tied, leave title as is
-            
-            event.add('summary', title)
-            event.add('categories', 'Playing')
+
+            event.add("summary", title)
+            event.add("categories", "Playing")
         else:
             # Reffing game - shortened format
             title = f"Ref: {game.team1.name} vs {game.team2.name}"
-            
+
             # Add winner indicator to title if game is completed and scores are requested
-            if include_scores and game.team1_score is not None and game.team2_score is not None:
+            if (
+                include_scores
+                and game.team1_score is not None
+                and game.team2_score is not None
+            ):
                 if game.team1_score > game.team2_score:
                     title = f"Ref: {game.team1.name} (W) vs {game.team2.name}"
                 elif game.team2_score > game.team1_score:
                     title = f"Ref: {game.team1.name} vs {game.team2.name} (W)"
                 # If tied, leave title as is
-            
-            event.add('summary', title)
-            event.add('categories', 'Reffing')
-        
+
+            event.add("summary", title)
+            event.add("categories", "Reffing")
+
         # Calculate datetime
         if game.date_time:
             start_time = game.date_time
             # Use level's slot duration for event duration
             duration = game.level.get_effective_slot_duration()
             end_time = start_time + timedelta(minutes=duration)
-            
-            event.add('dtstart', start_time)
-            event.add('dtend', end_time)
-        
+
+            event.add("dtstart", start_time)
+            event.add("dtend", end_time)
+
         # Add location
         if game.court:
-            event.add('location', game.court)
-        
+            event.add("location", game.court)
+
         # Build description
         description_parts = [f"Level: {game.level.name}"]
-        
+
         if game.referee_team:
             description_parts.append(f"Referee: {game.referee_team.name}")
         elif game.referee_name:
             description_parts.append(f"Referee: {game.referee_name}")
-        
+
         # Add scores if game is completed and scores are requested
-        if include_scores and game.team1_score is not None and game.team2_score is not None:
+        if (
+            include_scores
+            and game.team1_score is not None
+            and game.team2_score is not None
+        ):
             score_line = f"Final Score: {game.team1.name} {game.team1_score} - {game.team2_score} {game.team2.name}"
             description_parts.append(score_line)
-        
-        event.add('description', '\n\n'.join(description_parts))
-        
+
+        event.add("description", "\n\n".join(description_parts))
+
         # Add unique ID
-        event.add('uid', f"game-{game.id}@basketballscheduler.local")
-        
+        event.add("uid", f"game-{game.id}@basketballscheduler.local")
+
         # Add creation timestamp
-        event.add('dtstamp', timezone.now())
-        
+        event.add("dtstamp", timezone.now())
+
         cal.add_component(event)
-    
+
     # Generate response
-    response = HttpResponse(cal.to_ical(), content_type='text/calendar; charset=utf-8')
-    response['Content-Disposition'] = f'attachment; filename="{team.name}-schedule.ics"'
-    response['Cache-Control'] = 'max-age=3600'  # Cache for 1 hour
-    
+    response = HttpResponse(cal.to_ical(), content_type="text/calendar; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{team.name}-schedule.ics"'
+    response["Cache-Control"] = "max-age=3600"  # Cache for 1 hour
+
     return response

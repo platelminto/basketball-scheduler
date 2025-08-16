@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const ScheduleParametersModal = ({ 
   isOpen, 
@@ -23,9 +23,36 @@ const ScheduleParametersModal = ({
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [progressText, setProgressText] = useState('');
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [abortController, setAbortController] = useState(null);
+
+  // Cancel generation if page is unloaded
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (isGenerating && abortController) {
+        // Cancel the generation
+        abortController.abort();
+        
+        // Signal backend to stop
+        try {
+          await fetch('/scheduler/api/seasons/cancel-generation/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCsrfToken(),
+            }
+          });
+        } catch (error) {
+          console.log('Cancellation request error on unload:', error);
+        }
+      }
+    };
+
+    if (isGenerating) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [isGenerating, abortController]);
 
   const handleParameterChange = (key, value) => {
     setParameters(prev => ({
@@ -69,74 +96,39 @@ const ScheduleParametersModal = ({
     setAbortController(controller);
     
     setIsGenerating(true);
-    setProgress(0);
-    setProgressText('Initializing schedule generation...');
+    setElapsedTime(0);
     
-    // Start the fake progress bar
-    const timeLimit = parameters.time_limit * 1000; // Convert to milliseconds
-    const updateInterval = 100; // Update every 100ms
-    const totalSteps = timeLimit / updateInterval;
-    let currentStep = 0;
-    
-    const progressMessages = [
-      'Initializing schedule generation...',
-      'Generating matchup blueprints...',
-      'Optimizing time slot assignments...',
-      'Assigning referees...',
-      'Balancing slot distributions...',
-      'Running final optimizations...',
-      'Finalizing schedule...'
-    ];
-    
-    const progressInterval = setInterval(() => {
-      currentStep++;
-      const newProgress = Math.min((currentStep / totalSteps) * 100, 95); // Cap at 95% until actual completion
-      setProgress(newProgress);
-      
-      // Update message based on progress
-      const messageIndex = Math.floor((newProgress / 100) * (progressMessages.length - 1));
-      setProgressText(progressMessages[messageIndex] || progressMessages[0]);
-    }, updateInterval);
+    // Start the simple time counter
+    const timeInterval = setInterval(() => {
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
     
     try {
       await onGenerate(parameters, controller.signal);
       
       // Only proceed if not cancelled
       if (!controller.signal.aborted) {
-        // Complete the progress bar
-        clearInterval(progressInterval);
-        setProgress(100);
-        setProgressText('Schedule generated successfully!');
-        
-        // Close modal after a brief delay to show completion
-        setTimeout(() => {
-          setIsGenerating(false);
-          setProgress(0);
-          setProgressText('');
-          setAbortController(null);
-          onClose();
-        }, 1000);
+        clearInterval(timeInterval);
+        setIsGenerating(false);
+        setElapsedTime(0);
+        setAbortController(null);
+        onClose();
       }
     } catch (error) {
-      clearInterval(progressInterval);
+      clearInterval(timeInterval);
       
       // Check if this was a user cancellation
       if (error.name === 'AbortError') {
-        setProgress(0);
-        setProgressText('Generation cancelled');
-        
         // Brief delay then reset
         setTimeout(() => {
           setIsGenerating(false);
-          setProgress(0);
-          setProgressText('');
+          setElapsedTime(0);
           setAbortController(null);
         }, 500);
       } else {
         // Actual error - reset immediately
-        setProgress(0);
-        setProgressText('');
         setIsGenerating(false);
+        setElapsedTime(0);
         setAbortController(null);
         // Error handling is done by the parent component
       }
@@ -147,7 +139,6 @@ const ScheduleParametersModal = ({
     if (isGenerating && abortController) {
       // Abort the frontend request
       abortController.abort();
-      setProgressText('Cancelling...');
       
       // Also signal the backend to stop processing
       try {
@@ -201,12 +192,14 @@ const ScheduleParametersModal = ({
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">Schedule Generation Parameters</h5>
-            <button 
-              type="button" 
-              className="btn-close" 
-              onClick={onClose}
-              aria-label="Close"
-            ></button>
+            {!isGenerating && (
+              <button 
+                type="button" 
+                className="btn-close" 
+                onClick={onClose}
+                aria-label="Close"
+              ></button>
+            )}
           </div>
 
           <div className="modal-body">
@@ -222,27 +215,10 @@ const ScheduleParametersModal = ({
             )}
             
             {isGenerating ? (
-              // Progress Bar View
               <div className="text-center">
-                <h6 className="mb-4">Generating Schedule...</h6>
-                <div className="progress mb-3" style={{ height: '20px' }}>
-                  <div 
-                    className="progress-bar progress-bar-striped progress-bar-animated" 
-                    role="progressbar" 
-                    style={{ width: `${progress}%` }}
-                    aria-valuenow={progress} 
-                    aria-valuemin="0" 
-                    aria-valuemax="100"
-                  >
-                    {Math.round(progress)}%
-                  </div>
-                </div>
-                <p className="text-muted">{progressText}</p>
-                <div className="mt-3">
-                  <small className="text-muted">
-                    Maximum time: {parameters.time_limit} seconds (usually finishes faster)
-                  </small>
-                </div>
+                <div className="spinner-border text-primary mb-3" role="status"></div>
+                <p>Generating schedule... {elapsedTime}s / {parameters.time_limit}s</p>
+                <small className="text-muted">(usually finishes faster)</small>
               </div>
             ) : (
               // Parameter Configuration View
