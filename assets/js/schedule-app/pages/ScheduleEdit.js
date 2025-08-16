@@ -40,7 +40,7 @@ const ScheduleEdit = () => {
       validation.clearValidationResults();
       setValidationPassed(false);
     }
-  }, [state.changedGames, state.newGames, state.changedWeeks, state.weeks]); // Note: validation.validationResults is NOT in dependencies
+  }, [state.changedGames, state.newGames, state.validationAffectingChanges, state.weeks]); // Note: validation.validationResults is NOT in dependencies
 
   // Note: Removed scroll to validation results for schedule editing mode
   // Users are actively editing and don't want to be jumped around
@@ -194,7 +194,9 @@ const ScheduleEdit = () => {
         isOffWeek: week.is_off_week,
         title: week.title,
         description: week.description,
-        has_basketball: week.has_basketball
+        has_basketball: week.has_basketball,
+        start_time: week.start_time,
+        end_time: week.end_time
       }));
 
       offWeeks = scheduleOffWeeks.map(week => ({
@@ -252,7 +254,9 @@ const ScheduleEdit = () => {
           isOffWeek: !!weekData.isOffWeek,
           title: weekData.title,
           description: weekData.description,
-          has_basketball: weekData.has_basketball
+          has_basketball: weekData.has_basketball,
+          start_time: weekData.start_time,
+          end_time: weekData.end_time
         });
         
         if (weekData.isOffWeek) {
@@ -262,7 +266,9 @@ const ScheduleEdit = () => {
             date: weekData.monday_date,
             title: weekData.title,
             description: weekData.description,
-            has_basketball: weekData.has_basketball
+            has_basketball: weekData.has_basketball,
+            start_time: weekData.start_time,
+            end_time: weekData.end_time
           });
         }
       }

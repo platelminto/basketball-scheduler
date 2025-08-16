@@ -73,10 +73,11 @@ class WeekAdmin(admin.ModelAdmin):
 
 @admin.register(OffWeek)
 class OffWeekAdmin(admin.ModelAdmin):
-    list_display = ("monday_date", "season")
-    list_filter = ("season",)
-    search_fields = ("monday_date", "season__name")
+    list_display = ("title", "monday_date", "description", "has_basketball", "season")
+    list_filter = ("season", "has_basketball")
+    search_fields = ("title", "description", "monday_date", "season__name")
     ordering = ("-season__is_active", "season__name", "monday_date")
+    list_editable = ("has_basketball",)
 
 
 @admin.register(Team)

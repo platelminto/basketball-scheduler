@@ -41,6 +41,7 @@ const initialState = {
   changedGames: new Set(),
   newGames: new Set(),
   changedWeeks: new Set(),
+  validationAffectingChanges: new Set(),
   lockedWeeks: new Set()
 };
 
@@ -326,7 +327,7 @@ const scheduleReducer = (state, action) => {
     }
 
     case UPDATE_WEEK_DATE: {
-      const { weekId, date, field, value } = action.payload;
+      const { weekId, date, field, value, skipValidationClear } = action.payload;
       const updatedWeeks = { ...state.weeks };
 
       if (updatedWeeks[weekId]) {
@@ -349,10 +350,17 @@ const scheduleReducer = (state, action) => {
         const changedWeeks = new Set(state.changedWeeks);
         changedWeeks.add(weekId);
 
+        // Track validation-affecting changes separately
+        const validationAffectingChanges = new Set(state.validationAffectingChanges || []);
+        if (!skipValidationClear) {
+          validationAffectingChanges.add(weekId);
+        }
+
         return {
           ...state,
           weeks: updatedWeeks,
-          changedWeeks
+          changedWeeks,
+          validationAffectingChanges
         };
       }
 
@@ -457,6 +465,9 @@ const scheduleReducer = (state, action) => {
         title: offWeekData.title || 'Off Week',
         description: offWeekData.description || 'No games scheduled',
         has_basketball: offWeekData.has_basketball || false,
+        start_time: offWeekData.start_time || '',
+        end_time: offWeekData.end_time || '',
+        show_times: offWeekData.show_times || false,
         games: []
       };
       
@@ -518,7 +529,8 @@ const scheduleReducer = (state, action) => {
         ...state,
         changedGames: new Set(),
         newGames: new Set(),
-        changedWeeks: new Set()
+        changedWeeks: new Set(),
+        validationAffectingChanges: new Set()
       };
 
     case TOGGLE_WEEK_LOCK: {

@@ -4,7 +4,7 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
   const [step, setStep] = useState('select'); // 'select' or 'export'
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [includeReffing, setIncludeReffing] = useState(true);
-  const [includeScores, setIncludeScores] = useState(false);
+  const [includeTournaments, setIncludeTournaments] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [copyStatus, setCopyStatus] = useState(''); // 'copied', 'error', or ''
 
@@ -26,7 +26,8 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
     const params = new URLSearchParams();
     
     if (includeReffing) params.append('include_reffing', 'true');
-    if (includeScores) params.append('include_scores', 'true');
+    params.append('include_scores', 'true'); // Always include scores
+    if (includeTournaments) params.append('include_tournaments', 'true');
     
     const queryString = params.toString();
     return queryString ? `${baseUrl}?${queryString}` : baseUrl;
@@ -213,11 +214,11 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
                   }}>
                     <input
                       type="checkbox"
-                      checked={includeScores}
-                      onChange={(e) => setIncludeScores(e.target.checked)}
+                      checked={includeTournaments}
+                      onChange={(e) => setIncludeTournaments(e.target.checked)}
                       style={{ marginRight: '10px', transform: 'scale(1.1)' }}
                     />
-                    Include final scores for completed games
+                    Include tournaments
                   </label>
                 </div>
               </div>

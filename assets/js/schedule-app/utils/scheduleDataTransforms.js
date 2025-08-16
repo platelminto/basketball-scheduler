@@ -154,21 +154,18 @@ export const collectWeekData = (weeks) => {
       weekDate.title = weekData.title;
       weekDate.description = weekData.description;
       weekDate.has_basketball = weekData.has_basketball;
+      weekDate.start_time = weekData.start_time;
+      weekDate.end_time = weekData.end_time;
       
-      // Debug logging
-      console.log('collectWeekData - off week:', {
-        week_number: weekData.week_number,
-        title: weekData.title,
-        description: weekData.description,
-        has_basketball: weekData.has_basketball
-      });
       
       offWeeks.push({
         week_number: weekData.week_number,
         monday_date: weekData.monday_date,
         title: weekData.title,
         description: weekData.description,
-        has_basketball: weekData.has_basketball
+        has_basketball: weekData.has_basketball,
+        start_time: weekData.start_time,
+        end_time: weekData.end_time
       });
     }
     

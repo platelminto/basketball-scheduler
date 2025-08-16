@@ -130,6 +130,16 @@ class OffWeek(models.Model):
         default=False,
         help_text="Whether basketball events are happening this week (affects styling)"
     )
+    start_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Start time for events this week"
+    )
+    end_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="End time for events this week"
+    )
     
     class Meta:
         unique_together = ("season", "monday_date")

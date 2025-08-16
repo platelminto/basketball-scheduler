@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
 import { DELETE_WEEK, UPDATE_WEEK_DATE } from '../../contexts/ScheduleContext';
 
 const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
   const { dispatch } = useSchedule();
+  
+  // Local state for text fields that don't need immediate context updates
+  const [localTitle, setLocalTitle] = useState(weekData.title || '');
+  const [localDescription, setLocalDescription] = useState(weekData.description || '');
+  const [localStartTime, setLocalStartTime] = useState(weekData.start_time || '');
+  const [localEndTime, setLocalEndTime] = useState(weekData.end_time || '');
 
   const handleDeleteWeek = () => {
     if (mode !== 'create' && mode !== 'schedule-edit') return;
@@ -22,7 +28,7 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
       payload: { 
         weekId: weekData.week_number, 
         field, 
-        value 
+        value
       }
     });
   };
@@ -32,23 +38,31 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
     let newTitle = selectedTitle;
     let newDescription = weekData.description || '';
     let hasBasketball = weekData.has_basketball || false;
+    let showTimes = false;
     
     // Set defaults based on selection
     switch(selectedTitle) {
       case 'Off Week':
         newDescription = 'No games scheduled';
         hasBasketball = false;
+        showTimes = false;
         break;
       case 'Tournament':
         newDescription = '';
         hasBasketball = true;
+        showTimes = true;
         break;
       case 'custom':
         newTitle = ''; // Clear for custom input
         newDescription = '';
+        showTimes = true;
         // Keep existing basketball value
         break;
     }
+    
+    // Update local state to match new values
+    setLocalTitle(newTitle);
+    setLocalDescription(newDescription);
     
     // Update all fields
     dispatch({
@@ -75,6 +89,15 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
         weekId: weekData.week_number, 
         field: 'has_basketball', 
         value: hasBasketball 
+      }
+    });
+    
+    dispatch({
+      type: UPDATE_WEEK_DATE,
+      payload: { 
+        weekId: weekData.week_number, 
+        field: 'show_times', 
+        value: showTimes 
       }
     });
   };
@@ -135,7 +158,7 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
         {isEditable ? (
           <div className="row g-3">
             <div className="col-md-3">
-              <label className="form-label">Quick Select</label>
+              <label className="form-label">Type</label>
               <select 
                 className="form-select"
                 value={weekData.title === 'Off Week' ? 'Off Week' : weekData.title === 'Tournament' ? 'Tournament' : 'custom'}
@@ -153,8 +176,9 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
                 <input 
                   type="text"
                   className="form-control"
-                  value={weekData.title || ''}
-                  onChange={(e) => handleFieldUpdate('title', e.target.value)}
+                  value={localTitle}
+                  onChange={(e) => setLocalTitle(e.target.value)}
+                  onBlur={() => handleFieldUpdate('title', localTitle)}
                   placeholder="Enter title"
                 />
               </div>
@@ -165,12 +189,12 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
               <input 
                 type="text"
                 className="form-control"
-                value={weekData.description || ''}
-                onChange={(e) => handleFieldUpdate('description', e.target.value)}
+                value={localDescription}
+                onChange={(e) => setLocalDescription(e.target.value)}
+                onBlur={() => handleFieldUpdate('description', localDescription)}
                 placeholder={weekData.title === 'Tournament' 
-                  ? "e.g., Charity Tournament, Vacation Tournament, Tournament 2" 
+                  ? "e.g. Charity Tournament, Vacation Tournament, Tournament 2" 
                   : "Describe what's happening this week"}
-                style={{ padding: '12px' }}
               />
             </div>
             
@@ -181,6 +205,7 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
                   type="checkbox"
                   id={`basketball-${weekData.week_number}`}
                   checked={weekData.has_basketball || false}
+                  disabled={weekData.title === 'Off Week' || weekData.title === 'Tournament'}
                   onChange={(e) => handleFieldUpdate('has_basketball', e.target.checked)}
                 />
                 <label className="form-check-label" htmlFor={`basketball-${weekData.week_number}`}>
@@ -188,10 +213,55 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
                 </label>
               </div>
             </div>
+            
+            {(weekData.show_times === true || (weekData.title === 'Tournament' && weekData.show_times !== false) || (weekData.title !== 'Off Week' && weekData.title !== 'Tournament' && weekData.show_times !== false)) && (
+              <>
+                <div className="col-md-6">
+                  <label className="form-label">
+                    Start Time (optional)
+                    <i 
+                      className="fas fa-info-circle ms-1 text-muted" 
+                      title="If start and end times are provided, this event will show up in people's calendar (if they enabled it)."
+                      style={{ fontSize: '0.8em', cursor: 'help' }}
+                    ></i>
+                  </label>
+                  <input 
+                    type="time"
+                    className="form-control"
+                    value={localStartTime}
+                    onChange={(e) => setLocalStartTime(e.target.value)}
+                    onBlur={() => handleFieldUpdate('start_time', localStartTime)}
+                    placeholder="Start time"
+                  />
+                </div>
+                
+                <div className="col-md-6">
+                  <label className="form-label">End Time (optional)</label>
+                  <input 
+                    type="time"
+                    className="form-control"
+                    value={localEndTime}
+                    onChange={(e) => setLocalEndTime(e.target.value)}
+                    onBlur={() => handleFieldUpdate('end_time', localEndTime)}
+                    placeholder="End time"
+                  />
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="text-center">
             <div className="h5 mb-1">{weekData.description || 'No description provided'}</div>
+            {(weekData.start_time || weekData.end_time) && (
+              <div className="text-muted mt-2">
+                {weekData.start_time && weekData.end_time 
+                  ? `${weekData.start_time} - ${weekData.end_time}`
+                  : weekData.start_time 
+                    ? `Starts: ${weekData.start_time}`
+                    : `Ends: ${weekData.end_time}`
+                }
+              </div>
+            )}
           </div>
         )}
       </div>

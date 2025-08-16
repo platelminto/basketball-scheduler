@@ -451,7 +451,9 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
                         monday_date=monday_date,
                         title=title,
                         description=description,
-                        has_basketball=has_basketball
+                        has_basketball=has_basketball,
+                        start_time=week_info.get("start_time"),
+                        end_time=week_info.get("end_time")
                     )
                 else:
                     Week.objects.create(
@@ -502,7 +504,9 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
                                     monday_date=parsed_date,
                                     title=title,
                                     description=description,
-                                    has_basketball=has_basketball
+                                    has_basketball=has_basketball,
+                                    start_time=week_date.get("start_time"),
+                                    end_time=week_date.get("end_time")
                                 )
                             else:
                                 # Create new regular week
@@ -748,6 +752,8 @@ def _get_schedule_data(request, season):
                 "title": off_week.title,
                 "description": off_week.description,
                 "has_basketball": off_week.has_basketball,
+                "start_time": off_week.start_time.strftime("%H:%M") if off_week.start_time else None,
+                "end_time": off_week.end_time.strftime("%H:%M") if off_week.end_time else None,
                 "games": [],
             }
 
@@ -956,12 +962,14 @@ def team_calendar_export(request, team_id):
     Query parameters:
     - include_reffing=true: include games where team is referee_team
     - include_scores=true: include final scores for completed games
+    - include_tournaments=true: include tournaments/off-weeks with start/end times
     """
     team = get_object_or_404(Team, pk=team_id)
 
     # Parse query parameters
     include_reffing = request.GET.get("include_reffing", "false").lower() == "true"
     include_scores = request.GET.get("include_scores", "false").lower() == "true"
+    include_tournaments = request.GET.get("include_tournaments", "false").lower() == "true"
 
     # Create calendar
     cal = Calendar()
@@ -1064,6 +1072,44 @@ def team_calendar_export(request, team_id):
         event.add("dtstamp", timezone.now())
 
         cal.add_component(event)
+
+    # Add off-weeks/tournaments if requested
+    if include_tournaments:
+        season = team.level.season
+        off_weeks = OffWeek.objects.filter(season=season).select_related("season")
+        
+        for off_week in off_weeks:
+            # Only include off-weeks that have both start and end times
+            if off_week.start_time and off_week.end_time:
+                event = Event()
+                
+                # Create title - use description or title, no "Tournament:" prefix
+                if off_week.description:
+                    title = off_week.description
+                else:
+                    title = off_week.title or "Event"
+                
+                event.add("summary", title)
+                event.add("categories", "Event")
+                
+                # Calculate datetime - combine date with start/end times
+                from datetime import datetime
+                start_datetime = datetime.combine(off_week.monday_date, off_week.start_time)
+                end_datetime = datetime.combine(off_week.monday_date, off_week.end_time)
+                
+                event.add("dtstart", start_datetime)
+                event.add("dtend", end_datetime)
+                
+                # Add description - same as title
+                event.add("description", title)
+                
+                # Add unique ID
+                event.add("uid", f"offweek-{off_week.id}@basketballscheduler.local")
+                
+                # Add creation timestamp
+                event.add("dtstamp", timezone.now())
+                
+                cal.add_component(event)
 
     # Generate response
     response = HttpResponse(cal.to_ical(), content_type="text/calendar; charset=utf-8")

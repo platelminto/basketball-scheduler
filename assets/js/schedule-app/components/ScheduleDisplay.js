@@ -84,11 +84,17 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                 boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
               }}>
                 <div style={{ fontSize: '14px', color: '#4b5563' }}>
-                  {new Date(week.monday_date).toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    month: 'long', 
-                    day: 'numeric'
-                  })}
+                  <div>
+                    {new Date(week.monday_date).toLocaleDateString('en-US', { 
+                      weekday: 'long'
+                    })}
+                  </div>
+                  <div>
+                    {new Date(week.monday_date).toLocaleDateString('en-US', { 
+                      month: 'long', 
+                      day: 'numeric'
+                    })}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '20px', fontWeight: '700', color: styling.titleColor, marginBottom: '4px', letterSpacing: '0.5px' }}>
@@ -98,6 +104,16 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                   <div style={{ fontSize: '15px', color: '#4b5563' }}>
                     {week.description || 'No description provided'}
                   </div>
+                  {(week.start_time || week.end_time) && (
+                    <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '6px', fontWeight: '500' }}>
+                      {week.start_time && week.end_time 
+                        ? `${week.start_time} - ${week.end_time}`
+                        : week.start_time 
+                          ? `Starts at ${week.start_time}`
+                          : `Ends at ${week.end_time}`
+                      }
+                    </div>
+                  )}
                 </div>
                 <div></div>
               </div>
