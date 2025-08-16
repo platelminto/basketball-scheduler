@@ -221,8 +221,7 @@ const TeamCourtSetup = ({
         {!editMode && (
           <button 
             type="button" 
-            className="btn btn-outline-danger"
-            style={{ padding: '0.25rem 0.5rem', fontSize: '1rem', lineHeight: '1' }}
+            className="btn btn-outline-danger btn-delete-small"
             onClick={() => deleteLevel(level.id)}
           >
             ×
@@ -249,8 +248,7 @@ const TeamCourtSetup = ({
       {!editMode && (
         <button 
           type="button" 
-          className="btn btn-outline-danger"
-          style={{ padding: '0.25rem 0.5rem', fontSize: '1rem', lineHeight: '1' }}
+          className="btn btn-outline-danger btn-delete-small"
           onClick={() => deleteTeam(levelId, team.id)}
         >
           ×
@@ -272,8 +270,7 @@ const TeamCourtSetup = ({
       {!editMode && (
         <button 
           type="button" 
-          className="btn btn-outline-danger"
-          style={{ padding: '0.25rem 0.5rem', fontSize: '1rem', lineHeight: '1' }}
+          className="btn btn-outline-danger btn-delete-small"
           onClick={() => deleteCourt(court.id)}
         >
           ×

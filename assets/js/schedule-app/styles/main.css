@@ -4,33 +4,33 @@
 
 /* CSS Custom Properties - Single Source of Truth */
 :root {
-  /* Colors */
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --primary-light: #eff6ff;
+  /* Colors - Professional Corporate Palette */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #f8fafc;
   
-  --success: #10b981;
-  --success-hover: #059669;
-  --success-light: #ecfdf5;
-  --success-border: #d1fae5;
+  --success: #16a34a;
+  --success-hover: #15803d;
+  --success-light: #f0fdf4;
+  --success-border: #bbf7d0;
   
-  --danger: #ef4444;
-  --danger-hover: #dc2626;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
   --danger-light: #fef2f2;
   --danger-border: #fecaca;
   
-  --warning: #f59e0b;
-  --warning-hover: #d97706;
+  --warning: #f97316;
+  --warning-hover: #ea580c;
   --warning-light: #fffbeb;
   --warning-border: #fed7aa;
   
-  --secondary: #6b7280;
-  --secondary-hover: #4b5563;
-  --secondary-light: #f9fafb;
+  --secondary: #64748b;
+  --secondary-hover: #475569;
+  --secondary-light: #f8fafc;
   
-  --info: #3b82f6;
-  --info-hover: #2563eb;
-  --info-light: #eff6ff;
+  --info: #0284c7;
+  --info-hover: #0369a1;
+  --info-light: #f0f9ff;
   
   /* Text Colors */
   --text-primary: #1f2937;
@@ -56,10 +56,10 @@
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
   
   /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
   
   /* Spacing */
   --space-xs: 0.25rem;
@@ -112,22 +112,22 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
   font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1.5;
+  font-weight: 400;
+  line-height: 1.4;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   text-decoration: none;
   cursor: pointer;
   transition: all var(--transition-fast);
-  letter-spacing: 0.025em;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
 .btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-hover);
+  transform: translateY(-0.5px);
+  box-shadow: var(--shadow-sm);
   text-decoration: none;
 }
 
@@ -142,89 +142,127 @@
   box-shadow: none !important;
 }
 
-/* Button Variants */
+/* Button Variants - Outline-first approach */
 .btn-primary {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: var(--bg-primary);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-  border-color: var(--primary-hover);
-  color: var(--bg-primary);
-}
-
-.btn-success {
-  background-color: var(--success);
-  border-color: var(--success);
-  color: var(--bg-primary);
-}
-
-.btn-success:hover:not(:disabled) {
-  background-color: var(--success-hover);
-  border-color: var(--success-hover);
-  color: var(--bg-primary);
-}
-
-.btn-danger {
-  background-color: var(--danger);
-  border-color: var(--danger);
-  color: var(--bg-primary);
-}
-
-.btn-danger:hover:not(:disabled) {
-  background-color: var(--danger-hover);
-  border-color: var(--danger-hover);
-  color: var(--bg-primary);
-}
-
-.btn-warning {
-  background-color: var(--warning);
-  border-color: var(--warning);
-  color: var(--bg-primary);
-}
-
-.btn-warning:hover:not(:disabled) {
-  background-color: var(--warning-hover);
-  border-color: var(--warning-hover);
-  color: var(--bg-primary);
-}
-
-.btn-secondary {
-  background-color: var(--secondary);
-  border-color: var(--secondary);
-  color: var(--bg-primary);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--secondary-hover);
-  border-color: var(--secondary-hover);
-  color: var(--bg-primary);
-}
-
-.btn-info {
-  background-color: var(--info);
-  border-color: var(--info);
-  color: var(--bg-primary);
-}
-
-.btn-info:hover:not(:disabled) {
-  background-color: var(--info-hover);
-  border-color: var(--info-hover);
-  color: var(--bg-primary);
-}
-
-/* Outline Button Variants */
-.btn-outline-primary {
   background-color: transparent;
   border-color: var(--primary);
   color: var(--primary);
 }
 
-.btn-outline-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled) {
   background-color: var(--primary);
+  border-color: var(--primary);
   color: var(--bg-primary);
+}
+
+.btn-success {
+  background-color: transparent;
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: var(--bg-primary);
+}
+
+.btn-danger {
+  background-color: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--danger);
+  border-color: var(--danger);
+  color: var(--bg-primary);
+}
+
+.btn-warning {
+  background-color: transparent;
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: var(--warning);
+  border-color: var(--warning);
+  color: var(--bg-primary);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border-color: var(--border-secondary);
+  color: var(--text-secondary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-light);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.btn-info {
+  background-color: transparent;
+  border-color: var(--info);
+  color: var(--info);
+}
+
+.btn-info:hover:not(:disabled) {
+  background-color: var(--info);
+  border-color: var(--info);
+  color: var(--bg-primary);
+}
+
+/* Solid Button Variants - For high emphasis actions */
+.btn-solid-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--bg-primary);
+}
+
+.btn-solid-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: var(--bg-primary);
+}
+
+.btn-solid-success {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: var(--bg-primary);
+}
+
+.btn-solid-success:hover:not(:disabled) {
+  background-color: var(--success-hover);
+  border-color: var(--success-hover);
+  color: var(--bg-primary);
+}
+
+.btn-solid-danger {
+  background-color: var(--danger);
+  border-color: var(--danger);
+  color: var(--bg-primary);
+}
+
+.btn-solid-danger:hover:not(:disabled) {
+  background-color: var(--danger-hover);
+  border-color: var(--danger-hover);
+  color: var(--bg-primary);
+}
+
+/* Subtle Outline Button Variants */
+.btn-outline-primary {
+  background-color: transparent;
+  border-color: var(--border-secondary);
+  color: var(--text-secondary);
+}
+
+.btn-outline-primary:hover:not(:disabled) {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .btn-outline-secondary {
@@ -237,6 +275,42 @@
   background-color: var(--bg-light);
   border-color: var(--text-muted);
   color: var(--text-primary);
+}
+
+.btn-outline-warning {
+  background-color: transparent;
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.btn-outline-warning:hover:not(:disabled) {
+  background-color: var(--warning);
+  border-color: var(--warning);
+  color: var(--bg-primary);
+}
+
+.btn-outline-success {
+  background-color: transparent;
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.btn-outline-success:hover:not(:disabled) {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: var(--bg-primary);
+}
+
+.btn-outline-danger {
+  background-color: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+  background-color: var(--danger);
+  border-color: var(--danger);
+  color: var(--bg-primary);
 }
 
 /* Button Sizes */
@@ -263,6 +337,13 @@
   height: 2rem;
 }
 
+/* Small delete/close buttons */
+.btn-delete-small {
+  padding: 0.125rem 0.25rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
 /* ===================================== */
 /* CARD SYSTEM */
 /* ===================================== */
@@ -277,12 +358,12 @@
 }
 
 .card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-0.5px);
 }
 
 .card-header {
-  padding: var(--space-xl);
+  padding: var(--space-lg);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -310,13 +391,13 @@
   gap: var(--space-md);
   margin: 0;
   font-size: var(--text-xl);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
 }
 
 .card-content {
-  padding: var(--space-xl);
+  padding: var(--space-lg);
   background-color: var(--bg-primary);
   display: none;
 }
@@ -335,8 +416,8 @@
 /* ===================================== */
 
 .form-section {
-  margin-bottom: var(--space-2xl);
-  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  padding: var(--space-lg);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   background-color: var(--bg-secondary);
@@ -344,7 +425,7 @@
 
 .form-section-title {
   margin-bottom: var(--space-xl);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-primary);
 }
 
@@ -356,7 +437,7 @@
   display: block;
   margin-bottom: var(--space-sm);
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-primary);
 }
 
@@ -493,30 +574,37 @@ td.text-center input.form-control.form-control-sm.score-input.schedule-input {
   padding: var(--space-xs) var(--space-md);
   font-size: var(--text-xs);
   font-weight: 500;
-  border-radius: 9999px;
-  color: var(--bg-primary);
+  border-radius: var(--radius-sm);
 }
 
 .badge-success {
-  background-color: var(--success);
+  background-color: var(--success-light);
+  color: var(--success-hover);
+  border: 1px solid var(--success-border);
 }
 
 .badge-warning {
-  background-color: var(--warning);
-  color: #92400e;
-  background-color: #fef3c7;
+  background-color: var(--warning-light);
+  color: var(--warning-hover);
+  border: 1px solid var(--warning-border);
 }
 
 .badge-danger {
-  background-color: var(--danger);
+  background-color: var(--danger-light);
+  color: var(--danger-hover);
+  border: 1px solid var(--danger-border);
 }
 
 .badge-primary {
-  background-color: var(--primary);
+  background-color: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--border-secondary);
 }
 
 .badge-secondary {
-  background-color: var(--secondary);
+  background-color: var(--secondary-light);
+  color: var(--secondary);
+  border: 1px solid var(--border-secondary);
 }
 
 /* ===================================== */
@@ -661,7 +749,7 @@ td.text-center input.form-control.form-control-sm.score-input.schedule-input {
 }
 
 .week-container.off-week .week-header {
-  background-color: #fff3cd;
+  background-color: var(--warning-light);
 }
 
 /* ===================================== */

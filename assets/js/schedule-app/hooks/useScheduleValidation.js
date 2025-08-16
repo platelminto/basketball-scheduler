@@ -15,6 +15,96 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
   const [showSaveButton, setShowSaveButton] = useState(initialShowSaveButton);
 
   /**
+   * Validates sequential week dates (client-side validation)
+   */
+  const validateSequentialWeekDates = useCallback(() => {
+    const errors = [];
+    
+    if (!state.weeks || Object.keys(state.weeks).length === 0) {
+      return { passed: true, errors: [] };
+    }
+
+    // Extract all week dates
+    const weekDates = [];
+    for (const weekNum in state.weeks) {
+      const week = state.weeks[weekNum];
+      if (week.monday_date) {
+        try {
+          const dateObj = new Date(week.monday_date);
+          if (isNaN(dateObj.getTime())) {
+            errors.push(`Week ${weekNum}: Invalid date format '${week.monday_date}'`);
+            continue;
+          }
+          weekDates.push({
+            weekNum: parseInt(weekNum),
+            date: dateObj,
+            isOffWeek: week.isOffWeek || false
+          });
+        } catch (e) {
+          errors.push(`Week ${weekNum}: Error parsing date '${week.monday_date}'`);
+        }
+      }
+    }
+
+    if (weekDates.length === 0) {
+      return { passed: true, errors: [] };
+    }
+
+    // Sort by date
+    weekDates.sort((a, b) => a.date - b.date);
+    
+    const firstDate = weekDates[0].date;
+    const lastDate = weekDates[weekDates.length - 1].date;
+    
+    // Calculate expected number of weeks
+    const dateDiff = lastDate - firstDate;
+    const expectedWeeks = Math.floor(dateDiff / (7 * 24 * 60 * 60 * 1000)) + 1;
+    
+    if (weekDates.length !== expectedWeeks) {
+      errors.push(`Schedule has ${weekDates.length} weeks but should have ${expectedWeeks} weeks from ${firstDate.toDateString()} to ${lastDate.toDateString()}`);
+    }
+
+    // Check that each Monday is exactly 7 days after the previous
+    for (let i = 1; i < weekDates.length; i++) {
+      const prevWeek = weekDates[i-1];
+      const currWeek = weekDates[i];
+      
+      // Compare dates by converting to date strings to avoid DST time issues
+      const prevDateStr = prevWeek.date.toDateString();
+      const currDateStr = currWeek.date.toDateString();
+      
+      const expectedDate = new Date(prevWeek.date);
+      expectedDate.setDate(expectedDate.getDate() + 7);
+      const expectedDateStr = expectedDate.toDateString();
+      
+      if (currDateStr !== expectedDateStr) {
+        const gapDays = Math.floor((currWeek.date - prevWeek.date) / (24 * 60 * 60 * 1000));
+        
+        if (gapDays > 7) {
+          errors.push(`Gap detected: Week ${prevWeek.weekNum} (${prevWeek.date.toDateString()}) to Week ${currWeek.weekNum} (${currWeek.date.toDateString()}) - missing ${gapDays - 7} days`);
+        } else if (gapDays < 7) {
+          errors.push(`Date sequence error: Week ${prevWeek.weekNum} (${prevWeek.date.toDateString()}) to Week ${currWeek.weekNum} (${currWeek.date.toDateString()}) - ${gapDays} days apart (should be 7)`);
+        }
+        // If gapDays === 7 but dates don't match, it's likely just a DST issue, so we don't error
+      }
+    }
+
+    // Verify each date falls on a Monday
+    for (const { weekNum, date } of weekDates) {
+      if (date.getDay() !== 1) { // 1 = Monday
+        const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const actualDay = weekdayNames[date.getDay()];
+        errors.push(`Week ${weekNum}: Date ${date.toDateString()} is a ${actualDay}, not a Monday`);
+      }
+    }
+
+    return {
+      passed: errors.length === 0,
+      errors: errors
+    };
+  }, [state.weeks]);
+
+  /**
    * Validates the current schedule
    */
   const validateSchedule = useCallback(async () => {
@@ -23,6 +113,14 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
     setValidationResults(null);
     
     try {
+      // First run client-side validations
+      const sequentialDatesResult = validateSequentialWeekDates();
+      
+      // Start with client-side results
+      const clientSideResults = {
+        'sequential_week_dates': sequentialDatesResult
+      };
+
       // Collect game assignments
       const gameAssignments = collectGameAssignments(state.weeks);
       
@@ -45,13 +143,20 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
         })
       });
       
-      const data = await response.json();
-      setValidationResults(data);
+      const serverSideData = await response.json();
       
-      // Check validation state with the new data
+      // Merge client-side and server-side validation results
+      const combinedResults = {
+        ...clientSideResults,
+        ...serverSideData
+      };
+      
+      setValidationResults(combinedResults);
+      
+      // Check validation state with the combined data
       let allPassedOrIgnored = true;
-      for (const testName in data) {
-        if (!data[testName].passed && !ignoredFailures.has(testName)) {
+      for (const testName in combinedResults) {
+        if (!combinedResults[testName].passed && !ignoredFailures.has(testName)) {
           allPassedOrIgnored = false;
           break;
         }

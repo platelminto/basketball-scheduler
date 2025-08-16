@@ -167,13 +167,23 @@ export const collectWeekData = (weeks) => {
  */
 export const prepareValidationConfig = (state) => {
   const teams = state.teamsByLevel;
-  const levels = state.levels.map(level => level.name);
+  const levels = [];
   const teams_per_level = {};
   
-  for (const levelId in teams) {
-    const level = state.levels.find(l => l.id === levelId);
-    if (level) {
-      teams_per_level[level.name] = teams[levelId].length;
+  for (let levelId of Object.keys(teams)) {
+    if (teams[levelId].length > 0) {
+      // Try to find level by matching either string ID (ScheduleCreate) or integer ID (ScheduleEdit)
+      let level = state.levels.find(l => l.id === levelId); // Try string match first
+      if (!level) {
+        // Try integer match (for ScheduleEdit with API data)
+        const levelIdInt = parseInt(levelId);
+        level = state.levels.find(l => l.id === levelIdInt);
+      }
+      
+      if (level) {
+        levels.push(level.name);
+        teams_per_level[level.name] = teams[levelId].length;
+      }
     }
   }
   

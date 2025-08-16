@@ -350,3 +350,4 @@ def cycle_pairing_test(schedule, levels, teams_per_level):
         print("All levels follow proper cycling patterns for matchups")
 
     return passed, errors
+

@@ -7,6 +7,7 @@ import { ADD_GAME, SET_SCHEDULE_DATA } from '../../contexts/ScheduleContext';
 import { createNewWeek, createOffWeek, findLastNormalWeek, createDefaultWeek, scrollToWeek } from '../../utils/weekUtils';
 import { collectGameAssignments, collectWeekData } from '../../utils/scheduleDataTransforms';
 import WeekContainer from './WeekContainer';
+import OffWeekDisplay from './OffWeekDisplay';
 import WeekSeparator from './WeekSeparator';
 import ValidationResults from './ValidationResults';
 
@@ -287,7 +288,11 @@ const ScheduleEditor = ({
                 
                 {/* Week content */}
                 <div className="mb-4">
-                  <WeekContainer weekData={weekData} mode={mode} useSimpleView={useSimpleView} />
+                  {weekData.isOffWeek ? (
+                    <OffWeekDisplay weekData={weekData} mode={mode} />
+                  ) : (
+                    <WeekContainer weekData={weekData} mode={mode} useSimpleView={useSimpleView} />
+                  )}
                 </div>
                 
                 {/* Add separator after each week (except the last one) */}

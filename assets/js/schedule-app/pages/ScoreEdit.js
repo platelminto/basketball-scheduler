@@ -263,9 +263,6 @@ const ScoreEdit = () => {
         </div>
 
         <div className="d-flex gap-2">
-          <Link to="/" className="btn btn-secondary">
-            Back to Seasons List
-          </Link>
           
           {/* Reset Changes button */}
           <button

@@ -8,21 +8,20 @@ import GameCard from './GameCard';
 const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false }) => {
   const { state, dispatch } = useSchedule();
   
+  // Early return for off-weeks - they should be handled by OffWeekDisplay component
+  if (weekData.isOffWeek) {
+    return null;
+  }
+  
   // Get game week numbers mapping
   const gameWeekNumbers = getGameWeekNumbers(state.weeks);
-  const displayWeekNumber = weekData.isOffWeek ? null : gameWeekNumbers[weekData.week_number];
-  
-  // Debug logging for week data
-  if (weekData.isOffWeek) {
-    console.log('WeekContainer rendering off week:', weekData);
-  }
+  const displayWeekNumber = gameWeekNumbers[weekData.week_number];
   
   // Check if this week is locked
   const isLocked = state.lockedWeeks.has(weekData.week_number);
   
   // Determine if this is the most recent week with incomplete scores
   const isMostRecentIncompleteWeek = () => {
-    if (weekData.isOffWeek) return false;
     
     const sortedWeeks = Object.values(state.weeks)
       .filter(week => !week.isOffWeek)
@@ -61,7 +60,6 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
   
   // Determine if this week should be expanded by default
   const shouldBeExpandedByDefault = () => {
-    if (weekData.isOffWeek) return false;
     
     // For schedule-edit mode, don't auto-expand any weeks
     if (mode === 'schedule-edit') return false;
@@ -101,7 +99,7 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
   
   // Check if this week has incomplete scores (not all games have scores AND week date is before today)
   const hasIncompleteScores = () => {
-    if (weekData.isOffWeek || !weekData.games || weekData.games.length === 0) return false;
+    if (!weekData.games || weekData.games.length === 0) return false;
     
     // Check if week date is before today
     const today = new Date();
@@ -125,7 +123,7 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
   
   // Any locked week can be unlocked
   const canBeUnlocked = () => {
-    return isLocked && !weekData.isOffWeek;
+    return isLocked;
   };
   
   const handleLockToggle = (e) => {
@@ -250,7 +248,7 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
     if (mode !== 'create' && mode !== 'schedule-edit') return;
     
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete ${weekData.isOffWeek ? 'this Off Week' : `Week ${displayWeekNumber}`}? This will remove all games in this week.`
+      `Are you sure you want to delete Week ${displayWeekNumber}? This will remove all games in this week.`
     );
     
     if (confirmDelete) {
@@ -263,7 +261,7 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
 
   
   return (
-    <div className={`week-container ${collapsed ? 'collapsed' : ''} ${weekData.isOffWeek ? 'off-week' : ''}`} data-week-id={weekData.week_number}>
+    <div className={`week-container ${collapsed ? 'collapsed' : ''}`} data-week-id={weekData.week_number}>
       <div 
         className="week-header" 
         onClick={(e) => {
@@ -281,11 +279,7 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
         <div className="d-flex justify-content-between align-items-center">
           <div className="d-flex align-items-center">
             <h3 className="mb-0 me-3">
-              {weekData.isOffWeek ? (
-                'Off Week -'
-              ) : (
-                `Week ${displayWeekNumber} -`
-              )}{' '}
+              Week {displayWeekNumber} -{' '}
               <span className="d-inline-flex align-items-center">
                 {mode === 'score-edit' ? (
                   <span className="week-date-display">
@@ -303,9 +297,6 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
                   />
                 )}
               </span>
-              {weekData.isOffWeek && (
-                <span className="badge bg-warning ms-3">OFF WEEK</span>
-              )}
               {mode === 'score-edit' && hasIncompleteScores() && (
                 <span className="badge bg-warning ms-3" title="Some games missing scores">
                   <i className="fas fa-exclamation-triangle"></i> Missing scores
@@ -313,8 +304,8 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
               )}
             </h3>
             
-            {/* Lock icon - only show for non-off weeks and when not in editing mode */}
-            {!weekData.isOffWeek && mode === 'score-edit' && (
+            {/* Lock icon - only show when not in editing mode */}
+            {mode === 'score-edit' && (
               <button
                 type="button"
                 className={`btn ${isLocked ? 'btn-outline-danger' : 'btn-outline-success'} me-2`}
@@ -343,7 +334,7 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
         </div>
       </div>
       
-      {!collapsed && !weekData.isOffWeek && (
+      {!collapsed && (
         <div className="week-content">
           {useSimpleView && mode === 'score-edit' ? (
             // Simple card view - only when not editing
@@ -402,14 +393,6 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
               </table>
             </div>
           )}
-        </div>
-      )}
-      
-      {!collapsed && weekData.isOffWeek && (
-        <div className="week-content">
-          <div className="alert alert-warning mt-3 mb-0">
-            <strong>This is an off week.</strong> No games are scheduled for this week.
-          </div>
         </div>
       )}
     </div>

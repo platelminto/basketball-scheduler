@@ -20,9 +20,10 @@ const ValidationResults = ({
   // Define explanations for each validation
   const explanations = {
     'Pairings': 'Teams must play against other teams in their level a specific number of times based on level size.',
-    'Cycle Pairings': 'For levels with fewer teams, matchups must repeat in proper round-robin cycles throughout the season.',
+    'Cycle Pairings': 'Matchups must repeat in proper round-robin cycles throughout the season.',
     'Referee-Player': 'A team cannot referee any game in which they are playing.',
-    'Adjacent Slots': 'Teams can only referee games in time slots that are directly before or after their own game.'
+    'Adjacent Slots': 'Teams can only referee games in time slots that are directly before or after their own game.',
+    'sequential_week_dates': 'Schedule must have a week (game week or off week) at every Monday from first to last week with no gaps.'
   };
 
   // Track not just any failures, but also how many are ignored
@@ -62,7 +63,7 @@ const ValidationResults = ({
           >
             <h5 className="mb-1">
               <i className={`fas ${iconClass} me-2`}></i>
-              {testName} 
+              {testName === 'sequential_week_dates' ? 'Sequential Week Dates' : testName} 
               <span className={`badge ${badgeClass} ms-2`}>
                 {statusText}
               </span>

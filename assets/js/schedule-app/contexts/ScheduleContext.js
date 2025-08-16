@@ -354,16 +354,68 @@ const scheduleReducer = (state, action) => {
       const { weekId } = action.payload;
       const updatedWeeks = { ...state.weeks };
       
+      // Get the week being deleted to find its position
+      const deletedWeek = updatedWeeks[weekId];
+      if (!deletedWeek) return state; // Week doesn't exist
+      
       // Remove the week
       delete updatedWeeks[weekId];
       
-      // Mark the week as changed (for backend deletion tracking)
+      // Get all remaining weeks sorted by week number
+      const sortedWeeks = Object.values(updatedWeeks)
+        .sort((a, b) => a.week_number - b.week_number);
+      
+      // Renumber all weeks sequentially and adjust dates for weeks after the deleted one
+      const renumberedWeeks = {};
       const changedWeeks = new Set(state.changedWeeks);
+      
+      sortedWeeks.forEach((week, index) => {
+        const newWeekNumber = index + 1;
+        let adjustedDate = week.monday_date;
+        let updatedGames = week.games || [];
+        
+        // For weeks that were after the deleted week, shift their dates back by 7 days
+        if (week.week_number > deletedWeek.week_number) {
+          const originalDate = new Date(week.monday_date);
+          const shiftedDate = new Date(originalDate);
+          shiftedDate.setDate(originalDate.getDate() - 7); // Shift back by 7 days
+          adjustedDate = shiftedDate.toISOString().split('T')[0];
+          
+          // Update individual game dates for shifted weeks
+          updatedGames = week.games.map(game => {
+            if (game.day_of_week !== undefined && game.day_of_week !== null) {
+              const gameDate = new Date(shiftedDate);
+              gameDate.setDate(shiftedDate.getDate() + parseInt(game.day_of_week));
+              return {
+                ...game,
+                date: gameDate.toISOString().split('T')[0]
+              };
+            }
+            return game;
+          });
+        }
+        
+        const updatedWeek = {
+          ...week,
+          week_number: newWeekNumber,
+          monday_date: adjustedDate,
+          games: updatedGames
+        };
+        
+        renumberedWeeks[newWeekNumber] = updatedWeek;
+        
+        // Mark affected weeks as changed
+        if (week.week_number !== newWeekNumber || week.monday_date !== adjustedDate) {
+          changedWeeks.add(newWeekNumber);
+        }
+      });
+      
+      // Mark the deleted week as changed (for backend deletion tracking)
       changedWeeks.add(weekId);
       
       return {
         ...state,
-        weeks: updatedWeeks,
+        weeks: renumberedWeeks,
         changedWeeks
       };
     }
