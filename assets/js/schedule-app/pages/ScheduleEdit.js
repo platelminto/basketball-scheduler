@@ -42,22 +42,8 @@ const ScheduleEdit = () => {
     }
   }, [state.changedGames, state.newGames, state.changedWeeks, state.weeks]); // Note: validation.validationResults is NOT in dependencies
 
-  // Scroll to validation results when they appear
-  useEffect(() => {
-    if (validation.validationResults) {
-      // Add a small delay to ensure the validation results are fully rendered
-      setTimeout(() => {
-        const validationElement = document.querySelector('.validation-results');
-        if (validationElement) {
-          validationElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start',
-            inline: 'nearest' 
-          });
-        }
-      }, 100);
-    }
-  }, [validation.validationResults]);
+  // Note: Removed scroll to validation results for schedule editing mode
+  // Users are actively editing and don't want to be jumped around
 
   useEffect(() => {
     // Fetch schedule data when component mounts
@@ -179,6 +165,15 @@ const ScheduleEdit = () => {
       // Use data from ScheduleEditor
       const { gameAssignments, weekDates, offWeeks: scheduleOffWeeks } = scheduleData;
       
+      // Debug logging for schedule edit
+      console.log('ScheduleEdit handleSaveChanges - received scheduleData:', {
+        gameAssignments: gameAssignments.length,
+        weekDates: weekDates.length,
+        weekDatesData: weekDates,
+        offWeeks: scheduleOffWeeks.length,
+        offWeeksData: scheduleOffWeeks
+      });
+      
       games = gameAssignments.map(assignment => ({
         id: null, // New games from schedule editor
         week: assignment.week,
@@ -196,13 +191,19 @@ const ScheduleEdit = () => {
       weekDateChanges = weekDates.map(week => ({
         id: week.week_number, // Use week number as ID for new weeks
         date: week.monday_date,
-        isOffWeek: week.is_off_week
+        isOffWeek: week.is_off_week,
+        title: week.title,
+        description: week.description,
+        has_basketball: week.has_basketball
       }));
 
       offWeeks = scheduleOffWeeks.map(week => ({
         week_id: week.week_number,
         week_number: week.week_number,
-        date: week.monday_date
+        date: week.monday_date,
+        title: week.title,
+        description: week.description,
+        has_basketball: week.has_basketball
       }));
     } else {
       // Legacy path for direct button clicks
@@ -248,14 +249,20 @@ const ScheduleEdit = () => {
         weekDateChanges.push({
           id: weekData.week_number, // Use week number as ID for consistency
           date: weekData.monday_date,
-          isOffWeek: !!weekData.isOffWeek
+          isOffWeek: !!weekData.isOffWeek,
+          title: weekData.title,
+          description: weekData.description,
+          has_basketball: weekData.has_basketball
         });
         
         if (weekData.isOffWeek) {
           offWeeks.push({
             week_id: weekData.week_number,
             week_number: weekData.week_number,
-            date: weekData.monday_date
+            date: weekData.monday_date,
+            title: weekData.title,
+            description: weekData.description,
+            has_basketball: weekData.has_basketball
           });
         }
       }

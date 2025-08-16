@@ -438,7 +438,21 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
                 is_off_week = week_info.get("is_off_week", False)
 
                 if is_off_week:
-                    OffWeek.objects.create(season=season, monday_date=monday_date)
+                    # Extract new off week fields with defaults
+                    title = week_info.get("title", "Off Week")
+                    description = week_info.get("description", "No games scheduled")
+                    has_basketball = week_info.get("has_basketball", False)
+                    
+                    # Debug logging
+                    print(f"Backend creating OffWeek: title='{title}', description='{description}', has_basketball={has_basketball}")
+                    
+                    OffWeek.objects.create(
+                        season=season, 
+                        monday_date=monday_date,
+                        title=title,
+                        description=description,
+                        has_basketball=has_basketball
+                    )
                 else:
                     Week.objects.create(
                         season=season, week_number=week_number, monday_date=monday_date
@@ -474,8 +488,21 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
 
                             if is_off_week:
                                 # Create new off week
+                                # Extract new off week fields with defaults
+                                title = week_date.get("title", "Off Week")
+                                description = week_date.get("description", "No games scheduled")
+                                has_basketball = week_date.get("has_basketball", False)
+                                
+                                # Debug logging for schedule edit
+                                print(f"Backend schedule edit creating OffWeek: title='{title}', description='{description}', has_basketball={has_basketball}")
+                                print(f"Raw week_date data: {week_date}")
+                                
                                 OffWeek.objects.create(
-                                    season=season, monday_date=parsed_date
+                                    season=season, 
+                                    monday_date=parsed_date,
+                                    title=title,
+                                    description=description,
+                                    has_basketball=has_basketball
                                 )
                             else:
                                 # Create new regular week
@@ -592,7 +619,7 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
             response_data.update(
                 {
                     "deleted_count": deleted_count,
-                    "message": f"Successfully updated schedule with {created_games_count} games.",
+                    "message": f"Successfully updated schedule ({created_games_count} games).",
                 }
             )
 
@@ -718,6 +745,9 @@ def _get_schedule_data(request, season):
                 "week_number": week_num,
                 "monday_date": off_week.monday_date.strftime("%Y-%m-%d"),
                 "isOffWeek": True,
+                "title": off_week.title,
+                "description": off_week.description,
+                "has_basketball": off_week.has_basketball,
                 "games": [],
             }
 

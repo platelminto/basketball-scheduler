@@ -45,11 +45,36 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
       )}
       {sortedWeeks.map(week => {
         if (week.isOffWeek) {
+          // Get display title - just use the title field directly
+          const getDisplayTitle = () => {
+            return (week.title || 'NON-LEAGUE WEEK').toUpperCase();
+          };
+
+          // Get styling based on basketball events
+          const getWeekStyling = () => {
+            if (week.has_basketball) {
+              return {
+                background: '#f0f9ff',
+                border: '2px solid #0284c7',
+                titleColor: '#0369a1',
+                icon: '🏀'
+              };
+            }
+            return {
+              background: '#fffbeb',
+              border: '2px solid #f97316',
+              titleColor: '#ea580c',
+              icon: '😴'
+            };
+          };
+
+          const styling = getWeekStyling();
+
           return (
             <div key={`week-${week.week_number}`} style={{ marginBottom: '35px' }}>
               <div style={{ 
-                background: '#f1f5f9',
-                border: '2px solid #64748b',
+                background: styling.background,
+                border: styling.border,
                 borderRadius: '4px',
                 padding: '20px',
                 display: 'grid',
@@ -66,11 +91,12 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                   })}
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937', marginBottom: '4px', letterSpacing: '0.5px' }}>
-                    <strong>OFF WEEK</strong>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: styling.titleColor, marginBottom: '4px', letterSpacing: '0.5px' }}>
+                    <span style={{ marginRight: '8px' }}>{styling.icon}</span>
+                    <strong>{getDisplayTitle()}</strong>
                   </div>
                   <div style={{ fontSize: '15px', color: '#4b5563' }}>
-                    No games scheduled
+                    {week.description || 'No description provided'}
                   </div>
                 </div>
                 <div></div>

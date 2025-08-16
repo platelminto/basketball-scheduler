@@ -172,6 +172,14 @@ const ScheduleEditor = ({
     const gameAssignments = collectGameAssignments(state.weeks);
     const { weekDates, offWeeks } = collectWeekData(state.weeks);
     
+    // Debug logging
+    console.log('ScheduleEditor handleSave - collected data:', {
+      gameAssignments: gameAssignments.length,
+      weekDates: weekDates.length,
+      offWeeks: offWeeks.length,
+      offWeeksData: offWeeks
+    });
+    
     // Call the provided onSave callback with the collected data
     if (onSave) {
       onSave({
@@ -204,9 +212,9 @@ const ScheduleEditor = ({
     }
   }, [shouldRandomFill]);
 
-  // Scroll to validation results when they appear
+  // Scroll to validation results when they appear (but not in schedule editing mode)
   useEffect(() => {
-    if (validationResults && showValidation) {
+    if (validationResults && showValidation && mode !== 'schedule-edit') {
       // Add a small delay to ensure the validation results are fully rendered
       setTimeout(() => {
         const validationElement = document.querySelector('.validation-results');
@@ -219,7 +227,7 @@ const ScheduleEditor = ({
         }
       }, 100);
     }
-  }, [validationResults, showValidation]);
+  }, [validationResults, showValidation, mode]);
   
   
   // Use the ValidationResults component

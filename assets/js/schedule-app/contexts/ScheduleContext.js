@@ -326,15 +326,24 @@ const scheduleReducer = (state, action) => {
     }
 
     case UPDATE_WEEK_DATE: {
-      const { weekId, date } = action.payload;
+      const { weekId, date, field, value } = action.payload;
       const updatedWeeks = { ...state.weeks };
 
       if (updatedWeeks[weekId]) {
-        // Update the week's date
-        updatedWeeks[weekId] = {
-          ...updatedWeeks[weekId],
-          monday_date: date
-        };
+        // Handle both legacy date updates and new field updates
+        if (date) {
+          // Legacy: Update the week's date
+          updatedWeeks[weekId] = {
+            ...updatedWeeks[weekId],
+            monday_date: date
+          };
+        } else if (field && value !== undefined) {
+          // New: Update any field
+          updatedWeeks[weekId] = {
+            ...updatedWeeks[weekId],
+            [field]: value
+          };
+        }
 
         // Mark the week as changed
         const changedWeeks = new Set(state.changedWeeks);
@@ -445,6 +454,9 @@ const scheduleReducer = (state, action) => {
         week_number: 0, // Will be set during renumbering
         monday_date: offWeekData.monday_date,
         isOffWeek: true,
+        title: offWeekData.title || 'Off Week',
+        description: offWeekData.description || 'No games scheduled',
+        has_basketball: offWeekData.has_basketball || false,
         games: []
       };
       

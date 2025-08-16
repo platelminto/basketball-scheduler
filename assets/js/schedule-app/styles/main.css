@@ -1169,3 +1169,29 @@ td.text-center input.form-control.form-control-sm.score-input.schedule-input {
   text-align: center;
   margin-top: var(--space-lg);
 }
+
+/* Enhanced Off Week Display Styling */
+.off-week-display .alert-info {
+  border-left: 4px solid var(--info);
+  background-color: var(--info-light);
+}
+
+.off-week-display .alert-warning {
+  border-left: 4px solid var(--warning);
+  background-color: var(--warning-light);
+}
+
+.off-week-display .fas.fa-basketball-ball {
+  color: var(--info);
+}
+
+.off-week-display .fas.fa-calendar-times {
+  color: var(--warning);
+}
+
+/* Week Separator Modal Styling */
+.week-separator .btn-outline-warning:hover {
+  background-color: var(--warning);
+  border-color: var(--warning);
+  color: white;
+}

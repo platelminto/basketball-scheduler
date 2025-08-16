@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSchedule } from '../../hooks/useSchedule';
 import { ADD_OFF_WEEK } from '../../contexts/ScheduleContext';
 
 const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) => {
   const { state, dispatch } = useSchedule();
 
-  const handleAddOffWeek = () => {
+  const handleAddSpecialWeek = () => {
     if (mode !== 'create' && mode !== 'schedule-edit') return;
     
     // Calculate the appropriate date for the off week
@@ -48,7 +48,10 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) =
     }
 
     const offWeekData = {
-      monday_date: offWeekDate
+      monday_date: offWeekDate,
+      title: 'Off Week',
+      description: 'No games scheduled',
+      has_basketball: false
     };
     
     dispatch({
@@ -70,10 +73,10 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) =
       <button
         type="button"
         className="btn btn-sm btn-outline-warning"
-        title="Add off week here"
-        onClick={handleAddOffWeek}
+        title="Add non-league week here"
+        onClick={handleAddSpecialWeek}
       >
-        <i className="fas fa-plus"></i> Add Off Week
+        <i className="fas fa-plus"></i> Add Non-League Week
       </button>
     </div>
   );

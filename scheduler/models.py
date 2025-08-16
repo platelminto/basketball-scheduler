@@ -117,12 +117,25 @@ class OffWeek(models.Model):
 
     season = models.ForeignKey(Season, related_name="off_weeks", on_delete=models.CASCADE)
     monday_date = models.DateField()
+    title = models.CharField(
+        max_length=100,
+        default="Off Week",
+        help_text="Title of this non-league week"
+    )
+    description = models.TextField(
+        default="No games scheduled",
+        help_text="Description of what's happening this week (e.g., 'Charity Tournament', 'Holiday Break')"
+    )
+    has_basketball = models.BooleanField(
+        default=False,
+        help_text="Whether basketball events are happening this week (affects styling)"
+    )
     
     class Meta:
         unique_together = ("season", "monday_date")
     
     def __str__(self):
-        return f"Off Week: {self.monday_date}"
+        return f"{self.title}: {self.monday_date} - {self.description}"
 
 
 class Game(models.Model):
