@@ -30,7 +30,7 @@ const ScheduleParametersModal = ({
   const handleParameterChange = (key, value) => {
     setParameters(prev => ({
       ...prev,
-      [key]: value
+      [key]: value === '' ? '' : (key === 'gapRel' ? parseFloat(value) : parseInt(value))
     }));
   };
 
@@ -39,12 +39,31 @@ const ScheduleParametersModal = ({
       ...prev,
       slot_limits: {
         ...prev.slot_limits,
-        [slot]: parseInt(value) || 0
+        [slot]: value === '' ? '' : parseInt(value)
       }
     }));
   };
 
   const handleGenerate = async () => {
+    // Validate all fields are filled
+    const emptyFields = [];
+    
+    if (parameters.min_referee_count === '') emptyFields.push('Minimum Referee Count');
+    if (parameters.max_referee_count === '') emptyFields.push('Maximum Referee Count');
+    if (parameters.time_limit === '') emptyFields.push('Time Limit');
+    if (parameters.num_blueprints_to_generate === '') emptyFields.push('Number of Blueprints');
+    if (parameters.gapRel === '') emptyFields.push('Relative Gap Tolerance');
+    
+    // Check slot limits
+    for (const [slot, value] of Object.entries(parameters.slot_limits)) {
+      if (value === '') emptyFields.push(`Slot ${slot} Limit`);
+    }
+    
+    if (emptyFields.length > 0) {
+      alert(`Please fill in all fields:\n• ${emptyFields.join('\n• ')}`);
+      return;
+    }
+    
     // Create new AbortController for this generation
     const controller = new AbortController();
     setAbortController(controller);
@@ -246,7 +265,7 @@ const ScheduleParametersModal = ({
                         className="form-control"
                         min="0"
                         value={parameters.min_referee_count}
-                        onChange={(e) => handleParameterChange('min_referee_count', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleParameterChange('min_referee_count', e.target.value)}
                       />
                     </div>
                     <div className="col-md-6">
@@ -256,7 +275,7 @@ const ScheduleParametersModal = ({
                         className="form-control"
                         min="0"
                         value={parameters.max_referee_count}
-                        onChange={(e) => handleParameterChange('max_referee_count', parseInt(e.target.value) || 0)}
+                        onChange={(e) => handleParameterChange('max_referee_count', e.target.value)}
                       />
                     </div>
                   </div>
@@ -306,7 +325,7 @@ const ScheduleParametersModal = ({
                         className="form-control"
                         min="1"
                         value={parameters.time_limit}
-                        onChange={(e) => handleParameterChange('time_limit', parseInt(e.target.value) || 60)}
+                        onChange={(e) => handleParameterChange('time_limit', e.target.value)}
                       />
                       <small className="text-muted">Total time to spend optimizing the schedule</small>
                     </div>
@@ -343,7 +362,7 @@ const ScheduleParametersModal = ({
                           min="1"
                           max="100"
                           value={parameters.num_blueprints_to_generate}
-                          onChange={(e) => handleParameterChange('num_blueprints_to_generate', parseInt(e.target.value) || 6)}
+                          onChange={(e) => handleParameterChange('num_blueprints_to_generate', e.target.value)}
                         />
                         <small className="text-muted">
                           Fewer blueprints = spend more time optimizing each schedule. 
@@ -359,7 +378,7 @@ const ScheduleParametersModal = ({
                           max="1"
                           step="0.01"
                           value={parameters.gapRel}
-                          onChange={(e) => handleParameterChange('gapRel', parseFloat(e.target.value) || 0.25)}
+                          onChange={(e) => handleParameterChange('gapRel', e.target.value)}
                         />
                         <small className="text-muted">
                           How close to "perfect" the schedule needs to be. Lower values = more optimal but slower. 

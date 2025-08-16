@@ -315,50 +315,53 @@ const ScheduleEditor = ({
       {/* Week management buttons - moved to bottom */}
       {(mode === 'create' || mode === 'schedule-edit') && (
         <div className="week-management-controls mt-4">
-          <div className="d-flex flex-wrap gap-2 justify-content-center">
-            <button type="button" className="btn btn-primary" onClick={copyLastWeek}>
-              Copy Above Week
-            </button>
-            <button type="button" className="btn btn-outline-secondary" onClick={() => addWeek()}>
-              + Add New Week
-            </button>
-            <button type="button" className="btn btn-warning" onClick={addOffWeek}>
-              + Add Off Week
-            </button>
-            
-            {/* Dev mode auto-generate button */}
-            {mode === 'create' && isDevelopment && onAutoGenerate && (
-              <button 
-                type="button" 
-                className="btn btn-info" 
-                onClick={onAutoGenerate}
-              >
-                Auto-generate Schedule
+          <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            {/* Left side - Auto-generate button */}
+            <div className="d-flex gap-2">
+              {mode === 'create' && isDevelopment && onAutoGenerate && (
+                <button 
+                  type="button" 
+                  className="btn btn-success" 
+                  onClick={onAutoGenerate}
+                >
+                  Auto-generate Schedule
+                </button>
+              )}
+            </div>
+
+            {/* Center - Week management buttons */}
+            <div className="d-flex flex-wrap gap-2 justify-content-center">
+              <button type="button" className="btn btn-primary" onClick={copyLastWeek}>
+                Copy Above Week
               </button>
-            )}
+              <button type="button" className="btn btn-outline-secondary" onClick={() => addWeek()}>
+                + Add New Week
+              </button>
+              <button type="button" className="btn btn-warning" onClick={addOffWeek}>
+                + Add Off Week
+              </button>
+            </div>
             
-            {/* In create mode, we still show these buttons */}
-            {mode === 'create' && (
-              <>
-                {showValidation && (
-                  <button 
-                    type="button" 
-                    className={validation.showSaveButton ? "btn btn-success" : "btn btn-primary"}
-                    onClick={validation.showSaveButton ? handleSave : validation.validateSchedule}
-                    disabled={validation.isValidating}
-                  >
-                    {validation.isValidating ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Validating...
-                      </>
-                    ) : (
-                      validation.showSaveButton ? 'Save Schedule' : 'Validate Schedule'
-                    )}
-                  </button>
-                )}
-              </>
-            )}
+            {/* Right side - Validate/Save buttons */}
+            <div className="d-flex gap-2">
+              {mode === 'create' && showValidation && (
+                <button 
+                  type="button" 
+                  className={validation.showSaveButton ? "btn btn-success" : "btn btn-primary"}
+                  onClick={validation.showSaveButton ? handleSave : validation.validateSchedule}
+                  disabled={validation.isValidating}
+                >
+                  {validation.isValidating ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Validating...
+                    </>
+                  ) : (
+                    validation.showSaveButton ? 'Save Schedule' : 'Validate Schedule'
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
