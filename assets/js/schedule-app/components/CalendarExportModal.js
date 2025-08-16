@@ -217,7 +217,7 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
                       onChange={(e) => setIncludeScores(e.target.checked)}
                       style={{ marginRight: '10px', transform: 'scale(1.1)' }}
                     />
-                    Show final scores for completed games
+                    Include final scores for completed games
                   </label>
                 </div>
               </div>

@@ -925,7 +925,7 @@ def team_calendar_export(request, team_id):
 
     Query parameters:
     - include_reffing=true: include games where team is referee_team
-    - include_scores=true: show final scores for completed games
+    - include_scores=true: include final scores for completed games
     """
     team = get_object_or_404(Team, pk=team_id)
 
