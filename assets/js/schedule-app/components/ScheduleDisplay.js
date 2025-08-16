@@ -48,23 +48,32 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
           return (
             <div key={`week-${week.week_number}`} style={{ marginBottom: '35px' }}>
               <div style={{ 
-                background: '#f8f9fa',
-                border: '1px solid #e9ecef',
-                borderRadius: '6px',
+                background: '#f1f5f9',
+                border: '2px solid #64748b',
+                borderRadius: '4px',
                 padding: '20px',
-                textAlign: 'center'
+                display: 'grid',
+                gridTemplateColumns: '120px 1fr 120px',
+                alignItems: 'center',
+                gap: '20px',
+                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
               }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: '0 0 8px 0' }}>
+                <div style={{ fontSize: '14px', color: '#4b5563' }}>
                   {new Date(week.monday_date).toLocaleDateString('en-US', { 
-                    weekday: 'long'
-                  })}, {new Date(week.monday_date).toLocaleDateString('en-US', { 
+                    weekday: 'long', 
                     month: 'long', 
                     day: 'numeric'
                   })}
-                </h3>
-                <p style={{ color: '#6c757d', margin: '0', fontSize: '14px' }}>
-                  Off Week - No games scheduled
-                </p>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937', marginBottom: '4px', letterSpacing: '0.5px' }}>
+                    <strong>OFF WEEK</strong>
+                  </div>
+                  <div style={{ fontSize: '15px', color: '#4b5563' }}>
+                    No games scheduled
+                  </div>
+                </div>
+                <div></div>
               </div>
             </div>
           );
@@ -78,13 +87,13 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
         return (
           <div key={`week-${week.week_number}`} style={{ marginBottom: '40px' }}>
             <div style={{ 
-              background: '#f8f9fa',
-              border: '1px solid #e9ecef',
+              background: '#e5e7eb',
+              border: '1px solid #d1d5db',
               borderRadius: '6px',
               padding: '12px 18px',
               marginBottom: '20px'
             }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', margin: '0', color: '#333' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', margin: '0', color: '#1f2937' }}>
                 Week {weekNumbers[week.week_number]} - {formatWeekHeader(week)}
               </h3>
               
