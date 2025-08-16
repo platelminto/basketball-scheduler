@@ -25,6 +25,7 @@ const ScheduleParametersModal = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressText, setProgressText] = useState('');
+  const [abortController, setAbortController] = useState(null);
 
   const handleParameterChange = (key, value) => {
     setParameters(prev => ({
@@ -44,6 +45,10 @@ const ScheduleParametersModal = ({
   };
 
   const handleGenerate = async () => {
+    // Create new AbortController for this generation
+    const controller = new AbortController();
+    setAbortController(controller);
+    
     setIsGenerating(true);
     setProgress(0);
     setProgressText('Initializing schedule generation...');
@@ -75,36 +80,78 @@ const ScheduleParametersModal = ({
     }, updateInterval);
     
     try {
-      await onGenerate(parameters);
-      // Complete the progress bar
-      clearInterval(progressInterval);
-      setProgress(100);
-      setProgressText('Schedule generated successfully!');
+      await onGenerate(parameters, controller.signal);
       
-      // Close modal after a brief delay to show completion
-      setTimeout(() => {
-        setIsGenerating(false);
-        setProgress(0);
-        setProgressText('');
-        onClose();
-      }, 1000);
+      // Only proceed if not cancelled
+      if (!controller.signal.aborted) {
+        // Complete the progress bar
+        clearInterval(progressInterval);
+        setProgress(100);
+        setProgressText('Schedule generated successfully!');
+        
+        // Close modal after a brief delay to show completion
+        setTimeout(() => {
+          setIsGenerating(false);
+          setProgress(0);
+          setProgressText('');
+          setAbortController(null);
+          onClose();
+        }, 1000);
+      }
     } catch (error) {
       clearInterval(progressInterval);
-      setProgress(0);
-      setProgressText('');
-      setIsGenerating(false);
-      // Error handling is done by the parent component
+      
+      // Check if this was a user cancellation
+      if (error.name === 'AbortError') {
+        setProgress(0);
+        setProgressText('Generation cancelled');
+        
+        // Brief delay then reset
+        setTimeout(() => {
+          setIsGenerating(false);
+          setProgress(0);
+          setProgressText('');
+          setAbortController(null);
+        }, 500);
+      } else {
+        // Actual error - reset immediately
+        setProgress(0);
+        setProgressText('');
+        setIsGenerating(false);
+        setAbortController(null);
+        // Error handling is done by the parent component
+      }
     }
   };
 
-  const handleCancel = () => {
-    if (isGenerating) {
-      // TODO: Add actual cancellation logic when threading is implemented
-      setIsGenerating(false);
-      setProgress(0);
-      setProgressText('');
+  const handleCancel = async () => {
+    if (isGenerating && abortController) {
+      // Abort the frontend request
+      abortController.abort();
+      setProgressText('Cancelling...');
+      
+      // Also signal the backend to stop processing
+      try {
+        await fetch('/scheduler/api/seasons/cancel-generation/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          }
+        });
+      } catch (error) {
+        // Ignore errors for cancellation request
+        console.log('Cancellation request error (ignored):', error);
+      }
+    } else {
+      // Not generating, just close
+      onClose();
     }
-    onClose();
+  };
+
+  // Helper function to get CSRF token
+  const getCsrfToken = () => {
+    return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
   };
 
   const getNumSlots = () => {
@@ -147,11 +194,10 @@ const ScheduleParametersModal = ({
             {!isGenerating && (
               // General Information
               <div className="alert alert-info mb-4">
-                <h6><i className="fas fa-info-circle"></i> Schedule Generation Balance</h6>
+                <h6><i className="fas fa-info-circle"></i> Schedule Generation</h6>
                 <p className="mb-0">
-                  In a perfect world, every team would play the exact same number of games in each time slot. 
-                  However, creating a real schedule requires compromises. These parameters help balance fairness 
-                  with practicality - but setting them too strictly may cause generation to fail or take much longer.
+                  These parameters help create a balanced schedule that's fair to all teams. 
+                  Default values work well for a 10-week, 6-teams-per-level case. Adjust them if generation fails or you need different balance requirements.
                 </p>
               </div>
             )}
@@ -175,7 +221,7 @@ const ScheduleParametersModal = ({
                 <p className="text-muted">{progressText}</p>
                 <div className="mt-3">
                   <small className="text-muted">
-                    Estimated time: {parameters.time_limit} seconds
+                    Maximum time: {parameters.time_limit} seconds (usually finishes faster)
                   </small>
                 </div>
               </div>
@@ -184,13 +230,14 @@ const ScheduleParametersModal = ({
               <div>
                 {/* Basic Parameters */}
                 <div className="form-section mb-4">
-                  <h6 className="form-label">Referee Requirements</h6>
-                  <div className="alert alert-light border-left-info mb-3">
-                    <small>
-                      <strong>Fair distribution:</strong> For a 10-week season, each team would ideally referee 5 games. 
-                      A range of 4-6 games provides good balance while allowing schedule flexibility.
-                    </small>
-                  </div>
+                  <h6 className="form-label">
+                    Referee Requirements 
+                    <i 
+                      className="fas fa-info-circle text-muted ms-2" 
+                      style={{ fontSize: '14px', cursor: 'help' }}
+                      title="For a 10-week season, each team would ideally referee 5 games. A range of 4-6 games provides good balance while allowing schedule flexibility."
+                    ></i>
+                  </h6>
                   <div className="row">
                     <div className="col-md-6">
                       <label className="form-label">Minimum Referee Count</label>
@@ -217,14 +264,14 @@ const ScheduleParametersModal = ({
 
                 {/* Slot Limits */}
                 <div className="form-section mb-4">
-                  <h6 className="form-label">Maximum Games per Team per Time Slot</h6>
-                  <div className="alert alert-light border-left-warning mb-3">
-                    <small>
-                      <strong>Time slot balance:</strong> These limits prevent teams from playing too many games 
-                      at the same time each week. Higher numbers give more flexibility but may create uneven schedules. 
-                      Lower numbers ensure fairness but may make scheduling impossible if too restrictive.
-                    </small>
-                  </div>
+                  <h6 className="form-label">
+                    Maximum Games per Team per Time Slot 
+                    <i 
+                      className="fas fa-info-circle text-muted ms-2" 
+                      style={{ fontSize: '14px', cursor: 'help' }}
+                      title="These limits prevent teams from playing too many games at the same time each week. Higher numbers give more flexibility but may create uneven schedules. Lower numbers ensure fairness but may make scheduling impossible if too restrictive."
+                    ></i>
+                  </h6>
                   <div className="row">
                     {Array.from({ length: numSlots }, (_, i) => i + 1).map(slot => (
                       <div key={slot} className="col-md-3 mb-2">
@@ -243,13 +290,14 @@ const ScheduleParametersModal = ({
 
                 {/* Time Limit */}
                 <div className="form-section mb-4">
-                  <h6 className="form-label">Optimization Settings</h6>
-                  <div className="alert alert-light border-left-success mb-3">
-                    <small>
-                      <strong>Optimization time:</strong> Longer times generally produce better schedules but take more time. 
-                      Start with 60 seconds for most schedules. Increase if you need better balance, decrease if you want faster results.
-                    </small>
-                  </div>
+                  <h6 className="form-label">
+                    Optimization Settings 
+                    <i 
+                      className="fas fa-info-circle text-muted ms-2" 
+                      style={{ fontSize: '14px', cursor: 'help' }}
+                      title="Longer times generally produce better schedules but take more time. Start with 60 seconds for most schedules. Increase if you need better balance, decrease if you want faster results."
+                    ></i>
+                  </h6>
                   <div className="row">
                     <div className="col-md-6">
                       <label className="form-label">Time Limit (seconds)</label>

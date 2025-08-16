@@ -10,6 +10,7 @@ urlpatterns = [
     path("api/seasons/<int:season_id>/activate/", views.activate_season, name="activate_season_api"),
     path("api/seasons/validate/", views.validate_schedule, name="seasons_validate_api"),
     path("api/seasons/<int:season_id>/generate/", views.auto_generate_schedule, name="generate_schedule_api"),
+    path("api/seasons/cancel-generation/", views.cancel_schedule_generation, name="cancel_generation_api"),
     path("api/seasons/<int:season_id>/teams/", views.update_teams_levels, name="update_teams_api"),
     path("api/seasons/create/", views.save_or_update_schedule, name="create_schedule_api"),
     path("api/seasons/<int:season_id>/schedule/", views.save_or_update_schedule, name="update_schedule_api"),

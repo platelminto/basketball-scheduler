@@ -89,11 +89,14 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
             
     return found_blueprints
 
-def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit: float, gapRel: float):
+def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit: float, gapRel: float, cancellation_checker=None):
     """
     Takes a fixed weekly matchup schedule and assigns slots and referees.
     This phase contains the optimization objectives.
     NOW RETURNS the schedule AND its objective score.
+    
+    Args:
+        cancellation_checker: Optional function that returns True if generation should be cancelled
     """
     # ... (The entire setup, variables, and constraints of Phase 2 are UNCHANGED) ...
     # --- Setup ---
@@ -159,9 +162,19 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
         slot_imbalance_per_team.append(max_games_in_slot - min_games_in_slot)
     prob.setObjective(pulp.lpSum(slot_imbalance_per_team))
 
+    # Check for cancellation before solving
+    if cancellation_checker and cancellation_checker():
+        print("    -> Cancelled before solving")
+        return None, None
+    
     # --- Solve ---
-    solver = pulp.PULP_CBC_CMD(timeLimit=time_limit, gapRel=gapRel, msg=1) # msg=0 to keep the output clean
+    solver = pulp.PULP_CBC_CMD(timeLimit=time_limit, gapRel=gapRel, msg=False) # msg=False to keep the output clean
     prob.solve(solver)
+
+    # Check for cancellation after solving
+    if cancellation_checker and cancellation_checker():
+        print("    -> Cancelled after solving")
+        return None, None
 
     # --- Format Output ---
     if pulp.LpStatus[prob.status] in ["Optimal", "Feasible"]:
@@ -201,16 +214,24 @@ def flip_teams_by_round(schedule, team_names_by_level):
     return schedule
 
 ### NEW/MODIFIED ###
-def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprints_to_generate=6, gapRel=0.25):
+def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprints_to_generate=6, gapRel=0.25, cancellation_checker=None):
     """
     Generates a schedule by first finding multiple unique matchup blueprints,
     then running a timed optimization on each one to find the best final schedule.
+    
+    Args:
+        cancellation_checker: Optional function that returns True if generation should be cancelled
     """
     # Phase 1: Generate a list of potential blueprints
     blueprints = phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_generate)
     
     if not blueprints:
         print("\nScheduling failed in Phase 1. No valid matchup blueprints could be found.")
+        return None
+    
+    # Check for cancellation before Phase 2
+    if cancellation_checker and cancellation_checker():
+        print("\nSchedule generation cancelled before Phase 2.")
         return None
     
     # --- Phase 2: Evaluate each blueprint and find the best one ---
@@ -223,9 +244,14 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
     time_per_run = max(1.0, time_limit / len(blueprints)) # Ensure at least 1 second per run
     
     for i, blueprint in enumerate(blueprints):
+        # Check for cancellation before each blueprint
+        if cancellation_checker and cancellation_checker():
+            print(f"\nSchedule generation cancelled during Blueprint #{i+1}.")
+            return None
+            
         print(f"  Optimizing for Blueprint #{i+1}/{len(blueprints)} (time limit: {time_per_run:.1f}s)...")
 
-        schedule, score = phase_2_assign_slots_and_refs(config, team_names_by_level, blueprint, time_limit=time_per_run, gapRel=gapRel)
+        schedule, score = phase_2_assign_slots_and_refs(config, team_names_by_level, blueprint, time_limit=time_per_run, gapRel=gapRel, cancellation_checker=cancellation_checker)
 
         if schedule and score is not None:
             print(f"    -> Result: Feasible, Imbalance Score: {score}")

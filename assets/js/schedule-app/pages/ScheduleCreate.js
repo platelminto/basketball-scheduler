@@ -154,13 +154,13 @@ const ScheduleCreate = () => {
   };
 
   // Handle auto-generate schedule with parameters
-  const autoGenerateSchedule = async (parameters) => {
+  const autoGenerateSchedule = async (parameters, signal = null) => {
     if (!setupData) {
       throw new Error('No setup data available. Please go back to setup.');
     }
 
     try {
-      const response = await fetch('/scheduler/api/seasons/0/generate/', {
+      const fetchOptions = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -171,7 +171,14 @@ const ScheduleCreate = () => {
           weekData: state.weeks,
           parameters: parameters
         })
-      });
+      };
+      
+      // Add abort signal if provided
+      if (signal) {
+        fetchOptions.signal = signal;
+      }
+      
+      const response = await fetch('/scheduler/api/seasons/0/generate/', fetchOptions);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -186,15 +193,19 @@ const ScheduleCreate = () => {
     } catch (error) {
       console.error('Error generating schedule:', error);
       
-      // Show more helpful error message with troubleshooting tips
-      const errorMessage = `Error generating schedule: ${error.message}\n\n` +
-        "Troubleshooting tips:\n" +
-        "• Try increasing the time limit\n" +
-        "• Increase max referee count or slot limits\n" +
-        "• Reduce min referee count requirements\n" +
-        "• Check if your court/time setup is feasible";
+      // Don't show alert for user cancellations
+      if (error.name !== 'AbortError') {
+        // Show more helpful error message with troubleshooting tips
+        const errorMessage = `Error generating schedule: ${error.message}\n\n` +
+          "Troubleshooting tips:\n" +
+          "• Try increasing the time limit\n" +
+          "• Increase max referee count or slot limits\n" +
+          "• Reduce min referee count requirements\n" +
+          "• Check if your court/time setup is feasible";
+        
+        alert(errorMessage);
+      }
       
-      alert(errorMessage);
       throw error; // Re-throw so the modal can handle it
     }
   };

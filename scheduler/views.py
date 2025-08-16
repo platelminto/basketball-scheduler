@@ -1,4 +1,6 @@
 import traceback
+import threading
+import time
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpRequest, HttpResponse
 import json
@@ -11,6 +13,7 @@ from scheduler.models import OffWeek, Season, Level, Team, Game, Week
 from django.contrib import messages
 from icalendar import Calendar, Event
 from django.utils import timezone
+from django.core.cache import cache
 
 from tests import (
     pairing_tests,
@@ -210,13 +213,53 @@ def auto_generate_schedule(request, season_id=None):
             num_blueprints_to_generate = parameters.get("num_blueprints_to_generate", int(time_limit / 10))
             gap_rel = parameters.get("gapRel", 0.25)
 
-            schedule = generate_schedule(
-                config, 
-                config["team_names_by_level"], 
-                time_limit=time_limit,
-                num_blueprints_to_generate=num_blueprints_to_generate,
-                gapRel=gap_rel
-            )
+            # Create cancellation event and session key for this generation
+            session_key = request.session.session_key or request.session.create()
+            cancellation_key = f"schedule_generation_cancelled_{session_key}"
+            
+            # Clear any existing cancellation flag
+            cache.delete(cancellation_key)
+            
+            # Create thread-safe result container
+            result_container = {"schedule": None, "error": None}
+            generation_event = threading.Event()
+            
+            def generate_in_thread():
+                try:
+                    # Create cancellation checker function
+                    def is_cancelled():
+                        return cache.get(cancellation_key, False)
+                    
+                    schedule = generate_schedule(
+                        config, 
+                        config["team_names_by_level"], 
+                        time_limit=time_limit,
+                        num_blueprints_to_generate=num_blueprints_to_generate,
+                        gapRel=gap_rel,
+                        cancellation_checker=is_cancelled
+                    )
+                    result_container["schedule"] = schedule
+                except Exception as e:
+                    result_container["error"] = e
+                finally:
+                    generation_event.set()
+            
+            # Start generation in background thread
+            generation_thread = threading.Thread(target=generate_in_thread)
+            generation_thread.start()
+            
+            # Wait for completion or timeout
+            generation_event.wait(timeout=time_limit + 10)  # Add 10 seconds buffer
+            
+            # Check if cancelled
+            if cache.get(cancellation_key, False):
+                return JsonResponse({"error": "Schedule generation was cancelled"}, status=200)
+            
+            # Check for error
+            if result_container["error"]:
+                raise result_container["error"]
+            
+            schedule = result_container["schedule"]
 
             if not schedule:
                 return JsonResponse({"error": "No schedule found"}, status=400)
@@ -280,6 +323,26 @@ def auto_generate_schedule(request, season_id=None):
             print(traceback.format_exc())
             return JsonResponse({"error": str(e)}, status=500)
 
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+@ensure_csrf_cookie
+def cancel_schedule_generation(request):
+    """
+    Cancel an ongoing schedule generation for this session
+    """
+    if request.method == "POST":
+        try:
+            session_key = request.session.session_key
+            if session_key:
+                cancellation_key = f"schedule_generation_cancelled_{session_key}"
+                cache.set(cancellation_key, True, timeout=300)  # 5 minute timeout
+                return JsonResponse({"message": "Cancellation requested"}, status=200)
+            else:
+                return JsonResponse({"error": "No active session"}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 

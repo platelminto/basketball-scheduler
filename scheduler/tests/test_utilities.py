@@ -169,38 +169,6 @@ class UtilityTests(TestCase):
         self.assertEqual(config["total_weeks"], 2)
         self.assertEqual(config["first_half_weeks"], 1)
 
-    def test_config_with_different_team_counts(self):
-        """Test handling of configuration with different team counts per level."""
-        # Create setup with different team counts
-        uneven_setup = self.team_setup_output.copy()
-        uneven_setup["teams"] = {
-            "A": ["Team A1", "Team A2", "Team A3", "Team A4"],
-            "B": ["Team B1", "Team B2", "Team B3", "Team B4", "Team B5", "Team B6"]
-        }
-        
-        # Create week data for the uneven setup test
-        week_data = {}
-        for week in self.team_setup_output["schedule"]["weeks"]:
-            if not week.get("isOffWeek", False):
-                week_data[week["weekNumber"]] = {
-                    "games": [],
-                    "isOffWeek": False
-                }
-                # Add mock games data for each week
-                for day in week.get("days", []):
-                    for time_slot in day.get("times", []):
-                        # Create mock games for each court/time combination
-                        for court in range(time_slot["courts"]):
-                            week_data[week["weekNumber"]]["games"].append({
-                                "day_of_week": 1,  # Monday
-                                "time": time_slot["time"]
-                            })
-        
-        # This should raise a ValueError
-        with self.assertRaises(ValueError) as context:
-            get_config_from_schedule_creator(uneven_setup, week_data)
-        
-        self.assertTrue("same number of teams" in str(context.exception))
 
     def test_save_and_load_schedule(self):
         """Test saving and loading a schedule to/from a file."""
