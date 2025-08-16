@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
 import { SET_SCHEDULE_DATA, RESET_CHANGE_TRACKING, UPDATE_GAME } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
+import ScheduleParametersModal from '../components/ScheduleParametersModal';
 
 const ScheduleCreate = () => {
   const { state, dispatch } = useSchedule();
@@ -11,6 +12,7 @@ const ScheduleCreate = () => {
   const [setupData, setSetupData] = useState(null);
   const [isDevelopment, setIsDevelopment] = useState(false);
   const [shouldRandomFill, setShouldRandomFill] = useState(false);
+  const [showParametersModal, setShowParametersModal] = useState(false);
 
   // Reset change tracking when component mounts to prevent stale state
   useEffect(() => {
@@ -151,11 +153,10 @@ const ScheduleCreate = () => {
     dispatch({ type: SET_SCHEDULE_DATA, payload: scheduleData });
   };
 
-  // Handle auto-generate schedule (dev mode)
-  const autoGenerateSchedule = async () => {
+  // Handle auto-generate schedule with parameters
+  const autoGenerateSchedule = async (parameters) => {
     if (!setupData) {
-      alert('No setup data available. Please go back to setup.');
-      return;
+      throw new Error('No setup data available. Please go back to setup.');
     }
 
     try {
@@ -168,6 +169,7 @@ const ScheduleCreate = () => {
         body: JSON.stringify({
           setupData: setupData,
           weekData: state.weeks,
+          parameters: parameters
         })
       });
 
@@ -183,8 +185,23 @@ const ScheduleCreate = () => {
       fillScheduleWithGeneratedData(data.schedule);
     } catch (error) {
       console.error('Error generating schedule:', error);
-      alert('Error generating schedule: ' + error.message);
+      
+      // Show more helpful error message with troubleshooting tips
+      const errorMessage = `Error generating schedule: ${error.message}\n\n` +
+        "Troubleshooting tips:\n" +
+        "• Try increasing the time limit\n" +
+        "• Increase max referee count or slot limits\n" +
+        "• Reduce min referee count requirements\n" +
+        "• Check if your court/time setup is feasible";
+      
+      alert(errorMessage);
+      throw error; // Re-throw so the modal can handle it
     }
+  };
+
+  // Show the parameters modal
+  const showAutoGenerateModal = () => {
+    setShowParametersModal(true);
   };
 
   // Fill schedule with auto-generated data
@@ -446,7 +463,15 @@ const ScheduleCreate = () => {
         shouldRandomFill={shouldRandomFill}
         onRandomFillComplete={() => setShouldRandomFill(false)}
         isDevelopment={isDevelopment}
-        onAutoGenerate={autoGenerateSchedule}
+        onAutoGenerate={showAutoGenerateModal}
+      />
+      
+      {/* Schedule Parameters Modal */}
+      <ScheduleParametersModal
+        isOpen={showParametersModal}
+        onClose={() => setShowParametersModal(false)}
+        onGenerate={autoGenerateSchedule}
+        setupData={setupData}
       />
     </div>
   );

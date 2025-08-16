@@ -189,17 +189,34 @@ def auto_generate_schedule(request, season_id=None):
             data = json.loads(request.body)
             setup_data = data.get("setupData", "")
             week_data = data.get("weekData", "")
+            parameters = data.get("parameters", {})
 
             # Get configuration from the setup data
             config = get_config_from_schedule_creator(setup_data, week_data)
 
             from schedule import generate_schedule
 
-            config["slot_limits"] = {1: 3, 2: 5, 3: 5, 4: 4}
-            config["min_referee_count"] = 4
-            config["max_referee_count"] = 6
+            # Apply parameters from the frontend, with fallbacks to defaults
+            config["min_referee_count"] = parameters.get("min_referee_count", 4)
+            config["max_referee_count"] = parameters.get("max_referee_count", 6)
+            config["slot_limits"] = parameters.get("slot_limits", {1: 3, 2: 5, 3: 5, 4: 4})
+            
+            # Convert string keys to integers for slot_limits
+            if isinstance(config["slot_limits"], dict):
+                config["slot_limits"] = {int(k): v for k, v in config["slot_limits"].items()}
+            
+            # Extract optimization parameters
+            time_limit = parameters.get("time_limit", 10.0)
+            num_blueprints_to_generate = parameters.get("num_blueprints_to_generate", int(time_limit / 10))
+            gap_rel = parameters.get("gapRel", 0.25)
 
-            schedule = generate_schedule(config, config["team_names_by_level"], time_limit=10.0)
+            schedule = generate_schedule(
+                config, 
+                config["team_names_by_level"], 
+                time_limit=time_limit,
+                num_blueprints_to_generate=num_blueprints_to_generate,
+                gapRel=gap_rel
+            )
 
             if not schedule:
                 return JsonResponse({"error": "No schedule found"}, status=400)
