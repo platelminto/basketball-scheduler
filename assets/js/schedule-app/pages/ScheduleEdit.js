@@ -476,7 +476,7 @@ const ScheduleEdit = () => {
         <div className="d-flex gap-3 align-items-center">
         </div>
 
-        <div className="d-flex gap-2">
+        <div className="d-flex gap-2 mb-3">
           <Link to="/" className="btn btn-secondary">
             Back to Seasons List
           </Link>

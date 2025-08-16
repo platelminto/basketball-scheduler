@@ -17,7 +17,7 @@ const ScheduleParametersModal = ({
     },
     time_limit: 60,
     // Advanced options
-    num_blueprints_to_generate: 6,
+    num_blueprints_to_generate: '',
     gapRel: 0.25
   });
 
@@ -51,7 +51,7 @@ const ScheduleParametersModal = ({
     if (parameters.min_referee_count === '') emptyFields.push('Minimum Referee Count');
     if (parameters.max_referee_count === '') emptyFields.push('Maximum Referee Count');
     if (parameters.time_limit === '') emptyFields.push('Time Limit');
-    if (parameters.num_blueprints_to_generate === '') emptyFields.push('Number of Blueprints');
+    // num_blueprints_to_generate is optional - backend handles default
     if (parameters.gapRel === '') emptyFields.push('Relative Gap Tolerance');
     
     // Check slot limits
@@ -299,7 +299,7 @@ const ScheduleParametersModal = ({
                           type="number"
                           className="form-control"
                           min="0"
-                          value={parameters.slot_limits[slot] || 0}
+                          value={parameters.slot_limits[slot] || ''}
                           onChange={(e) => handleSlotLimitChange(slot, e.target.value)}
                         />
                       </div>
@@ -366,7 +366,7 @@ const ScheduleParametersModal = ({
                         />
                         <small className="text-muted">
                           Fewer blueprints = spend more time optimizing each schedule. 
-                          More blueprints = try more variations but less optimization per attempt.
+                          More blueprints = try more variations but less optimization per attempt. Default is 1 blueprint per 10 seconds of the time limit.
                         </small>
                       </div>
                       <div className="col-md-6">

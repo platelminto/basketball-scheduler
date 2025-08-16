@@ -210,7 +210,8 @@ def auto_generate_schedule(request, season_id=None):
             
             # Extract optimization parameters
             time_limit = parameters.get("time_limit", 10.0)
-            num_blueprints_to_generate = parameters.get("num_blueprints_to_generate", int(time_limit / 10))
+            if not parameters.get("num_blueprints_to_generate"):
+                num_blueprints_to_generate = int(time_limit / 10)
             gap_rel = parameters.get("gapRel", 0.25)
 
             # Create cancellation event and session key for this generation
