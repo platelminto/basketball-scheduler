@@ -24,9 +24,11 @@ const GameRow = ({ game, weekId, mode = 'score-edit' }) => {
   // Check if this week is locked for score editing
   const isWeekLocked = state.lockedWeeks.has(weekId);
   
-  // Check if this game has been changed
-  const isChanged = state.changedGames && state.changedGames.has(game.id) || 
-                   (state.newGames && state.newGames.has(game.id));
+  // Check if this game has been changed (but not in create mode - no concept of "editing" there)
+  const isChanged = mode !== 'create' && (
+    (state.changedGames && state.changedGames.has(game.id)) || 
+    (state.newGames && state.newGames.has(game.id))
+  );
   
   const handleChange = (field, value) => {
     // Special handling for day_of_week to update the date

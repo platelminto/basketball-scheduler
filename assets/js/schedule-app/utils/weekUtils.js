@@ -87,25 +87,6 @@ export const createNewWeek = (weeks, templateWeek = null) => {
 };
 
 /**
- * Creates a new off week object
- * @param {Object} weeks - Current weeks object
- * @returns {Object} New off week object
- */
-export const createOffWeek = (weeks) => {
-  const startDate = findNextWeekDate(weeks);
-  const formattedDate = formatDate(startDate);
-  const nextWeekNum = Object.keys(weeks).length + 1;
-  
-  return {
-    id: nextWeekNum,
-    week_number: nextWeekNum,
-    monday_date: formattedDate,
-    games: [],
-    isOffWeek: true
-  };
-};
-
-/**
  * Finds the last non-off week from the schedule
  * @param {Object} weeks - Schedule weeks object
  * @returns {Object|null} Last normal week or null if none found

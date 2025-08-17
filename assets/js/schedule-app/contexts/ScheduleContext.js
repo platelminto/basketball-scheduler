@@ -19,6 +19,8 @@ export const DELETE_GAME = 'DELETE_GAME';
 export const UPDATE_WEEK_DATE = 'UPDATE_WEEK_DATE';
 export const DELETE_WEEK = 'DELETE_WEEK';
 export const ADD_OFF_WEEK = 'ADD_OFF_WEEK';
+export const ADD_NEW_WEEK = 'ADD_NEW_WEEK';
+export const COPY_WEEK = 'COPY_WEEK';
 export const MARK_CHANGED = 'MARK_CHANGED';
 export const RESET_CHANGE_TRACKING = 'RESET_CHANGE_TRACKING';
 export const TOGGLE_WEEK_LOCK = 'TOGGLE_WEEK_LOCK';
@@ -508,6 +510,206 @@ const scheduleReducer = (state, action) => {
           ...week,
           week_number: newWeekNumber,
           monday_date: adjustedDate,
+          games: updatedGames
+        };
+        
+        renumberedWeeks[newWeekNumber] = updatedWeek;
+        
+        // Mark all affected weeks as changed
+        changedWeeks.add(newWeekNumber);
+      });
+      
+      return {
+        ...state,
+        weeks: renumberedWeeks,
+        changedWeeks
+      };
+    }
+
+    case ADD_NEW_WEEK: {
+      const { afterWeekId, newWeekData } = action.payload;
+      const updatedWeeks = { ...state.weeks };
+      
+      // Get all weeks sorted by week number
+      const sortedWeeks = Object.values(updatedWeeks)
+        .sort((a, b) => a.week_number - b.week_number);
+      
+      // Find insertion position
+      let insertionIndex;
+      if (afterWeekId === null) {
+        // Insert at the beginning
+        insertionIndex = 0;
+      } else {
+        // Find the index after the specified week
+        const afterWeekIndex = sortedWeeks.findIndex(w => w.week_number === afterWeekId);
+        insertionIndex = afterWeekIndex !== -1 ? afterWeekIndex + 1 : sortedWeeks.length;
+      }
+      
+      // Create new week with temporary ID
+      const newWeek = {
+        id: `new_week_${Date.now()}`,
+        week_number: 0, // Will be set during renumbering
+        monday_date: newWeekData.monday_date,
+        games: newWeekData.games || [],
+        isOffWeek: false
+      };
+      
+      // Insert the new week into the sorted array
+      sortedWeeks.splice(insertionIndex, 0, newWeek);
+      
+      // Renumber all weeks sequentially and adjust dates
+      const renumberedWeeks = {};
+      const changedWeeks = new Set(state.changedWeeks);
+      
+      sortedWeeks.forEach((week, index) => {
+        const newWeekNumber = index + 1;
+        
+        // Calculate the appropriate Monday date for this week position
+        let mondayDate;
+        if (index === 0) {
+          // First week - use the provided date or original date
+          mondayDate = week.monday_date;
+        } else {
+          // Subsequent weeks - calculate based on previous week
+          const prevWeekDate = new Date(sortedWeeks[index - 1].monday_date);
+          const nextWeekDate = new Date(prevWeekDate);
+          nextWeekDate.setDate(prevWeekDate.getDate() + 7);
+          mondayDate = nextWeekDate.toISOString().split('T')[0];
+        }
+        
+        // Update games' dates to match the new week date
+        const updatedGames = week.games.map(game => {
+          if (game.day_of_week !== undefined && game.day_of_week !== null) {
+            const gameDate = new Date(mondayDate);
+            gameDate.setDate(gameDate.getDate() + parseInt(game.day_of_week));
+            return {
+              ...game,
+              date: gameDate.toISOString().split('T')[0]
+            };
+          }
+          return game;
+        });
+        
+        const updatedWeek = {
+          ...week,
+          week_number: newWeekNumber,
+          monday_date: mondayDate,
+          games: updatedGames
+        };
+        
+        renumberedWeeks[newWeekNumber] = updatedWeek;
+        
+        // Mark all affected weeks as changed
+        changedWeeks.add(newWeekNumber);
+      });
+      
+      return {
+        ...state,
+        weeks: renumberedWeeks,
+        changedWeeks
+      };
+    }
+
+    case COPY_WEEK: {
+      const { afterWeekId, templateWeek } = action.payload;
+      const updatedWeeks = { ...state.weeks };
+      
+      // Get all weeks sorted by week number
+      const sortedWeeks = Object.values(updatedWeeks)
+        .sort((a, b) => a.week_number - b.week_number);
+      
+      // Find insertion position
+      let insertionIndex;
+      if (afterWeekId === null) {
+        // Insert at the beginning
+        insertionIndex = 0;
+      } else {
+        // Find the index after the specified week
+        const afterWeekIndex = sortedWeeks.findIndex(w => w.week_number === afterWeekId);
+        insertionIndex = afterWeekIndex !== -1 ? afterWeekIndex + 1 : sortedWeeks.length;
+      }
+      
+      // Calculate the appropriate date for the new week
+      let newWeekDate;
+      if (insertionIndex === 0) {
+        // Inserting at the beginning - use one week before the first week
+        if (sortedWeeks.length > 0) {
+          const firstWeekDate = new Date(sortedWeeks[0].monday_date);
+          const prevWeekDate = new Date(firstWeekDate);
+          prevWeekDate.setDate(firstWeekDate.getDate() - 7);
+          newWeekDate = prevWeekDate.toISOString().split('T')[0];
+        } else {
+          // No existing weeks, use current Monday
+          const currentDate = new Date();
+          const dayOfWeek = currentDate.getDay();
+          const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+          currentDate.setDate(currentDate.getDate() + daysUntilMonday);
+          newWeekDate = currentDate.toISOString().split('T')[0];
+        }
+      } else if (insertionIndex >= sortedWeeks.length) {
+        // Inserting at the end - use one week after the last week
+        const lastWeekDate = new Date(sortedWeeks[sortedWeeks.length - 1].monday_date);
+        const nextWeekDate = new Date(lastWeekDate);
+        nextWeekDate.setDate(lastWeekDate.getDate() + 7);
+        newWeekDate = nextWeekDate.toISOString().split('T')[0];
+      } else {
+        // Inserting between weeks - use the date where we're inserting
+        newWeekDate = sortedWeeks[insertionIndex].monday_date;
+      }
+      
+      // Create new week by copying template
+      const newWeek = {
+        id: `copied_week_${Date.now()}`,
+        week_number: 0, // Will be set during renumbering
+        monday_date: newWeekDate,
+        games: templateWeek.games.map(game => ({
+          ...game,
+          id: `new_${Date.now()}_${Math.random()}`,
+          date: new Date(newWeekDate).toISOString().split('T')[0] // Will be updated with proper day offset below
+        })),
+        isOffWeek: false
+      };
+      
+      // Insert the new week into the sorted array
+      sortedWeeks.splice(insertionIndex, 0, newWeek);
+      
+      // Renumber all weeks sequentially and adjust dates
+      const renumberedWeeks = {};
+      const changedWeeks = new Set(state.changedWeeks);
+      
+      sortedWeeks.forEach((week, index) => {
+        const newWeekNumber = index + 1;
+        
+        // Calculate the appropriate Monday date for this week position
+        let mondayDate;
+        if (index === 0) {
+          // First week - use the calculated date
+          mondayDate = week.monday_date;
+        } else {
+          // Subsequent weeks - calculate based on previous week
+          const prevWeekDate = new Date(sortedWeeks[index - 1].monday_date);
+          const nextWeekDate = new Date(prevWeekDate);
+          nextWeekDate.setDate(prevWeekDate.getDate() + 7);
+          mondayDate = nextWeekDate.toISOString().split('T')[0];
+        }
+        
+        // Update games' dates to match the new week date
+        const updatedGames = week.games.map(game => {
+          if (game.day_of_week !== undefined && game.day_of_week !== null) {
+            const gameDate = new Date(mondayDate);
+            gameDate.setDate(gameDate.getDate() + parseInt(game.day_of_week));
+            return {
+              ...game,
+              date: gameDate.toISOString().split('T')[0]
+            };
+          }
+          return game;
+        });
+        
+        const updatedWeek = {
+          ...week,
+          week_number: newWeekNumber,
+          monday_date: mondayDate,
           games: updatedGames
         };
         

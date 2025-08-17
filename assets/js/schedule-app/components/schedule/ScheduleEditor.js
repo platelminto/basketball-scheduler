@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useSchedule } from '../../hooks/useSchedule';
 import { useScheduleValidation } from '../../hooks/useScheduleValidation';
 import { useRandomFill } from '../../hooks/useRandomFill';
-import { ADD_GAME, SET_SCHEDULE_DATA } from '../../contexts/ScheduleContext';
-import { createNewWeek, createOffWeek, findLastNormalWeek, createDefaultWeek, scrollToWeek } from '../../utils/weekUtils';
+import { SET_SCHEDULE_DATA } from '../../contexts/ScheduleContext';
+import { createDefaultWeek } from '../../utils/weekUtils';
 import { collectGameAssignments, collectWeekData } from '../../utils/scheduleDataTransforms';
 import WeekContainer from './WeekContainer';
 import OffWeekDisplay from './OffWeekDisplay';
@@ -12,9 +11,7 @@ import WeekSeparator from './WeekSeparator';
 import ValidationResults from './ValidationResults';
 
 const ScheduleEditor = ({ 
-  initialData = null, 
   mode = 'create', // 'create', 'schedule-edit', or 'score-edit'
-  seasonId = null,
   onSave,
   showValidation = false,
   shouldRandomFill = false,
@@ -24,7 +21,6 @@ const ScheduleEditor = ({
   useSimpleView = false,
 }) => {
   const { state, dispatch } = useSchedule();
-  const navigate = useNavigate();
   const [renderKey, setRenderKey] = useState(0); // Used to force re-render
   
   // Custom hooks for validation and random fill
@@ -52,104 +48,7 @@ const ScheduleEditor = ({
 
 
   // Week management functions
-  const addWeek = (templateWeek = null) => {
-    // Clear validation results since we're making changes
-    validation.clearValidationResults();
-    
-    const newWeek = createNewWeek(state.weeks, templateWeek);
-    const nextWeekNum = newWeek.week_number;
-    
-    // Update state with the new week
-    const updatedWeeks = {
-      ...state.weeks,
-      [nextWeekNum]: newWeek
-    };
-    
-    // Update the context
-    dispatch({ 
-      type: SET_SCHEDULE_DATA, 
-      payload: {
-        ...state,
-        weeks: updatedWeeks
-      }
-    });
-    
-    // Scroll to the newly added week
-    scrollToWeek(nextWeekNum);
-  };
   
-  const addOffWeek = () => {
-    // Clear validation results since we're making changes
-    validation.clearValidationResults();
-    
-    const newWeek = createOffWeek(state.weeks);
-    const nextWeekNum = newWeek.week_number;
-    
-    // Update state with the new week
-    const updatedWeeks = {
-      ...state.weeks,
-      [nextWeekNum]: newWeek
-    };
-    
-    // Update the context
-    dispatch({ 
-      type: SET_SCHEDULE_DATA, 
-      payload: {
-        ...state,
-        weeks: updatedWeeks
-      }
-    });
-    
-    // Scroll to the newly added week
-    scrollToWeek(nextWeekNum);
-  };
-  
-  const copyLastWeek = () => {
-    const lastNormalWeek = findLastNormalWeek(state.weeks);
-    
-    // If no normal weeks found, show alert
-    if (!lastNormalWeek) {
-      alert('No regular weeks found to copy. Please add a regular week first.');
-      return;
-    }
-    
-    // Use the last non-off week as a template for the new week
-    // addWeek will handle clearing validation results
-    addWeek(lastNormalWeek);
-  };
-  
-  
-  const handleAddGame = (weekId) => {
-    // Create a new game object
-    const tempGameId = 'new_' + Date.now() + Math.random();
-    
-    const newGame = {
-      id: tempGameId,
-      day_of_week: 0, // Monday by default
-      time: '',
-      court: '',
-      level_id: '',
-      level_name: '',
-      team1_id: '',
-      team1_name: '',
-      team2_id: '',
-      team2_name: '',
-      team1_score: '',
-      team2_score: '',
-      referee_team_id: '',
-      referee_name: '',
-      isDeleted: false
-    };
-    
-    // Add the game to the week
-    dispatch({
-      type: ADD_GAME,
-      payload: { 
-        weekId,
-        game: newGame
-      }
-    });
-  };
   
   const handleSave = async (event) => {
     // Prevent default form submission if this is a form event
@@ -342,18 +241,6 @@ const ScheduleEditor = ({
               )}
             </div>
 
-            {/* Center - Week management buttons */}
-            <div className="d-flex flex-wrap gap-2 justify-content-center">
-              <button type="button" className="btn btn-primary" onClick={copyLastWeek}>
-                Copy Above Week
-              </button>
-              <button type="button" className="btn btn-outline-secondary" onClick={() => addWeek()}>
-                + Add New Week
-              </button>
-              <button type="button" className="btn btn-warning" onClick={addOffWeek}>
-                + Add Off Week
-              </button>
-            </div>
             
             {/* Right side - Validate/Save buttons */}
             <div className="d-flex gap-2">
