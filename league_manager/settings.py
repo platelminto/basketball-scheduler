@@ -27,6 +27,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["geedorah", "localhost", "127.0.0.1", "x1"]
 
+if DEBUG:
+    ALLOWED_HOSTS += ["*"]
+
 
 # Application definition
 

@@ -361,6 +361,13 @@ def cancel_schedule_generation(request):
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 
+def normalize_time_field(time_value):
+    """Convert empty string to None for TimeField compatibility"""
+    if time_value == "" or time_value is None:
+        return None
+    return time_value
+
+
 @require_POST
 @transaction.atomic
 def save_or_update_schedule(request: HttpRequest, season_id=None):
@@ -452,8 +459,8 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
                         title=title,
                         description=description,
                         has_basketball=has_basketball,
-                        start_time=week_info.get("start_time"),
-                        end_time=week_info.get("end_time")
+                        start_time=normalize_time_field(week_info.get("start_time")),
+                        end_time=normalize_time_field(week_info.get("end_time"))
                     )
                 else:
                     Week.objects.create(
@@ -505,8 +512,8 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
                                     title=title,
                                     description=description,
                                     has_basketball=has_basketball,
-                                    start_time=week_date.get("start_time"),
-                                    end_time=week_date.get("end_time")
+                                    start_time=normalize_time_field(week_date.get("start_time")),
+                                    end_time=normalize_time_field(week_date.get("end_time"))
                                 )
                             else:
                                 # Create new regular week
