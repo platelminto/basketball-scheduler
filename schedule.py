@@ -152,17 +152,42 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
         prob += total_refs <= config["max_referee_count"]
         for s in slots_range:
             prob += pulp.lpSum(is_playing[(t, w, s)] for w in weeks_range) <= config["slot_limits"][s]
-    # --- Objective Function (UNCHANGED) ---
-    slot_imbalance_per_team = []
+    # --- Objective Function: Weighted deviation from expected slot distribution ---
+    # Calculate target slot distribution based on court availability
+    total_courts_per_slot = {s: sum(config["courts_per_slot"][s]) for s in slots_range}
+    total_courts = sum(total_courts_per_slot.values())
+    
+    # Calculate expected games per team per slot
+    total_team_games = total_weeks  # Each team plays one game per week
+    target_games_per_slot = {}
+    for s in slots_range:
+        slot_proportion = total_courts_per_slot[s] / total_courts
+        target_games_per_slot[s] = slot_proportion * total_team_games
+    
+    # Define weights: prioritize balancing first and last slots more than middle ones
+    slot_weights = {}
+    for s in slots_range:
+        if s == 1 or s == num_slots:  # First or last slot
+            slot_weights[s] = 3.0  # Higher weight for extreme slots
+        else:  # Middle slots
+            slot_weights[s] = 1.0  # Standard weight for middle slots
+    
+    # Calculate weighted deviations from target for each team
+    slot_deviations = []
     for t in all_teams:
         plays_per_slot = {s: pulp.lpSum(is_playing[t,w,s] for w in weeks_range) for s in slots_range}
-        min_games_in_slot = pulp.LpVariable(f"MinGamesInSlot_{t}", cat='Integer')
-        max_games_in_slot = pulp.LpVariable(f"MaxGamesInSlot_{t}", cat='Integer')
         for s in slots_range:
-            prob += plays_per_slot[s] >= min_games_in_slot
-            prob += plays_per_slot[s] <= max_games_in_slot
-        slot_imbalance_per_team.append(max_games_in_slot - min_games_in_slot)
-    prob.setObjective(pulp.lpSum(slot_imbalance_per_team))
+            # Use weighted deviation from target
+            deviation = plays_per_slot[s] - target_games_per_slot[s]
+            # For linear programming, we need to handle absolute value using auxiliary variables
+            abs_deviation = pulp.LpVariable(f"AbsDev_{t}_{s}", lowBound=0, cat='Continuous')
+            prob += abs_deviation >= deviation
+            prob += abs_deviation >= -deviation
+            # Apply weight to this slot's deviation
+            weighted_deviation = slot_weights[s] * abs_deviation
+            slot_deviations.append(weighted_deviation)
+    
+    prob.setObjective(pulp.lpSum(slot_deviations))
 
     # Check for cancellation before solving
     if cancellation_checker and cancellation_checker():
@@ -548,7 +573,7 @@ if __name__ == "__main__":
     
     ### NEW/MODIFIED ###
     # We now call the generator with a total time limit and the number of blueprints to try
-    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=60, num_blueprints_to_generate=10, gapRel=0.1, verbose=True)
+    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=60, num_blueprints_to_generate=6, gapRel=0.01, verbose=True)
 
     if final_schedule:
         # These functions for testing and stats would be run as before

@@ -77,15 +77,9 @@ def generate_schedule_process(config, time_limit, num_blueprints_to_generate, ga
     finally:
         # Clean up progress data when done
         cache.delete(progress_key)
-        # Also clean up progress file
-        import tempfile
-        import os
-        progress_file = os.path.join(tempfile.gettempdir(), f"{progress_key}.json")
-        try:
-            if os.path.exists(progress_file):
-                os.remove(progress_file)
-        except Exception as e:
-            print(f"Error cleaning up progress file: {e}")
+        # Note: We intentionally don't delete the progress file here
+        # so that the frontend can do a final poll to get the last blueprint results
+        # The progress file will be cleaned up on the next generation
 
 
 def validate_generation_constraints(schedule, week_data):

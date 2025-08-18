@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import ScheduleGenerationScreen from './ScheduleGenerationScreen';
 
 const ScheduleParametersModal = ({ 
   isOpen, 
@@ -39,7 +40,6 @@ const ScheduleParametersModal = ({
   const [abortController, setAbortController] = useState(null);
   const [progressData, setProgressData] = useState(null);
   const [generatedSchedule, setGeneratedSchedule] = useState(null);
-  const scrollRef = useRef(null);
 
   // Cancel generation if page is unloaded
   useEffect(() => {
@@ -116,6 +116,10 @@ const ScheduleParametersModal = ({
         setIsGenerating(false);
         setElapsedTime(0);
         setAbortController(null);
+        
+        // Do one final poll to get the last blueprint results
+        await pollProgress();
+        
         // Keep progressData for final results display
         setGeneratedSchedule(result);
         // Don't close modal automatically - let user apply the schedule
@@ -247,12 +251,6 @@ const ScheduleParametersModal = ({
     };
   }, [isGenerating]);
 
-  // Auto-scroll to bottom when blueprint results update
-  useEffect(() => {
-    if (scrollRef.current && progressData && progressData.blueprint_results) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [progressData?.blueprint_results]);
 
   const getNumSlots = () => {
     if (!setupData || !setupData.schedule || !setupData.schedule.weeks) return 4;
@@ -293,8 +291,8 @@ const ScheduleParametersModal = ({
           </div>
 
           <div className="modal-body">
+            {/* Show info only when configuring parameters */}
             {!isGenerating && !generatedSchedule && (
-              // General Information
               <div className="alert alert-info mb-4">
                 <h6><i className="fas fa-info-circle"></i> Schedule Generation</h6>
                 <p className="mb-0">
@@ -304,191 +302,19 @@ const ScheduleParametersModal = ({
               </div>
             )}
             
-            {isGenerating ? (
-              <div className="text-center">
-                <div className="spinner-border text-primary mb-3" role="status"></div>
-                <p>Generating schedule... {elapsedTime}s / {parameters.time_limit}s</p>
-                
-                {/* Progress information */}
-                {progressData && (
-                  <div className="mt-3 mb-3">
-                    <div style={{ fontSize: '0.85em', textAlign: 'left' }}>
-                      <div className="mb-2" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
-                        {progressData.current_blueprint}/{progressData.total_blueprints} blueprints
-                        {progressData.best_score !== null && progressData.best_score !== undefined && (
-                          <span style={{ marginLeft: '1rem', color: 'var(--success, #10b981)' }}>
-                            Best: {progressData.best_score}
-                          </span>
-                        )}
-                        <span style={{ marginLeft: '1rem', color: 'var(--text-secondary, #6b7280)', fontSize: '0.9em' }}>
-                          (Theoretical Best: {progressData.best_possible_score !== null && progressData.best_possible_score !== undefined ? progressData.best_possible_score : '...'})
-                        </span>
-                      </div>
-                      
-                      {/* Blueprint results */}
-                      {progressData.blueprint_results && Object.keys(progressData.blueprint_results).length > 0 && (
-                        <div 
-                          ref={scrollRef}
-                          style={{ 
-                            maxHeight: '120px', 
-                            overflowY: 'auto',
-                            backgroundColor: 'var(--bg-secondary, #f8f9fa)',
-                            border: '1px solid var(--border-primary, #e5e7eb)',
-                            borderRadius: '4px',
-                            padding: '8px'
-                          }}
-                        >
-                          {Object.entries(progressData.blueprint_results)
-                            .sort(([a], [b]) => parseInt(a) - parseInt(b))
-                            .map(([blueprintNum, result]) => {
-                              const isCurrentlyRunning = parseInt(blueprintNum) === progressData.current_blueprint && result.score !== 'infeasible' && typeof result.score !== 'number';
-                              const isBest = result.score !== 'infeasible' && typeof result.score === 'number' && result.score === progressData.best_score;
-                              return (
-                                <div key={blueprintNum} style={{ 
-                                  marginBottom: '2px',
-                                  padding: '2px 6px',
-                                  backgroundColor: isBest ? 'var(--success-light, #d1fae5)' : 'transparent',
-                                  borderRadius: '3px',
-                                  fontSize: '0.9em',
-                                  lineHeight: '1.3'
-                                }}>
-                                  <span style={{ color: 'var(--text-secondary, #6b7280)' }}>
-                                    #{blueprintNum}:
-                                  </span>
-                                  <span style={{ 
-                                    marginLeft: '6px',
-                                    color: result.score === 'infeasible' ? 'var(--warning, #f59e0b)' : 
-                                           isCurrentlyRunning ? 'var(--text-secondary, #6b7280)' : 'var(--text-primary)',
-                                    fontWeight: isBest ? 'bold' : 'normal'
-                                  }}>
-                                    {result.score === 'infeasible' ? 'Infeasible' : (isCurrentlyRunning ? 'Running...' : result.score)}
-                                  </span>
-                                  {isBest && (
-                                    <span style={{ 
-                                      marginLeft: '6px',
-                                      color: 'var(--success, #10b981)',
-                                      fontWeight: 'bold',
-                                      fontSize: '0.85em'
-                                    }}>
-                                      ← BEST!
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : generatedSchedule ? (
-              // Generation Complete - Show Results
-              <div className="text-center">
-                <div className="alert alert-success mb-4">
-                  <h6><i className="fas fa-check-circle"></i> Schedule Generated Successfully!</h6>
-                  <p className="mb-0">
-                    {(() => {
-                      // Use backend blueprint results if available
-                      if (progressData && progressData.blueprint_results) {
-                        const blueprintCount = Object.keys(progressData.blueprint_results).length;
-                        const hasRunningBlueprints = Object.values(progressData.blueprint_results).some(r => 
-                          r.score !== 'infeasible' && typeof r.score !== 'number'
-                        );
-                        
-                        if (hasRunningBlueprints) {
-                          return `Stopped early and using best schedule found with ${blueprintCount} blueprint${blueprintCount !== 1 ? 's' : ''} tested.`;
-                        } else {
-                          return `Found an optimal schedule with ${blueprintCount} blueprint${blueprintCount !== 1 ? 's' : ''} tested.`;
-                        }
-                      } else {
-                        return "Schedule generated successfully!";
-                      }
-                    })()}
-                    {(() => {
-                      // Use backend best score if available
-                      if (progressData && progressData.best_score !== null && progressData.best_score !== undefined) {
-                        return (
-                          <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>
-                            <span style={{ color: 'var(--success, #10b981)' }}>
-                              Best Score: {progressData.best_score}
-                            </span>
-                            {progressData.best_possible_score !== null && progressData.best_possible_score !== undefined && (
-                              <span style={{ marginLeft: '8px', color: 'var(--text-secondary, #6b7280)', fontSize: '0.9em', fontWeight: 'normal' }}>
-                                (Theoretical Best: {progressData.best_possible_score})
-                              </span>
-                            )}
-                          </span>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </p>
-                </div>
-                
-                {/* Final results summary */}
-                {progressData && progressData.blueprint_results && Object.keys(progressData.blueprint_results).length > 0 && (
-                  <div className="mb-4">
-                    <div style={{ fontSize: '0.85em', textAlign: 'left' }}>
-                      <div className="mb-2" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
-                        Final Results:
-                        {progressData && (
-                          <span style={{ marginLeft: '1rem', color: 'var(--text-secondary, #6b7280)', fontSize: '0.9em', fontWeight: 'normal' }}>
-                            (Theoretical Best: {progressData.best_possible_score !== null && progressData.best_possible_score !== undefined ? progressData.best_possible_score : '...'})
-                          </span>
-                        )}
-                      </div>
-                      <div 
-                        style={{ 
-                          maxHeight: '120px', 
-                          overflowY: 'auto',
-                          backgroundColor: 'var(--bg-secondary, #f8f9fa)',
-                          border: '1px solid var(--border-primary, #e5e7eb)',
-                          borderRadius: '4px',
-                          padding: '8px'
-                        }}
-                      >
-                        {Object.entries(progressData.blueprint_results)
-                          .sort(([a], [b]) => parseInt(a) - parseInt(b))
-                          .map(([blueprintNum, result]) => {
-                            const isBest = result.score !== 'infeasible' && typeof result.score === 'number' && result.score === progressData.best_score;
-                            return (
-                              <div key={blueprintNum} style={{ 
-                                marginBottom: '2px',
-                                padding: '2px 6px',
-                                backgroundColor: isBest ? 'var(--success-light, #d1fae5)' : 'transparent',
-                                borderRadius: '3px',
-                                fontSize: '0.9em',
-                                lineHeight: '1.3'
-                              }}>
-                                <span style={{ color: 'var(--text-secondary, #6b7280)' }}>
-                                  #{blueprintNum}:
-                                </span>
-                                <span style={{ 
-                                  marginLeft: '6px',
-                                  color: result.score === 'infeasible' ? 'var(--warning, #f59e0b)' : 'var(--text-primary)',
-                                  fontWeight: isBest ? 'bold' : 'normal'
-                                }}>
-                                  {result.score === 'infeasible' ? 'Infeasible' : result.score}
-                                </span>
-                                {isBest && (
-                                  <span style={{ 
-                                    marginLeft: '6px',
-                                    color: 'var(--success, #10b981)',
-                                    fontWeight: 'bold',
-                                    fontSize: '0.85em'
-                                  }}>
-                                    ← BEST
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* Use the generation screen component for both generating and results */}
+            {(isGenerating || generatedSchedule) ? (
+              <ScheduleGenerationScreen
+                isGenerating={isGenerating}
+                elapsedTime={elapsedTime}
+                parameters={parameters}
+                progressData={progressData}
+                onCancel={handleCancel}
+                onStopAndUseBest={handleStopAndUseBest}
+                generatedSchedule={generatedSchedule}
+                onApply={onApply}
+                onClose={onClose}
+              />
             ) : (
               // Parameter Configuration View
               <div>
@@ -637,49 +463,17 @@ const ScheduleParametersModal = ({
             )}
           </div>
 
-          <div className="modal-footer">
-            {isGenerating ? (
-              <>
-                <button type="button" className="btn btn-danger" onClick={handleCancel}>
-                  Cancel Generation
-                </button>
-                {progressData && progressData.best_score !== null && progressData.best_score !== undefined && (
-                  <button 
-                    type="button" 
-                    className="btn btn-warning" 
-                    onClick={handleStopAndUseBest}
-                    title={`Stop generation and use current best schedule (score: ${progressData.best_score})`}
-                  >
-                    Stop & Use Best
-                  </button>
-                )}
-              </>
-            ) : generatedSchedule ? (
-              <>
-                <button type="button" className="btn btn-secondary" onClick={onClose}>
-                  Close
-                </button>
-                <button type="button" className="btn btn-success" onClick={() => {
-                  // Apply the generated schedule by calling the parent's apply function
-                  if (onApply && generatedSchedule) {
-                    onApply(generatedSchedule);
-                  }
-                  onClose();
-                }}>
-                  Apply Schedule
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="btn btn-secondary" onClick={onClose}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleGenerate}>
-                  Generate Schedule
-                </button>
-              </>
-            )}
-          </div>
+          {/* Only show footer for parameter configuration */}
+          {!isGenerating && !generatedSchedule && (
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" onClick={handleGenerate}>
+                Generate Schedule
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
