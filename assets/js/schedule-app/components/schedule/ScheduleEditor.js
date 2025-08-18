@@ -229,8 +229,8 @@ const ScheduleEditor = ({
       {/* Week management buttons - moved to bottom */}
       {(mode === 'create' || mode === 'schedule-edit') && (
         <div className="week-management-controls mt-4 mb-4">
-          <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center">
-            {/* Left side - Auto-generate button */}
+          <div className="d-flex flex-wrap gap-2 justify-content-end align-items-center">
+            {/* Right side - Auto-generate, then Validate/Save buttons */}
             <div className="d-flex gap-2">
               {mode === 'create' && isDevelopment && onAutoGenerate && (
                 <button 
@@ -241,11 +241,6 @@ const ScheduleEditor = ({
                   Auto-generate Schedule
                 </button>
               )}
-            </div>
-
-            
-            {/* Right side - Validate/Save buttons */}
-            <div className="d-flex gap-2">
               {mode === 'create' && showValidation && (
                 <button 
                   type="button" 
