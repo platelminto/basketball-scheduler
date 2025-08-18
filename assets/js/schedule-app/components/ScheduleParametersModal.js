@@ -150,9 +150,9 @@ const ScheduleParametersModal = ({
   const handleStopAndUseBest = async () => {
     if (isGenerating && progressData && progressData.best_score !== null && progressData.best_score !== undefined) {
       
-      // Tell backend to stop generation and return formatted best schedule
+      // Tell backend to stop generation with use_best flag
       try {
-        const response = await fetch('/scheduler/api/seasons/cancel-generation/', {
+        await fetch('/scheduler/api/seasons/cancel-generation/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -160,23 +160,11 @@ const ScheduleParametersModal = ({
           },
           body: JSON.stringify({ use_best: true })
         });
-        
-        const data = await response.json();
-        console.log('Cancel-generation response:', data);
-        if (data.schedule) {
-          setIsGenerating(false);
-          setElapsedTime(0);
-          setAbortController(null);
-          setGeneratedSchedule(data);
-          return;
-        } else {
-          console.log('No schedule in response, keys:', Object.keys(data));
-        }
       } catch (error) {
-        console.error('Error getting best schedule:', error);
+        // Ignore errors - the normal generation flow will handle the result
       }
       
-      // Don't show error - the normal generation flow will handle the result
+      // The schedule will come from the normal generation completion flow
     } else {
       alert('No best schedule available yet. Try generating for longer before stopping.');
     }
@@ -673,11 +661,8 @@ const ScheduleParametersModal = ({
                 </button>
                 <button type="button" className="btn btn-success" onClick={() => {
                   // Apply the generated schedule by calling the parent's apply function
-                  console.log('Apply clicked, generatedSchedule:', generatedSchedule);
                   if (onApply && generatedSchedule) {
                     onApply(generatedSchedule);
-                  } else {
-                    console.log('onApply or generatedSchedule is missing');
                   }
                   onClose();
                 }}>

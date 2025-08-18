@@ -346,34 +346,6 @@ def handle_generation_cancellation(session_key, use_best=False):
             except Exception as e:
                 print(f"Error creating use_best flag file: {e}")
             message = "Generation stopped, using best schedule found"
-            
-            # Get the current progress to find the best schedule
-            progress_data = cache.get(progress_key)
-            if progress_data and progress_data.get('best_schedule'):
-                # Convert the best_schedule to the format expected by the frontend
-                best_schedule = progress_data['best_schedule']
-                
-                # Convert from progressData format to the format expected by apply function
-                converted_schedule = []
-                for week_data in best_schedule:
-                    # week_data is { week: 1, slots: { 1: [games], 2: [games], ... } }
-                    all_games_for_week = []
-                    
-                    # Flatten all games from all slots into a single array
-                    for slot_games in week_data['slots'].values():
-                        if isinstance(slot_games, list):
-                            all_games_for_week.extend(slot_games)
-                    
-                    converted_schedule.append(all_games_for_week)
-                
-                # Clean up cache entries and flag files first
-                cache.delete(process_key)
-                cache.delete(progress_key)
-                
-                return {
-                    "message": message,
-                    "schedule": converted_schedule
-                }
         else:
             cache.set(cancellation_key, True, timeout=300)
             # Also create file for subprocess

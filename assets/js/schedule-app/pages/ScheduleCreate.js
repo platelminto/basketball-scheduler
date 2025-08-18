@@ -186,7 +186,6 @@ const ScheduleCreate = () => {
       }
 
       const data = await response.json();
-      console.log('Generated schedule:', data);
       
       // Return the data instead of automatically filling the schedule
       return data;
