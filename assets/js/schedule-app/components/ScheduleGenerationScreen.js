@@ -29,8 +29,6 @@ const ScheduleGenerationScreen = ({
         {/* Progress information */}
         {progressData && (
           <div className="mt-3 mb-3">
-            {console.log('PROGRESS DATA:', progressData)}
-            {console.log('BLUEPRINT RESULTS:', progressData.blueprint_results)}
             <div style={{ fontSize: '0.85em', textAlign: 'left' }}>
               <div className="mb-2" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
                 {progressData.current_blueprint}/{progressData.total_blueprints} blueprints
@@ -112,7 +110,7 @@ const ScheduleGenerationScreen = ({
         )}
 
         {/* Action buttons */}
-        <div className="mt-4 d-flex justify-content-center gap-2">
+        <div className="mt-4 d-flex justify-content-end gap-2">
           <button type="button" className="btn btn-danger" onClick={onCancel}>
             Cancel Generation
           </button>
