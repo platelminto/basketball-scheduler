@@ -8,6 +8,8 @@ dependencies = [
     "django>=5.2.3",
     "django-webpack-loader>=3.2.1",
     "icalendar>=6.3.1",
+    "orloge>=0.18.3",
+    "psutil>=7.0.0",
     "pulp>=3.2.2",
 ]
 

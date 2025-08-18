@@ -11,6 +11,7 @@ from tests import (
     referee_player_test,
     adjacent_slot_test,
 )
+from .stats import compute_schedule_statistics
 
 
 def run_all_validation_tests(schedule_data, config_data):
@@ -59,12 +60,21 @@ def run_all_validation_tests(schedule_data, config_data):
 
 
 def validate_schedule_data(data):
-    """Validate schedule data and configuration."""
+    """Validate schedule data and configuration, including statistics."""
     try:
         schedule_data = data["schedule"]
         config_data = data["config"]
         
-        return run_all_validation_tests(schedule_data, config_data)
+        # Run validation tests
+        validation_results = run_all_validation_tests(schedule_data, config_data)
+        
+        # Compute schedule statistics
+        statistics = compute_schedule_statistics(schedule_data, config_data)
+        
+        return {
+            "validation": validation_results,
+            "statistics": statistics
+        }
     except KeyError as e:
         raise ValueError(f"Missing required data: {e}")
     except Exception as e:

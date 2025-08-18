@@ -238,14 +238,11 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                       }}>
                         <div style={{ 
                           flex: 1, 
-                          textAlign: 'right',
+                          textAlign: 'left',
                           display: 'flex', 
                           alignItems: 'center', 
-                          justifyContent: 'flex-end' 
+                          justifyContent: 'flex-start' 
                         }}>
-                          {isGameCompleted(game) && (winnerInfo.team1Wins || winnerInfo.tie) && (
-                            <span style={{ marginRight: '6px', fontSize: '12px', color: '#333' }}>▸</span>
-                          )}
                           <div style={{ 
                             fontSize: '14px', 
                             fontWeight: '500',
@@ -255,6 +252,9 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                           }}>
                             {game.team1_name}
                           </div>
+                          {isGameCompleted(game) && (winnerInfo.team1Wins || winnerInfo.tie) && (
+                            <span style={{ marginLeft: '6px', fontSize: '12px', color: '#333' }}>◂</span>
+                          )}
                         </div>
                         
                         <div style={{ textAlign: 'center', minWidth: '60px' }}>
@@ -271,11 +271,14 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                         
                         <div style={{ 
                           flex: 1, 
-                          textAlign: 'left',
+                          textAlign: 'right',
                           display: 'flex', 
                           alignItems: 'center', 
-                          justifyContent: 'flex-start' 
+                          justifyContent: 'flex-end'
                         }}>
+                          {isGameCompleted(game) && (winnerInfo.team2Wins || winnerInfo.tie) && (
+                            <span style={{ marginRight: '6px', fontSize: '12px', color: '#333' }}>▸</span>
+                          )}
                           <div style={{ 
                             fontSize: '14px', 
                             fontWeight: '500',
@@ -285,9 +288,6 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                           }}>
                             {game.team2_name}
                           </div>
-                          {isGameCompleted(game) && (winnerInfo.team2Wins || winnerInfo.tie) && (
-                            <span style={{ marginLeft: '6px', fontSize: '12px', color: '#333' }}>◂</span>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -299,32 +299,40 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                       key={game.id} 
                       style={{ 
                         display: 'grid',
-                        gridTemplateColumns: 'auto 1fr auto 1fr auto',
+                        gridTemplateColumns: 'auto minmax(200px, 1fr) auto minmax(200px, 1fr)',
                         alignItems: 'center',
                         padding: '10px 0',
                         borderTop: isFirstGame ? '1px solid #ddd' : 'none',
                         borderBottom: (hasTimeChange || isLastGame) ? '1px solid #ddd' : '1px solid #eee',
-                        gap: '15px'
+                        gap: '0px'
                       }}
                     >
-                      <div style={{ color: '#333', minWidth: '70px' }}>
-                        {game.time && <div style={{ fontSize: '15px', fontWeight: '500' }}>{game.time}</div>}
-                        {!areAllGamesSameDay(filteredGames) && game.day_of_week !== null && (
-                          <div style={{ fontSize: '11px' }}>
-                            {getDayName(game.day_of_week)}
-                          </div>
-                        )}
-                        {game.court && (
-                          <div style={{ fontSize: '11px' }}>
-                            {game.court}
-                          </div>
-                        )}
+                      <div style={{ color: '#333', minWidth: '120px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ 
+                          background: '#f0f0f0', 
+                          padding: '2px 6px', 
+                          borderRadius: '3px',
+                          fontSize: '10px',
+                          fontWeight: '600'
+                        }}>
+                          {game.level_name}
+                        </span>
+                        <div>
+                          {game.time && <div style={{ fontSize: '15px', fontWeight: '500' }}>{game.time}</div>}
+                          {!areAllGamesSameDay(filteredGames) && game.day_of_week !== null && (
+                            <div style={{ fontSize: '11px' }}>
+                              {getDayName(game.day_of_week)}
+                            </div>
+                          )}
+                          {game.court && (
+                            <div style={{ fontSize: '11px' }}>
+                              {game.court}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       
-                      <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                        {isGameCompleted(game) && (winnerInfo.team1Wins || winnerInfo.tie) && (
-                          <span style={{ marginRight: '6px', fontSize: '12px', color: '#333' }}>▸</span>
-                        )}
+                      <div style={{ textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
                         <div style={{ 
                           fontSize: '15px', 
                           fontWeight: '500',
@@ -334,9 +342,12 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                         }}>
                           {game.team1_name}
                         </div>
+                        {isGameCompleted(game) && (winnerInfo.team1Wins || winnerInfo.tie) && (
+                          <span style={{ marginLeft: '6px', fontSize: '12px', color: '#333' }}>◂</span>
+                        )}
                       </div>
                       
-                      <div style={{ textAlign: 'center', minWidth: '60px' }}>
+                      <div style={{ textAlign: 'center', minWidth: '60px', paddingRight: '50px' }}>
                         {isGameCompleted(game) ? (
                           <div style={{ fontSize: '16px', fontWeight: '600' }}>
                             {game.team1_score} - {game.team2_score}
@@ -358,7 +369,10 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                         )}
                       </div>
                       
-                      <div style={{ textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+                      <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '25px' }}>
+                        {isGameCompleted(game) && (winnerInfo.team2Wins || winnerInfo.tie) && (
+                          <span style={{ marginRight: '6px', fontSize: '12px', color: '#333' }}>▸</span>
+                        )}
                         <div style={{ 
                           fontSize: '15px', 
                           fontWeight: '500',
@@ -368,22 +382,8 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                         }}>
                           {game.team2_name}
                         </div>
-                        {isGameCompleted(game) && (winnerInfo.team2Wins || winnerInfo.tie) && (
-                          <span style={{ marginLeft: '6px', fontSize: '12px', color: '#333' }}>◂</span>
-                        )}
                       </div>
                       
-                      <div style={{ textAlign: 'right', minWidth: '50px' }}>
-                        <span style={{ 
-                          background: '#f0f0f0', 
-                          padding: '3px 8px', 
-                          borderRadius: '3px',
-                          fontSize: '12px',
-                          fontWeight: '600'
-                        }}>
-                          {game.level_name}
-                        </span>
-                      </div>
                     </div>
                   );
                 }

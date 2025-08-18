@@ -13,6 +13,7 @@ urlpatterns = [
     path("api/seasons/validate/", views.validate_schedule, name="seasons_validate_api"),
     path("api/seasons/<int:season_id>/generate/", views.auto_generate_schedule, name="generate_schedule_api"),
     path("api/seasons/cancel-generation/", views.cancel_schedule_generation, name="cancel_generation_api"),
+    path("api/seasons/generation-progress/", views.generation_progress, name="generation_progress_api"),
     path("api/seasons/create/", views.save_or_update_schedule, name="create_schedule_api"),
     path("api/seasons/<int:season_id>/schedule/", views.save_or_update_schedule, name="update_schedule_api"),
     path("api/public/schedule/", views.public_schedule_data, name="public_schedule_api"),

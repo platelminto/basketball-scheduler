@@ -5,6 +5,7 @@ import { useScheduleValidation } from '../hooks/useScheduleValidation';
 import { SET_SCHEDULE_DATA, SET_LOADING, SET_ERROR, RESET_CHANGE_TRACKING } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
 import ValidationResults from '../components/schedule/ValidationResults';
+import StatsResults from '../components/schedule/StatsResults';
 
 const ScheduleEdit = () => {
   // Get seasonId from Router params
@@ -381,6 +382,11 @@ const ScheduleEdit = () => {
             allPassedOrIgnored={validation.showSaveButton}
             onValidationChange={(passed) => setValidationPassed(passed)}
           />
+          
+          {/* Statistics Results */}
+          {validation.statisticsResults && (
+            <StatsResults statisticsResults={validation.statisticsResults} />
+          )}
         </div>
       )}
 

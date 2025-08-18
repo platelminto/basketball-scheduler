@@ -113,7 +113,7 @@ const PublicSchedule = () => {
   };
 
   return (
-    <div style={{ maxWidth: showBoth ? '1600px' : '1000px', margin: '0 auto', padding: '20px' }}>
+    <div style={{ maxWidth: showBoth ? '1400px' : '900px', margin: '0 auto', padding: '20px' }}>
       <div style={{ marginBottom: '30px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '15px' }}>
           {scheduleData.season.name}

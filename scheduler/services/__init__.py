@@ -29,6 +29,7 @@ from .validation import (
 from .generation import (
     generate_schedule_async,
     handle_generation_cancellation,
+    get_generation_progress,
     validate_generation_constraints,
     format_generated_schedule,
 )
@@ -74,6 +75,7 @@ __all__ = [
     # Schedule generation
     "generate_schedule_async",
     "handle_generation_cancellation",
+    "get_generation_progress",
     "validate_generation_constraints",
     "format_generated_schedule",
     

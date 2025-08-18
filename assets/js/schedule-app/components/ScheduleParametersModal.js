@@ -1,11 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const ScheduleParametersModal = ({ 
   isOpen, 
   onClose, 
-  onGenerate, 
+  onGenerate,
+  onApply,
   setupData 
 }) => {
+  // Reset modal state when closed
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset all generation-related state when modal is closed
+      setIsGenerating(false);
+      setElapsedTime(0);
+      setAbortController(null);
+      setProgressData(null);
+      setGeneratedSchedule(null);
+    }
+  }, [isOpen]);
   const [parameters, setParameters] = useState({
     min_referee_count: 4,
     max_referee_count: 6,
@@ -18,33 +30,23 @@ const ScheduleParametersModal = ({
     time_limit: 60,
     // Advanced options
     num_blueprints_to_generate: '',
-    gapRel: 0.25
+    gapRel: 0.1
   });
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [abortController, setAbortController] = useState(null);
+  const [progressData, setProgressData] = useState(null);
+  const [generatedSchedule, setGeneratedSchedule] = useState(null);
+  const scrollRef = useRef(null);
 
   // Cancel generation if page is unloaded
   useEffect(() => {
-    const handleBeforeUnload = async () => {
+    const handleBeforeUnload = () => {
       if (isGenerating && abortController) {
         // Cancel the generation
         abortController.abort();
-        
-        // Signal backend to stop
-        try {
-          await fetch('/scheduler/api/seasons/cancel-generation/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': getCsrfToken(),
-            }
-          });
-        } catch (error) {
-          console.log('Cancellation request error on unload:', error);
-        }
       }
     };
 
@@ -97,6 +99,8 @@ const ScheduleParametersModal = ({
     
     setIsGenerating(true);
     setElapsedTime(0);
+    setProgressData(null);
+    setGeneratedSchedule(null);
     
     // Start the simple time counter
     const timeInterval = setInterval(() => {
@@ -104,7 +108,7 @@ const ScheduleParametersModal = ({
     }, 1000);
     
     try {
-      await onGenerate(parameters, controller.signal);
+      const result = await onGenerate(parameters, controller.signal);
       
       // Only proceed if not cancelled
       if (!controller.signal.aborted) {
@@ -112,47 +116,97 @@ const ScheduleParametersModal = ({
         setIsGenerating(false);
         setElapsedTime(0);
         setAbortController(null);
-        onClose();
+        // Keep progressData for final results display
+        setGeneratedSchedule(result);
+        // Don't close modal automatically - let user apply the schedule
       }
     } catch (error) {
       clearInterval(timeInterval);
       
-      // Check if this was a user cancellation
-      if (error.name === 'AbortError') {
+      // Check if this was a user cancellation (AbortError or DOMException with abort message)
+      if (error.name === 'AbortError' || 
+          (error.name === 'DOMException' && error.message.includes('aborted')) ||
+          controller.signal.aborted) {
         // Brief delay then reset
         setTimeout(() => {
           setIsGenerating(false);
           setElapsedTime(0);
           setAbortController(null);
+          setProgressData(null);
+          setGeneratedSchedule(null);
         }, 500);
       } else {
         // Actual error - reset immediately
         setIsGenerating(false);
         setElapsedTime(0);
         setAbortController(null);
+        setProgressData(null);
+        setGeneratedSchedule(null);
         // Error handling is done by the parent component
       }
     }
   };
 
+  const handleStopAndUseBest = async () => {
+    if (isGenerating && progressData && progressData.best_score !== null && progressData.best_score !== undefined) {
+      
+      // Tell backend to stop generation and return formatted best schedule
+      try {
+        const response = await fetch('/scheduler/api/seasons/cancel-generation/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          },
+          body: JSON.stringify({ use_best: true })
+        });
+        
+        const data = await response.json();
+        console.log('Cancel-generation response:', data);
+        if (data.schedule) {
+          setIsGenerating(false);
+          setElapsedTime(0);
+          setAbortController(null);
+          setGeneratedSchedule(data);
+          return;
+        } else {
+          console.log('No schedule in response, keys:', Object.keys(data));
+        }
+      } catch (error) {
+        console.error('Error getting best schedule:', error);
+      }
+      
+      // Don't show error - the normal generation flow will handle the result
+    } else {
+      alert('No best schedule available yet. Try generating for longer before stopping.');
+    }
+  };
+
   const handleCancel = async () => {
     if (isGenerating && abortController) {
-      // Abort the frontend request
+      // Immediately abort the frontend request
       abortController.abort();
       
-      // Also signal the backend to stop processing
+      // Tell backend to cancel generation
       try {
         await fetch('/scheduler/api/seasons/cancel-generation/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': getCsrfToken(),
-          }
+          },
+          body: JSON.stringify({ use_best: false })
         });
       } catch (error) {
-        // Ignore errors for cancellation request
-        console.log('Cancellation request error (ignored):', error);
+        // Ignore cancellation request errors
       }
+      
+      // Reset state back to initial modal
+      setIsGenerating(false);
+      setElapsedTime(0);
+      setAbortController(null);
+      setProgressData(null);
+      setGeneratedSchedule(null);
     } else {
       // Not generating, just close
       onClose();
@@ -163,6 +217,54 @@ const ScheduleParametersModal = ({
   const getCsrfToken = () => {
     return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
   };
+
+  // Poll for progress updates
+  const pollProgress = async () => {
+    try {
+      const response = await fetch('/scheduler/api/seasons/generation-progress/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.progress) {
+          setProgressData(data.progress);
+        }
+      }
+    } catch (error) {
+      // Ignore polling errors - they're not critical
+    }
+  };
+
+  // Set up progress polling when generation starts
+  useEffect(() => {
+    let progressInterval;
+    
+    if (isGenerating) {
+      // Reset progress data when starting
+      setProgressData(null);
+      
+      // Start polling every 2 seconds
+      progressInterval = setInterval(pollProgress, 2000);
+    }
+
+    return () => {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+    };
+  }, [isGenerating]);
+
+  // Auto-scroll to bottom when blueprint results update
+  useEffect(() => {
+    if (scrollRef.current && progressData && progressData.blueprint_results) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [progressData?.blueprint_results]);
 
   const getNumSlots = () => {
     if (!setupData || !setupData.schedule || !setupData.schedule.weeks) return 4;
@@ -203,7 +305,7 @@ const ScheduleParametersModal = ({
           </div>
 
           <div className="modal-body">
-            {!isGenerating && (
+            {!isGenerating && !generatedSchedule && (
               // General Information
               <div className="alert alert-info mb-4">
                 <h6><i className="fas fa-info-circle"></i> Schedule Generation</h6>
@@ -218,7 +320,186 @@ const ScheduleParametersModal = ({
               <div className="text-center">
                 <div className="spinner-border text-primary mb-3" role="status"></div>
                 <p>Generating schedule... {elapsedTime}s / {parameters.time_limit}s</p>
-                <small className="text-muted">(usually finishes faster)</small>
+                
+                {/* Progress information */}
+                {progressData && (
+                  <div className="mt-3 mb-3">
+                    <div style={{ fontSize: '0.85em', textAlign: 'left' }}>
+                      <div className="mb-2" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
+                        {progressData.current_blueprint}/{progressData.total_blueprints} blueprints
+                        {progressData.best_score !== null && progressData.best_score !== undefined && (
+                          <span style={{ marginLeft: '1rem', color: 'var(--success, #10b981)' }}>
+                            Best: {progressData.best_score}
+                          </span>
+                        )}
+                        <span style={{ marginLeft: '1rem', color: 'var(--text-secondary, #6b7280)', fontSize: '0.9em' }}>
+                          (Theoretical Best: {progressData.best_possible_score !== null && progressData.best_possible_score !== undefined ? progressData.best_possible_score : '...'})
+                        </span>
+                      </div>
+                      
+                      {/* Blueprint results */}
+                      {progressData.blueprint_results && Object.keys(progressData.blueprint_results).length > 0 && (
+                        <div 
+                          ref={scrollRef}
+                          style={{ 
+                            maxHeight: '120px', 
+                            overflowY: 'auto',
+                            backgroundColor: 'var(--bg-secondary, #f8f9fa)',
+                            border: '1px solid var(--border-primary, #e5e7eb)',
+                            borderRadius: '4px',
+                            padding: '8px'
+                          }}
+                        >
+                          {Object.entries(progressData.blueprint_results)
+                            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                            .map(([blueprintNum, result]) => {
+                              const isCurrentlyRunning = parseInt(blueprintNum) === progressData.current_blueprint && result.score !== 'infeasible' && typeof result.score !== 'number';
+                              const isBest = result.score !== 'infeasible' && typeof result.score === 'number' && result.score === progressData.best_score;
+                              return (
+                                <div key={blueprintNum} style={{ 
+                                  marginBottom: '2px',
+                                  padding: '2px 6px',
+                                  backgroundColor: isBest ? 'var(--success-light, #d1fae5)' : 'transparent',
+                                  borderRadius: '3px',
+                                  fontSize: '0.9em',
+                                  lineHeight: '1.3'
+                                }}>
+                                  <span style={{ color: 'var(--text-secondary, #6b7280)' }}>
+                                    #{blueprintNum}:
+                                  </span>
+                                  <span style={{ 
+                                    marginLeft: '6px',
+                                    color: result.score === 'infeasible' ? 'var(--warning, #f59e0b)' : 
+                                           isCurrentlyRunning ? 'var(--text-secondary, #6b7280)' : 'var(--text-primary)',
+                                    fontWeight: isBest ? 'bold' : 'normal'
+                                  }}>
+                                    {result.score === 'infeasible' ? 'Infeasible' : (isCurrentlyRunning ? 'Running...' : result.score)}
+                                  </span>
+                                  {isBest && (
+                                    <span style={{ 
+                                      marginLeft: '6px',
+                                      color: 'var(--success, #10b981)',
+                                      fontWeight: 'bold',
+                                      fontSize: '0.85em'
+                                    }}>
+                                      ← BEST!
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : generatedSchedule ? (
+              // Generation Complete - Show Results
+              <div className="text-center">
+                <div className="alert alert-success mb-4">
+                  <h6><i className="fas fa-check-circle"></i> Schedule Generated Successfully!</h6>
+                  <p className="mb-0">
+                    {(() => {
+                      // Use backend blueprint results if available
+                      if (progressData && progressData.blueprint_results) {
+                        const blueprintCount = Object.keys(progressData.blueprint_results).length;
+                        const hasRunningBlueprints = Object.values(progressData.blueprint_results).some(r => 
+                          r.score !== 'infeasible' && typeof r.score !== 'number'
+                        );
+                        
+                        if (hasRunningBlueprints) {
+                          return `Stopped early and using best schedule found with ${blueprintCount} blueprint${blueprintCount !== 1 ? 's' : ''} tested.`;
+                        } else {
+                          return `Found an optimal schedule with ${blueprintCount} blueprint${blueprintCount !== 1 ? 's' : ''} tested.`;
+                        }
+                      } else {
+                        return "Schedule generated successfully!";
+                      }
+                    })()}
+                    {(() => {
+                      // Use backend best score if available
+                      if (progressData && progressData.best_score !== null && progressData.best_score !== undefined) {
+                        return (
+                          <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>
+                            <span style={{ color: 'var(--success, #10b981)' }}>
+                              Best Score: {progressData.best_score}
+                            </span>
+                            {progressData.best_possible_score !== null && progressData.best_possible_score !== undefined && (
+                              <span style={{ marginLeft: '8px', color: 'var(--text-secondary, #6b7280)', fontSize: '0.9em', fontWeight: 'normal' }}>
+                                (Theoretical Best: {progressData.best_possible_score})
+                              </span>
+                            )}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </p>
+                </div>
+                
+                {/* Final results summary */}
+                {progressData && progressData.blueprint_results && Object.keys(progressData.blueprint_results).length > 0 && (
+                  <div className="mb-4">
+                    <div style={{ fontSize: '0.85em', textAlign: 'left' }}>
+                      <div className="mb-2" style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
+                        Final Results:
+                        {progressData && (
+                          <span style={{ marginLeft: '1rem', color: 'var(--text-secondary, #6b7280)', fontSize: '0.9em', fontWeight: 'normal' }}>
+                            (Theoretical Best: {progressData.best_possible_score !== null && progressData.best_possible_score !== undefined ? progressData.best_possible_score : '...'})
+                          </span>
+                        )}
+                      </div>
+                      <div 
+                        style={{ 
+                          maxHeight: '120px', 
+                          overflowY: 'auto',
+                          backgroundColor: 'var(--bg-secondary, #f8f9fa)',
+                          border: '1px solid var(--border-primary, #e5e7eb)',
+                          borderRadius: '4px',
+                          padding: '8px'
+                        }}
+                      >
+                        {Object.entries(progressData.blueprint_results)
+                          .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                          .map(([blueprintNum, result]) => {
+                            const isBest = result.score !== 'infeasible' && typeof result.score === 'number' && result.score === progressData.best_score;
+                            return (
+                              <div key={blueprintNum} style={{ 
+                                marginBottom: '2px',
+                                padding: '2px 6px',
+                                backgroundColor: isBest ? 'var(--success-light, #d1fae5)' : 'transparent',
+                                borderRadius: '3px',
+                                fontSize: '0.9em',
+                                lineHeight: '1.3'
+                              }}>
+                                <span style={{ color: 'var(--text-secondary, #6b7280)' }}>
+                                  #{blueprintNum}:
+                                </span>
+                                <span style={{ 
+                                  marginLeft: '6px',
+                                  color: result.score === 'infeasible' ? 'var(--warning, #f59e0b)' : 'var(--text-primary)',
+                                  fontWeight: isBest ? 'bold' : 'normal'
+                                }}>
+                                  {result.score === 'infeasible' ? 'Infeasible' : result.score}
+                                </span>
+                                {isBest && (
+                                  <span style={{ 
+                                    marginLeft: '6px',
+                                    color: 'var(--success, #10b981)',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.85em'
+                                  }}>
+                                    ← BEST
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               // Parameter Configuration View
@@ -370,9 +651,39 @@ const ScheduleParametersModal = ({
 
           <div className="modal-footer">
             {isGenerating ? (
-              <button type="button" className="btn btn-danger" onClick={handleCancel}>
-                Cancel Generation
-              </button>
+              <>
+                <button type="button" className="btn btn-danger" onClick={handleCancel}>
+                  Cancel Generation
+                </button>
+                {progressData && progressData.best_score !== null && progressData.best_score !== undefined && (
+                  <button 
+                    type="button" 
+                    className="btn btn-warning" 
+                    onClick={handleStopAndUseBest}
+                    title={`Stop generation and use current best schedule (score: ${progressData.best_score})`}
+                  >
+                    Stop & Use Best
+                  </button>
+                )}
+              </>
+            ) : generatedSchedule ? (
+              <>
+                <button type="button" className="btn btn-secondary" onClick={onClose}>
+                  Close
+                </button>
+                <button type="button" className="btn btn-success" onClick={() => {
+                  // Apply the generated schedule by calling the parent's apply function
+                  console.log('Apply clicked, generatedSchedule:', generatedSchedule);
+                  if (onApply && generatedSchedule) {
+                    onApply(generatedSchedule);
+                  } else {
+                    console.log('onApply or generatedSchedule is missing');
+                  }
+                  onClose();
+                }}>
+                  Apply Schedule
+                </button>
+              </>
             ) : (
               <>
                 <button type="button" className="btn btn-secondary" onClick={onClose}>

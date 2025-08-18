@@ -188,13 +188,13 @@ const ScheduleCreate = () => {
       const data = await response.json();
       console.log('Generated schedule:', data);
       
-      // Fill the form with the generated schedule
-      fillScheduleWithGeneratedData(data.schedule);
+      // Return the data instead of automatically filling the schedule
+      return data;
     } catch (error) {
-      console.error('Error generating schedule:', error);
-      
-      // Don't show alert for user cancellations
-      if (error.name !== 'AbortError') {
+      // Don't log or show alert for user cancellations
+      if (error.name !== 'AbortError' && 
+          !(error.name === 'DOMException' && error.message.includes('aborted'))) {
+        console.error('Error generating schedule:', error);
         // Show more helpful error message with troubleshooting tips
         const errorMessage = `Error generating schedule: ${error.message}\n\n` +
           "Troubleshooting tips:\n" +
@@ -348,7 +348,7 @@ const ScheduleCreate = () => {
         });
       });
       
-      alert('Schedule generated and filled successfully!');
+      // Schedule applied successfully (no alert needed)
     } catch (error) {
       console.error('Error filling schedule with generated data:', error);
       alert('Error filling schedule: ' + error.message);
@@ -482,6 +482,9 @@ const ScheduleCreate = () => {
         isOpen={showParametersModal}
         onClose={() => setShowParametersModal(false)}
         onGenerate={autoGenerateSchedule}
+        onApply={(data) => {
+          fillScheduleWithGeneratedData(data.schedule);
+        }}
         setupData={setupData}
       />
     </div>

@@ -10,6 +10,7 @@ import { collectGameAssignments, webToScheduleFormat, prepareValidationConfig, g
  */
 export const useScheduleValidation = (state, showValidation = false, initialShowSaveButton = false) => {
   const [validationResults, setValidationResults] = useState(null);
+  const [statisticsResults, setStatisticsResults] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
   const [ignoredFailures, setIgnoredFailures] = useState(new Set());
   const [showSaveButton, setShowSaveButton] = useState(initialShowSaveButton);
@@ -111,6 +112,7 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
     
     setIsValidating(true);
     setValidationResults(null);
+    setStatisticsResults(null);
     
     try {
       // First run client-side validations
@@ -143,15 +145,28 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
         })
       });
       
-      const serverSideData = await response.json();
+      const serverResponse = await response.json();
+      
+      // Handle new response format with validation and statistics
+      let serverSideValidation, statisticsData;
+      if (serverResponse.validation && serverResponse.statistics) {
+        // New format with separate validation and statistics
+        serverSideValidation = serverResponse.validation;
+        statisticsData = serverResponse.statistics;
+      } else {
+        // Legacy format - assume it's all validation data
+        serverSideValidation = serverResponse;
+        statisticsData = null;
+      }
       
       // Merge client-side and server-side validation results
       const combinedResults = {
         ...clientSideResults,
-        ...serverSideData
+        ...serverSideValidation
       };
       
       setValidationResults(combinedResults);
+      setStatisticsResults(statisticsData);
       
       // Check validation state with the combined data
       let allPassedOrIgnored = true;
@@ -224,10 +239,11 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
   }, [ignoredFailures, validationResults]);
 
   /**
-   * Clears validation results and resets state
+   * Clears validation results and statistics and resets state
    */
   const clearValidationResults = useCallback(() => {
     setValidationResults(null);
+    setStatisticsResults(null);
     setIgnoredFailures(new Set());
     setShowSaveButton(false);
   }, []);
@@ -238,6 +254,7 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
    */
   const resetValidationState = useCallback((defaultSaveButtonState = false) => {
     setValidationResults(null);
+    setStatisticsResults(null);
     setIgnoredFailures(new Set());
     setShowSaveButton(defaultSaveButtonState);
   }, []);
@@ -245,6 +262,7 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
   return {
     // State
     validationResults,
+    statisticsResults,
     isValidating,
     ignoredFailures,
     showSaveButton,

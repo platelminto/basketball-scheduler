@@ -9,6 +9,7 @@ import WeekContainer from './WeekContainer';
 import OffWeekDisplay from './OffWeekDisplay';
 import WeekSeparator from './WeekSeparator';
 import ValidationResults from './ValidationResults';
+import StatsResults from './StatsResults';
 
 const ScheduleEditor = ({ 
   mode = 'create', // 'create', 'schedule-edit', or 'score-edit'
@@ -27,8 +28,9 @@ const ScheduleEditor = ({
   const validation = useScheduleValidation(state, showValidation, mode === 'schedule-edit');
   const randomFill = useRandomFill(state, dispatch);
   
-  // Extract validation results for the clearing effect (to match original pattern)
+  // Extract validation and statistics results for the clearing effect (to match original pattern)
   const validationResults = validation.validationResults;
+  const statisticsResults = validation.statisticsResults;
   
   
   // Clear validation results when schedule changes are made
@@ -270,6 +272,13 @@ const ScheduleEditor = ({
       {showValidation && validationResults && (
         <div className="validation-results">
           {renderValidationResults()}
+        </div>
+      )}
+      
+      {/* Statistics results - shown after validation */}
+      {showValidation && statisticsResults && (
+        <div className="statistics-results">
+          <StatsResults statisticsResults={statisticsResults} />
         </div>
       )}
     </div>

@@ -19,6 +19,7 @@ from scheduler.services import (
     # Schedule generation
     generate_schedule_async,
     handle_generation_cancellation,
+    get_generation_progress,
     
     # Schedule CRUD operations
     create_schedule,
@@ -187,8 +188,10 @@ def auto_generate_schedule(request, season_id=None):
             week_data = data.get("weekData", "")
             parameters = data.get("parameters", {})
 
-            # Create session key for cancellation handling
-            session_key = request.session.session_key or request.session.create()
+            # Ensure we have a session key for cancellation handling
+            if not request.session.session_key:
+                request.session.save()  # This will create a session key
+            session_key = request.session.session_key
 
             result = generate_schedule_async(setup_data, week_data, parameters, session_key)
             return JsonResponse(result)
@@ -211,8 +214,57 @@ def cancel_schedule_generation(request):
     if request.method == "POST":
         try:
             session_key = request.session.session_key
-            result = handle_generation_cancellation(session_key)
+            
+            # Ensure we have a session key
+            if not session_key:
+                request.session.save()  # This will create a session key
+                session_key = request.session.session_key
+                
+            if not session_key:
+                return JsonResponse({"error": "No session available"}, status=400)
+            
+            # Parse request body for use_best parameter
+            use_best = False
+            if request.content_type == 'application/json':
+                import json
+                try:
+                    body = json.loads(request.body)
+                    use_best = body.get('use_best', False)
+                except (json.JSONDecodeError, AttributeError):
+                    pass
+            
+            result = handle_generation_cancellation(session_key, use_best=use_best)
             return JsonResponse(result, status=200)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+@ensure_csrf_cookie
+def generation_progress(request):
+    """
+    Get the current progress of schedule generation for this session
+    """
+    if request.method == "GET":
+        try:
+            session_key = request.session.session_key
+            
+            # Ensure we have a session key
+            if not session_key:
+                request.session.save()  # This will create a session key
+                session_key = request.session.session_key
+                
+            if not session_key:
+                return JsonResponse({"error": "No session available"}, status=400)
+                
+            progress = get_generation_progress(session_key)
+            if progress:
+                return JsonResponse({"progress": progress}, status=200)
+            else:
+                return JsonResponse({"progress": None}, status=200)
         except ValueError as e:
             return JsonResponse({"error": str(e)}, status=400)
         except Exception as e:

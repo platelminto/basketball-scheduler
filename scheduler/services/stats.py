@@ -2,9 +2,10 @@
 Statistics calculation service functions.
 
 This module provides centralized calculation of team and season statistics,
-avoiding duplication between frontend and backend calculations.
+as well as schedule balance and distribution statistics.
 """
 
+import math
 from django.db.models import Q
 from scheduler.models import Game, SeasonTeam, Season, TeamOrganization
 
@@ -200,3 +201,292 @@ def get_team_current_season_stats(team_organization):
         return calculate_team_stats_in_season(season_team)
     except (Season.DoesNotExist, SeasonTeam.DoesNotExist):
         return None
+
+
+# Schedule Statistics Functions
+
+def compute_games_per_slot(schedule, levels):
+    """
+    Compute the number of games per slot for each level.
+
+    Args:
+        schedule: The formatted schedule data (list of weeks with slots)
+        levels: List of competition levels (e.g., ["A", "B", "C"])
+
+    Returns:
+        dict: Dictionary mapping levels to slots to game counts
+    """
+    # Determine max slot number from schedule
+    max_slot = 1
+    for week in schedule:
+        for slot_key in week["slots"].keys():
+            max_slot = max(max_slot, int(slot_key))
+    
+    counts = {level: {s: 0 for s in range(1, max_slot + 1)} for level in levels}
+
+    for week in schedule:
+        for slot_key, games in week["slots"].items():
+            slot = int(slot_key)
+            for game in games:
+                level = game["level"]
+                if level in levels:
+                    counts[level][slot] += 1
+
+    return counts
+
+
+def compute_team_play_counts(schedule, team_names_by_level, levels):
+    """
+    Compute how many times each team plays in each slot.
+    
+    Args:
+        schedule: The formatted schedule data
+        team_names_by_level: Dict mapping level to list of team names
+        levels: List of competition levels
+        
+    Returns:
+        dict: Nested dict {level: {team_name: {slot: count}}}
+    """
+    # Determine max slot number from schedule
+    max_slot = 1
+    for week in schedule:
+        for slot_key in week["slots"].keys():
+            max_slot = max(max_slot, int(slot_key))
+
+    # Initialize counts with team names
+    counts = {}
+    for level in levels:
+        counts[level] = {}
+        for team_name in team_names_by_level.get(level, []):
+            counts[level][team_name] = {s: 0 for s in range(1, max_slot + 1)}
+
+    # Count team appearances in each slot
+    for week in schedule:
+        for slot_key, games in week["slots"].items():
+            slot = int(slot_key)
+            for game in games:
+                level = game["level"]
+                if level in levels and level in counts:
+                    for team_name in game["teams"]:
+                        if team_name in counts[level]:
+                            counts[level][team_name][slot] += 1
+
+    return counts
+
+
+def compute_team_ref_counts(schedule, team_names_by_level, levels):
+    """
+    Compute how many times each team referees in each slot.
+    
+    Args:
+        schedule: The formatted schedule data
+        team_names_by_level: Dict mapping level to list of team names
+        levels: List of competition levels
+        
+    Returns:
+        dict: Nested dict {level: {team_name: {slot: count}}}
+    """
+    # Determine max slot number from schedule
+    max_slot = 1
+    for week in schedule:
+        for slot_key in week["slots"].keys():
+            max_slot = max(max_slot, int(slot_key))
+
+    # Initialize counts with team names
+    counts = {}
+    for level in levels:
+        counts[level] = {}
+        for team_name in team_names_by_level.get(level, []):
+            counts[level][team_name] = {s: 0 for s in range(1, max_slot + 1)}
+
+    # Count referee assignments in each slot (only for teams in that level)
+    for week in schedule:
+        for slot_key, games in week["slots"].items():
+            slot = int(slot_key)
+            for game in games:
+                level = game["level"]
+                if level in levels and level in counts:
+                    ref_name = game.get("ref", "")
+                    # Only count if the referee is actually a team in this level
+                    if ref_name and ref_name in team_names_by_level[level] and ref_name in counts[level]:
+                        counts[level][ref_name][slot] += 1
+
+    return counts
+
+
+def compute_overall_ref_counts(schedule, team_names_by_level, levels):
+    """
+    Compute total times each team referees across all slots.
+    
+    Args:
+        schedule: The formatted schedule data
+        team_names_by_level: Dict mapping level to list of team names
+        levels: List of competition levels
+        
+    Returns:
+        dict: {level: {team_name: total_ref_count}}
+    """
+    counts = {}
+    for level in levels:
+        counts[level] = {}
+        for team_name in team_names_by_level.get(level, []):
+            counts[level][team_name] = 0
+
+    for week in schedule:
+        for _, games in week["slots"].items():
+            for game in games:
+                level = game["level"]
+                if level in levels and level in counts:
+                    ref_name = game.get("ref", "")
+                    # Only count if the referee is actually a team in this level
+                    if ref_name and ref_name in team_names_by_level[level] and ref_name in counts[level]:
+                        counts[level][ref_name] += 1
+
+    return counts
+
+
+def compute_balance_metrics(play_counts, ref_counts):
+    """
+    Compute balance and fairness metrics for the schedule.
+    
+    Args:
+        play_counts: Team play counts by slot
+        ref_counts: Team referee counts by slot
+        
+    Returns:
+        dict: Balance metrics including standard deviations and ranges
+    """
+    metrics = {}
+    
+    for level in play_counts.keys():
+        level_metrics = {
+            "play_balance": {},
+            "ref_balance": {},
+            "overall_balance": {}
+        }
+        
+        # Determine max slot number
+        max_slot = 1
+        for team_counts in play_counts[level].values():
+            if team_counts:
+                max_slot = max(max_slot, max(team_counts.keys()))
+        
+        # Compute play balance per slot
+        for slot in range(1, max_slot + 1):
+            if any(slot in team_counts for team_counts in play_counts[level].values()):
+                slot_plays = [team_counts.get(slot, 0) for team_counts in play_counts[level].values()]
+                if slot_plays:
+                    avg = sum(slot_plays) / len(slot_plays)
+                    level_metrics["play_balance"][f"slot_{slot}"] = {
+                        "min": min(slot_plays),
+                        "max": max(slot_plays),
+                        "avg": avg,
+                        "std_dev": math.sqrt(sum((x - avg)**2 for x in slot_plays) / len(slot_plays)) if len(slot_plays) > 1 else 0
+                    }
+        
+        # Compute referee balance per slot
+        for slot in range(1, max_slot + 1):
+            if any(slot in team_counts for team_counts in ref_counts[level].values()):
+                slot_refs = [team_counts.get(slot, 0) for team_counts in ref_counts[level].values()]
+                if slot_refs:
+                    avg = sum(slot_refs) / len(slot_refs)
+                    level_metrics["ref_balance"][f"slot_{slot}"] = {
+                        "min": min(slot_refs),
+                        "max": max(slot_refs),
+                        "avg": avg,
+                        "std_dev": math.sqrt(sum((x - avg)**2 for x in slot_refs) / len(slot_refs)) if len(slot_refs) > 1 else 0
+                    }
+        
+        # Compute overall balance (total plays per team)
+        total_plays = [sum(team_counts.values()) for team_counts in play_counts[level].values()]
+        if total_plays:
+            avg = sum(total_plays) / len(total_plays)
+            level_metrics["overall_balance"]["plays"] = {
+                "min": min(total_plays),
+                "max": max(total_plays),
+                "avg": avg,
+                "std_dev": math.sqrt(sum((x - avg)**2 for x in total_plays) / len(total_plays)) if len(total_plays) > 1 else 0
+            }
+        
+        total_refs = [sum(team_counts.values()) for team_counts in ref_counts[level].values()]
+        if total_refs:
+            avg = sum(total_refs) / len(total_refs)
+            level_metrics["overall_balance"]["refs"] = {
+                "min": min(total_refs),
+                "max": max(total_refs),
+                "avg": avg,
+                "std_dev": math.sqrt(sum((x - avg)**2 for x in total_refs) / len(total_refs)) if len(total_refs) > 1 else 0
+            }
+        
+        metrics[level] = level_metrics
+    
+    return metrics
+
+
+def compute_schedule_statistics(schedule_data, config_data):
+    """
+    Compute comprehensive statistics for a schedule.
+    
+    Args:
+        schedule_data: The formatted schedule data
+        config_data: Configuration with levels and team information
+        
+    Returns:
+        dict: Complete statistics including game distribution, team balance, and metrics
+    """
+    levels = config_data["levels"]
+    teams_per_level = config_data["teams_per_level"]
+    
+    # Extract actual team names and slot times from the schedule data
+    team_names_by_level = {}
+    slot_times = {}
+    
+    for level in levels:
+        team_names_by_level[level] = set()
+    
+    # Collect all unique team names and slot times from the schedule data
+    for week in schedule_data:
+        for slot_key, games in week["slots"].items():
+            slot_num = int(slot_key)
+            
+            for game in games:
+                level = game["level"]
+                
+                # Extract slot time
+                if slot_num not in slot_times and "time" in game:
+                    slot_times[slot_num] = game["time"]
+                
+                if level in levels:
+                    # Add team names from the teams list
+                    for team_name in game["teams"]:
+                        if team_name:
+                            team_names_by_level[level].add(team_name)
+    
+    # Convert sets to sorted lists for consistency
+    for level in levels:
+        team_names_by_level[level] = sorted(list(team_names_by_level[level]))
+    
+    # Compute all statistics
+    games_per_slot = compute_games_per_slot(schedule_data, levels)
+    play_counts = compute_team_play_counts(schedule_data, team_names_by_level, levels)
+    ref_counts = compute_team_ref_counts(schedule_data, team_names_by_level, levels)
+    overall_ref_counts = compute_overall_ref_counts(schedule_data, team_names_by_level, levels)
+    balance_metrics = compute_balance_metrics(play_counts, ref_counts)
+    
+    return {
+        "games_per_slot": games_per_slot,
+        "team_play_counts": play_counts,
+        "team_ref_counts": ref_counts,
+        "overall_ref_counts": overall_ref_counts,
+        "balance_metrics": balance_metrics,
+        "slot_times": slot_times,
+        "summary": {
+            "total_games": sum(
+                sum(level_counts.values()) 
+                for level_counts in games_per_slot.values()
+            ),
+            "levels": levels,
+            "teams_per_level": teams_per_level,
+            "team_names_by_level": team_names_by_level
+        }
+    }

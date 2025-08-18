@@ -85,10 +85,6 @@ const scheduleReducer = (state, action) => {
             isOffWeek: week.isOffWeek || false
           };
 
-          // Debug logging for off weeks
-          if (week.isOffWeek) {
-            console.log('Off week detected:', week);
-          }
         }
         
 

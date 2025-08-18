@@ -1,6 +1,7 @@
 import pulp
 import itertools
 from collections import defaultdict
+import orloge
 
 from tests import adjacent_slot_test, cycle_pairing_test, global_slot_distribution_test, pairing_tests, referee_player_test
 from stats import print_statistics
@@ -9,7 +10,7 @@ def get_round_robin_length(num_teams):
     """Calculates the number of weeks for one full round-robin."""
     return num_teams - 1 if num_teams % 2 == 0 else num_teams
 
-def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_find=5):
+def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_find=5, verbose=False):
     """
     Solves for weekly matchups multiple times, finding a different valid
     blueprint each time. This provides multiple starting points for Phase 2.
@@ -59,7 +60,7 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
                 prob += plays_in_week[pair][w] == plays_in_week[pair][w + rr_len]
 
     # --- The "Find Multiple Solutions" Logic ---
-    solver = pulp.PULP_CBC_CMD(msg=0)
+    solver = pulp.PULP_CBC_CMD(msg=1 if verbose else 0)
     found_blueprints = []
     
     for i in range(num_blueprints_to_find):
@@ -89,7 +90,7 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
             
     return found_blueprints
 
-def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit: float, gapRel: float, cancellation_checker=None):
+def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit: float, gapRel: float, cancellation_checker=None, use_best_checker=None):
     """
     Takes a fixed weekly matchup schedule and assigns slots and referees.
     This phase contains the optimization objectives.
@@ -97,6 +98,7 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
     
     Args:
         cancellation_checker: Optional function that returns True if generation should be cancelled
+        use_best_checker: Optional function that returns True if generation should stop and use best found
     """
     # ... (The entire setup, variables, and constraints of Phase 2 are UNCHANGED) ...
     # --- Setup ---
@@ -165,20 +167,120 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
     # Check for cancellation before solving
     if cancellation_checker and cancellation_checker():
         print("    -> Cancelled before solving")
-        return None, None
+        return None, None, None
+    
+    # Check for "use best" before solving 
+    if use_best_checker and use_best_checker():
+        print("    -> Stop and use best requested before solving")
+        return None, None, None
     
     # --- Solve ---
-    solver = pulp.PULP_CBC_CMD(timeLimit=time_limit, gapRel=gapRel, msg=False) # msg=False to keep the output clean
-    prob.solve(solver)
+    # Use orloge to parse solver output
+    import tempfile
+    import os
+    import threading
+    import time as time_module
+    theoretical_best = None  # Default
+    
+    # Create a temporary file for solver logs
+    with tempfile.NamedTemporaryFile(mode='w+', suffix='.log', delete=False) as temp_log:
+        temp_log_path = temp_log.name
+    
+    # Solve with cancellation support
+    solver = pulp.PULP_CBC_CMD(timeLimit=time_limit, gapRel=gapRel, logPath=temp_log_path, msg=False)
+    
+    # Run solver in a separate thread so we can check for cancellation
+    solve_result: list = [None]  # Use list to allow modification from thread
+    solve_exception: list = [None]
+    
+    def solve_thread():
+        try:
+            solve_result[0] = prob.solve(solver)
+        except Exception as e:
+            solve_exception[0] = e
+    
+    # Start solver thread
+    thread = threading.Thread(target=solve_thread)
+    thread.daemon = True
+    thread.start()
+    
+    # Check for cancellation while solver runs
+    start_time = time_module.time()
+    while thread.is_alive():
+        # Check cancellation every 0.1 seconds
+        thread.join(0.1)
+        
+        # Check for cancellation
+        if cancellation_checker and cancellation_checker():
+            print("    -> Cancellation requested during solving - terminating solver")
+            # Kill any CBC processes that might be running
+            try:
+                import subprocess
+                subprocess.run(['pkill', '-f', 'cbc'], check=False, capture_output=True)
+            except:
+                pass
+            # Clean up temp file and return
+            try:
+                os.unlink(temp_log_path)
+            except:
+                pass
+            return None, None, None
+        
+        # Check for "use best" 
+        if use_best_checker and use_best_checker():
+            print("    -> Stop and use best requested during solving - terminating solver")
+            try:
+                import subprocess
+                subprocess.run(['pkill', '-f', 'cbc'], check=False, capture_output=True)
+            except:
+                pass
+            try:
+                os.unlink(temp_log_path)
+            except:
+                pass
+            return None, None, None
+        
+        # Safety timeout check
+        if time_module.time() - start_time > time_limit + 10:  # Extra 10 seconds buffer
+            print("    -> Solver exceeded time limit - terminating")
+            try:
+                import subprocess
+                subprocess.run(['pkill', '-f', 'cbc'], check=False, capture_output=True)
+            except:
+                pass
+            break
+    
+    # Wait for thread to complete and check for exceptions
+    thread.join()
+    if solve_exception[0]:
+        raise solve_exception[0]
+    
+    # Parse the log file with orloge
+    try:
+        log_info = orloge.get_info_solver(temp_log_path, 'CBC')
+        if 'best_bound' in log_info and log_info['best_bound'] is not None:
+            theoretical_best = log_info['best_bound']
+    except Exception as e:
+        print(f"Could not parse solver logs: {e}")
+        
+    # Clean up temp file
+    os.unlink(temp_log_path)
 
     # Check for cancellation after solving
     if cancellation_checker and cancellation_checker():
         print("    -> Cancelled after solving")
-        return None, None
+        return None, None, None
+    
+    # Check for "use best" after solving
+    if use_best_checker and use_best_checker():
+        print("    -> Stop and use best requested after solving")
+        return None, None, None
 
     # --- Format Output ---
-    if pulp.LpStatus[prob.status] in ["Optimal", "Feasible"]:
-        objective_score = prob.objective.value() # Get the final score
+    if pulp.LpStatus[prob.status] in ["Optimal", "Feasible"] and solve_result[0] is not None:
+        objective_score = prob.objective.value() if prob.objective else None
+        
+        # theoretical_best is now set from orloge log parsing above
         schedule_output = []
         for w in weeks_range:
             week_data = {"week": w + 1, "slots": {str(s): [] for s in slots_range}}
@@ -196,9 +298,9 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
                                 break
                         week_data["slots"][str(s)].append({"level": level, "teams": [t1, t2], "ref": game_ref})
             schedule_output.append(week_data)
-        return schedule_output, objective_score
+        return schedule_output, objective_score, theoretical_best
     else:
-        return None, None
+        return None, None, None
         
 def flip_teams_by_round(schedule, team_names_by_level):
     if not schedule: return schedule
@@ -214,17 +316,19 @@ def flip_teams_by_round(schedule, team_names_by_level):
     return schedule
 
 ### NEW/MODIFIED ###
-def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprints_to_generate=6, gapRel=0.25, cancellation_checker=None):
+def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprints_to_generate=6, gapRel=0.25, cancellation_checker=None, use_best_checker=None, progress_callback=None, verbose=False):
     """
     Generates a schedule by first finding multiple unique matchup blueprints,
     then running a timed optimization on each one to find the best final schedule.
     
     Args:
         cancellation_checker: Optional function that returns True if generation should be cancelled
+        use_best_checker: Optional function that returns True if generation should stop and use best found
+        progress_callback: Optional function to call with progress updates
     """
     # Phase 1: Generate a list of potential blueprints
-    blueprints = phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_generate)
-    
+    blueprints = phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_generate, verbose=verbose)
+
     if not blueprints:
         print("\nScheduling failed in Phase 1. No valid matchup blueprints could be found.")
         return None
@@ -239,28 +343,103 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
     
     best_schedule = None
     best_score = float('inf') # We want to minimize this score
+    theoretical_best_score = None  # Will be updated when first blueprint completes
+    
+    # Track all blueprint results as a map: blueprint_number -> {score, theoretical_best}
+    blueprint_results = {}
     
     # Divide the total time limit among all the blueprints we need to test
     time_per_run = max(1.0, time_limit / len(blueprints)) # Ensure at least 1 second per run
     
     for i, blueprint in enumerate(blueprints):
-        # Check for cancellation before each blueprint
+        # Check for cancellation or "use best" before each blueprint
         if cancellation_checker and cancellation_checker():
             print(f"\nSchedule generation cancelled during Blueprint #{i+1}.")
             return None
             
+        # Check for "use best" request - return best schedule found so far
+        if use_best_checker and use_best_checker():
+            if best_schedule:
+                print(f"\nSchedule generation stopped early. Using best schedule found (score: {best_score}).")
+                # Phase 3: Post-process the best schedule found so far
+                final_schedule = flip_teams_by_round(best_schedule, team_names_by_level)
+                print("Successfully generated a complete schedule!")
+                return final_schedule
+            else:
+                print(f"\nSchedule generation stopped early but no valid schedule found yet.")
+                return None
+        
+        # Update progress at start of blueprint
+        if progress_callback:
+            progress_callback({
+                'phase': 'phase_2',
+                'current_blueprint': i + 1,
+                'total_blueprints': len(blueprints),
+                'best_score': best_score if best_score != float('inf') else None,
+                'last_score': None,
+                'best_possible_score': theoretical_best_score,
+                'best_schedule': best_schedule,
+                'blueprint_results': blueprint_results
+            })
+            
         print(f"  Optimizing for Blueprint #{i+1}/{len(blueprints)} (time limit: {time_per_run:.1f}s)...")
 
-        schedule, score = phase_2_assign_slots_and_refs(config, team_names_by_level, blueprint, time_limit=time_per_run, gapRel=gapRel, cancellation_checker=cancellation_checker)
+        schedule, score, theoretical_best = phase_2_assign_slots_and_refs(config, team_names_by_level, blueprint, time_limit=time_per_run, gapRel=gapRel, cancellation_checker=cancellation_checker, use_best_checker=use_best_checker)
 
         if schedule and score is not None:
             print(f"    -> Result: Feasible, Imbalance Score: {score}")
+            if theoretical_best is not None and theoretical_best > 0:
+                print(f"    -> Theoretical Best (Lower Bound): {theoretical_best}")
+            
+            # Update theoretical best score from solver logs
+            if theoretical_best is not None:
+                theoretical_best_score = theoretical_best
+            
+            # Store blueprint result
+            blueprint_results[i + 1] = {
+                'score': score,
+                'theoretical_best': theoretical_best
+            }
+            
+            # Check if this is a new best
             if score < best_score:
                 print(f"    -> NEW BEST FOUND!")
                 best_score = score
                 best_schedule = schedule
+            
+            # Update progress with current state (always include best_schedule and blueprint_results)
+            if progress_callback:
+                progress_callback({
+                    'phase': 'phase_2',
+                    'current_blueprint': i + 1,
+                    'total_blueprints': len(blueprints),
+                    'best_score': best_score if best_score != float('inf') else None,
+                    'last_score': score,
+                    'best_possible_score': theoretical_best_score,
+                    'best_schedule': best_schedule,
+                    'blueprint_results': blueprint_results
+                })
         else:
             print(f"    -> Result: Infeasible. This blueprint could not be scheduled.")
+            
+            # Store infeasible blueprint result
+            blueprint_results[i + 1] = {
+                'score': 'infeasible',
+                'theoretical_best': None
+            }
+            
+            # Update progress for infeasible result
+            if progress_callback:
+                progress_callback({
+                    'phase': 'phase_2',
+                    'current_blueprint': i + 1,
+                    'total_blueprints': len(blueprints),
+                    'best_score': best_score if best_score != float('inf') else None,
+                    'last_score': 'infeasible',
+                    'best_possible_score': theoretical_best_score,
+                    'best_schedule': best_schedule,
+                    'blueprint_results': blueprint_results
+                })
             
     if not best_schedule:
         print("\nScheduling failed in Phase 2. None of the blueprints resulted in a valid schedule.")
@@ -369,7 +548,7 @@ if __name__ == "__main__":
     
     ### NEW/MODIFIED ###
     # We now call the generator with a total time limit and the number of blueprints to try
-    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=60, num_blueprints_to_generate=10, gapRel=0.25)
+    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=60, num_blueprints_to_generate=10, gapRel=0.1, verbose=True)
 
     if final_schedule:
         # These functions for testing and stats would be run as before
