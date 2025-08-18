@@ -264,10 +264,20 @@ const OrganizationCreate = () => {
 
   return (
     <div className="page-container">
-      <h2>Step 1: Team Setup</h2>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-        Select existing teams from dropdowns and assign them to levels for this season.
-      </p>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h2>Step 1: Team Setup</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Select existing teams from dropdowns and assign them to levels for this season.
+          </p>
+        </div>
+        <a
+          href="/scheduler/app/teams"
+          className="btn btn-success"
+        >
+          Manage Teams
+        </a>
+      </div>
       
       <form onSubmit={handleSubmit}>
         {/* Team Levels Section */}

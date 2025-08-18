@@ -200,21 +200,25 @@ const TeamList = ({
                     <div>
                       <h5 style={{ marginBottom: '1rem', fontSize: '1rem' }}>Season History</h5>
                       {teamStats[team.id].seasons && teamStats[team.id].seasons.length > 0 ? (
-                        <div style={{ display: 'grid', gap: '2rem' }}>
+                        <div style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                          gap: '1rem' 
+                        }}>
                           {teamStats[team.id].seasons.map(season => (
                             <div key={season.season_id} style={{ 
-                              padding: '1rem', 
+                              padding: '0.75rem', 
                               backgroundColor: 'var(--bg-primary)', 
                               borderRadius: '6px', 
                               border: '1px solid var(--border-primary)' 
                             }}>
                               <h6 style={{ 
-                                marginBottom: '1rem', 
+                                marginBottom: '0.75rem', 
                                 fontSize: '0.9rem', 
                                 fontWeight: '600',
                                 color: 'var(--text-primary)'
                               }}>
-                                {season.season_name} - {season.level_name}
+                                {season.season_name}
                               </h6>
                               <StandingsTable 
                                 standings={season.standings} 

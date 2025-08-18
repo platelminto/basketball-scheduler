@@ -273,7 +273,12 @@ const SeasonList = () => {
   
   return (
     <div className="page-container">
-      <h2>Seasons</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Seasons</h2>
+        <Link to="/seasons/create/setup" className="btn btn-primary">
+          <i className="fas fa-plus"></i> Create New Season
+        </Link>
+      </div>
 
       {state.seasons?.length > 0 ? (
         <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -385,11 +390,6 @@ const SeasonList = () => {
         </div>
       )}
 
-      <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border-primary)', textAlign: 'center' }}>
-        <Link to="/seasons/create/setup" className="btn btn-primary">
-          <i className="fas fa-plus"></i> Create New Season
-        </Link>
-      </div>
     </div>
   );
 };

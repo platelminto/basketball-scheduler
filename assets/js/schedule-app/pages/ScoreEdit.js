@@ -250,17 +250,19 @@ const ScoreEdit = () => {
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h2>Update Scores: {state.season?.name}</h2>
 
-        <div className="d-flex gap-3 align-items-center">
-          <button
-            type="button"
-            className={`btn btn-sm ${useSimpleView ? 'btn-primary' : 'btn-outline-primary'}`}
-            onClick={() => setUseSimpleView(!useSimpleView)}
-            title="Toggle between simple card view and detailed table view"
-          >
-            <i className={`fas ${useSimpleView ? 'fa-table' : 'fa-th-large'} me-2`}></i>
-            {useSimpleView ? 'Table View' : 'Simple View'}
-          </button>
-        </div>
+        {window.innerWidth >= 768 && (
+          <div className="d-flex gap-3 align-items-center">
+            <button
+              type="button"
+              className={`btn btn-sm ${useSimpleView ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setUseSimpleView(!useSimpleView)}
+              title="Toggle between simple card view and detailed table view"
+            >
+              <i className={`fas ${useSimpleView ? 'fa-table' : 'fa-th-large'} me-2`}></i>
+              {useSimpleView ? 'Table View' : 'Simple View'}
+            </button>
+          </div>
+        )}
 
         <div className="d-flex gap-2">
           

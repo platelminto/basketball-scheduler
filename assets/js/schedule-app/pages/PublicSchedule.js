@@ -154,11 +154,16 @@ const PublicSchedule = () => {
         alignItems: 'start'
       }}>
         {(showBoth || showStandingsOnly) && (
-          <StandingsTable 
-            standings={standings} 
-            levels={scheduleData.levels} 
-            showBoth={showBoth}
-          />
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '15px' }}>
+              League Standings
+            </h2>
+            <StandingsTable 
+              standings={standings} 
+              levels={scheduleData.levels} 
+              showBoth={showBoth}
+            />
+          </div>
         )}
 
         {(showBoth || showScheduleOnly) && (

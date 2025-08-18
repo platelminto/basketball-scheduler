@@ -308,8 +308,8 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
             {mode === 'score-edit' && (
               <button
                 type="button"
-                className={`btn ${isLocked ? 'btn-outline-danger' : 'btn-outline-success'} me-2`}
-                style={{ minHeight: '40px', border: '1px solid' }}
+                className={`btn btn-sm ${isLocked ? 'btn-outline-danger' : 'btn-outline-success'} me-2`}
+                style={{ alignSelf: 'stretch' }}
                 title={isLocked ? (canBeUnlocked() ? 'Click to unlock week' : 'Week is locked (unlock previous weeks first)') : 'Click to lock week'}
                 onClick={handleLockToggle}
                 disabled={isLocked && !canBeUnlocked()}

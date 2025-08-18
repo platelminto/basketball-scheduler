@@ -24,9 +24,6 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
       top: showBoth ? '20px' : 'auto',
       marginBottom: !showBoth ? '30px' : '0'
     }}>
-      <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '15px' }}>
-        League Standings
-      </h2>
       
       <div style={{ 
         display: isSummary ? 'flex' : 'block',

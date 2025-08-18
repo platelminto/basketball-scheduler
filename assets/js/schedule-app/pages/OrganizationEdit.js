@@ -136,7 +136,7 @@ const OrganizationEdit = () => {
         </div>
         <a
           href="/scheduler/app/teams"
-          className="btn btn-outline-primary"
+          className="btn btn-success"
         >
           Manage Teams
         </a>
