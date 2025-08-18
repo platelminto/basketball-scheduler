@@ -1,6 +1,6 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from scheduler.models import Season, Level, Team, Game, Week
+from scheduler.models import Season, Level, TeamOrganization, SeasonTeam, Game, Week
 from datetime import date, time
 from icalendar import Calendar
 
@@ -10,16 +10,29 @@ class TeamCalendarExportTestCase(TestCase):
         """Set up test data"""
         self.client = Client()
         
-        # Create test season, level, and teams
+        # Create test season, level, and team organizations
         self.season = Season.objects.create(
             name='Test Season', 
             is_active=True, 
             slot_duration_minutes=70
         )
         self.level = Level.objects.create(season=self.season, name='Test Level')
-        self.team1 = Team.objects.create(level=self.level, name='Team A')
-        self.team2 = Team.objects.create(level=self.level, name='Team B')
-        self.team3 = Team.objects.create(level=self.level, name='Team C')
+        
+        # Create team organizations
+        self.team_org1 = TeamOrganization.objects.create(name='Team A')
+        self.team_org2 = TeamOrganization.objects.create(name='Team B')
+        self.team_org3 = TeamOrganization.objects.create(name='Team C')
+        
+        # Create season teams
+        self.season_team1 = SeasonTeam.objects.create(
+            season=self.season, team=self.team_org1, level=self.level
+        )
+        self.season_team2 = SeasonTeam.objects.create(
+            season=self.season, team=self.team_org2, level=self.level
+        )
+        self.season_team3 = SeasonTeam.objects.create(
+            season=self.season, team=self.team_org3, level=self.level
+        )
         
         # Create test week
         self.week = Week.objects.create(
@@ -32,9 +45,9 @@ class TeamCalendarExportTestCase(TestCase):
         self.game1 = Game.objects.create(
             level=self.level,
             week=self.week,
-            team1=self.team1,
-            team2=self.team2,
-            referee_team=self.team3,
+            season_team1=self.season_team1,
+            season_team2=self.season_team2,
+            referee_season_team=self.season_team3,
             day_of_week=0,  # Monday
             time=time(19, 0),
             court='Court 1'
@@ -43,9 +56,9 @@ class TeamCalendarExportTestCase(TestCase):
         self.game2 = Game.objects.create(
             level=self.level,
             week=self.week,
-            team1=self.team2,
-            team2=self.team3,
-            referee_team=self.team1,
+            season_team1=self.season_team2,
+            season_team2=self.season_team3,
+            referee_season_team=self.season_team1,
             day_of_week=2,  # Wednesday
             time=time(20, 0),
             court='Court 2'
@@ -53,7 +66,7 @@ class TeamCalendarExportTestCase(TestCase):
 
     def test_calendar_export_basic(self):
         """Test basic calendar export functionality"""
-        url = reverse('scheduler:team_calendar_export', args=[self.team1.id])
+        url = reverse('scheduler:team_calendar_export', args=[self.team_org1.id])
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, 200)
@@ -74,7 +87,7 @@ class TeamCalendarExportTestCase(TestCase):
 
     def test_calendar_export_with_reffing(self):
         """Test calendar export including reffing games"""
-        url = reverse('scheduler:team_calendar_export', args=[self.team1.id])
+        url = reverse('scheduler:team_calendar_export', args=[self.team_org1.id])
         response = self.client.get(url + '?include_reffing=true')
         
         self.assertEqual(response.status_code, 200)
@@ -97,7 +110,7 @@ class TeamCalendarExportTestCase(TestCase):
         self.game1.team2_score = 78
         self.game1.save()
         
-        url = reverse('scheduler:team_calendar_export', args=[self.team1.id])
+        url = reverse('scheduler:team_calendar_export', args=[self.team_org1.id])
         response = self.client.get(url + '?include_scores=true')
         
         self.assertEqual(response.status_code, 200)
@@ -121,7 +134,7 @@ class TeamCalendarExportTestCase(TestCase):
 
     def test_calendar_properties(self):
         """Test that calendar has proper properties"""
-        url = reverse('scheduler:team_calendar_export', args=[self.team1.id])
+        url = reverse('scheduler:team_calendar_export', args=[self.team_org1.id])
         response = self.client.get(url)
         
         cal = Calendar.from_ical(response.content)
@@ -129,7 +142,6 @@ class TeamCalendarExportTestCase(TestCase):
         self.assertEqual(str(cal.get('version')), '2.0')
         self.assertEqual(str(cal.get('calscale')), 'GREGORIAN')
         self.assertIn('Team A', str(cal.get('x-wr-calname')))
-        self.assertIn('Test Season', str(cal.get('x-wr-calname')))
 
 
 if __name__ == '__main__':

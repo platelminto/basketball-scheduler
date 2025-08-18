@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
-import TeamCourtSetup from '../components/TeamCourtSetup';
+import OrganizationEditor from '../components/OrganizationEditor';
 import { SET_LOADING, SET_ERROR } from '../contexts/ScheduleContext';
 
-const EditSeasonStructure = () => {
+const OrganizationEdit = () => {
   const { seasonId } = useParams();
   const { state, dispatch } = useSchedule();
   const navigate = useNavigate();
@@ -37,10 +37,10 @@ const EditSeasonStructure = () => {
     }
   }, [seasonId, dispatch]);
   
-  // Convert season data to format expected by TeamCourtSetup
+  // Convert season data to format expected by OrganizationEditor
   const getCurrentTeamsLevels = () => {
     if (!seasonData || !seasonData.levels || !seasonData.teams_by_level) {
-      return { levels: [], courts: [] };
+      return { levels: [], courts: [], originalCourts: [] };
     }
     
     const levels = seasonData.levels.map(level => ({
@@ -53,23 +53,31 @@ const EditSeasonStructure = () => {
     }));
     
     const courts = (seasonData.courts || []).map((court, index) => ({
-      id: Date.now() + index,
-      name: court
+      id: index, // Use index as stable ID
+      name: court,
+      originalName: court // Track original name
     }));
     
-    return { levels, courts };
+    return { levels, courts, originalCourts: seasonData.courts || [] };
   };
   
   // Handle form submission
   const handleSubmit = async (setupData) => {
     try {
-      const response = await fetch(`/scheduler/api/seasons/${seasonId}/teams/`, {
+      // Add original court mappings for backend to track renames
+      const { originalCourts } = getCurrentTeamsLevels();
+      const submitData = {
+        ...setupData,
+        original_courts: originalCourts
+      };
+      
+      const response = await fetch(`/scheduler/api/seasons/${seasonId}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': getCsrfToken(),
         },
-        body: JSON.stringify(setupData)
+        body: JSON.stringify(submitData)
       });
       
       const data = await response.json();
@@ -121,10 +129,20 @@ const EditSeasonStructure = () => {
   
   return (
     <div className="container mt-4">
-      <h2>Edit Organization: {seasonData?.season?.name}</h2>
-      <p className="text-muted">Update organizational structure for this season.</p>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h2>Edit Organization: {seasonData?.season?.name}</h2>
+          <p className="text-muted">Update courts and settings for this season.</p>
+        </div>
+        <a
+          href="/scheduler/app/teams"
+          className="btn btn-outline-primary"
+        >
+          Manage Teams
+        </a>
+      </div>
 
-      <TeamCourtSetup
+      <OrganizationEditor
         initialLevels={getCurrentTeamsLevels().levels}
         initialCourts={getCurrentTeamsLevels().courts}
         onSubmit={handleSubmit}
@@ -138,4 +156,4 @@ const EditSeasonStructure = () => {
   );
 };
 
-export default EditSeasonStructure;
+export default OrganizationEdit;

@@ -8,7 +8,7 @@ schedules including game creation and validation.
 from datetime import datetime
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from scheduler.models import OffWeek, Season, Level, Team, Game, Week
+from scheduler.models import OffWeek, Season, Level, SeasonTeam, TeamOrganization, Game, Week
 from scheduler.services.game_operations import (
     normalize_game_data,
     resolve_game_objects,
@@ -48,8 +48,11 @@ def create_season_and_structure(season_name, setup_data, week_dates_data):
         level_instances[level_name] = level_obj
         team_instances[level_name] = {}
         for team_name in team_names:
-            team_obj = Team.objects.create(level=level_obj, name=team_name)
-            team_instances[level_name][team_name] = team_obj
+            # Get or create TeamOrganization
+            team_org, created = TeamOrganization.objects.get_or_create(name=team_name)
+            # Create SeasonTeam assignment
+            season_team = SeasonTeam.objects.create(season=season, team=team_org, level=level_obj)
+            team_instances[level_name][team_name] = season_team
 
     # Create weeks from week_dates_data
     for week_info in week_dates_data:
@@ -134,7 +137,7 @@ def build_update_lookups(season):
         str(level.id): level for level in Level.objects.filter(season=season)
     }
     valid_teams = {
-        str(team.id): team for team in Team.objects.filter(level__season=season)
+        str(season_team.id): season_team for season_team in SeasonTeam.objects.filter(season=season)
     }
     valid_weeks = {
         str(week.week_number): week
@@ -182,9 +185,9 @@ def process_game_assignments(game_assignments, is_create, lookups):
             Game.objects.create(
                 level=level_obj,
                 week=week_obj,
-                team1=team1_obj,
-                team2=team2_obj,
-                referee_team=referee_obj,
+                season_team1=team1_obj,
+                season_team2=team2_obj,
+                referee_season_team=referee_obj,
                 referee_name=referee_name,
                 day_of_week=day_of_week,
                 time=game_time,
@@ -202,8 +205,9 @@ def process_game_assignments(game_assignments, is_create, lookups):
     return created_games_count, creation_errors
 
 
+@transaction.atomic
 def create_schedule(season_name, setup_data, game_assignments, week_dates_data):
-    """Create a new schedule with season, levels, teams, and games."""
+    """Create a new schedule with season, levels, teams, and games safely using database transaction."""
     season, level_instances, team_instances = create_season_and_structure(
         season_name, setup_data, week_dates_data
     )
@@ -215,33 +219,49 @@ def create_schedule(season_name, setup_data, game_assignments, week_dates_data):
 
     if creation_errors:
         error_details = ". ".join(creation_errors)
+        # The @transaction.atomic decorator will automatically rollback all changes
+        # if an exception is raised, so the season/levels/teams will be cleaned up
         raise ValueError(f"Schedule passed validation but had creation errors: {error_details}")
 
     return season, created_games_count
 
 
+@transaction.atomic
 def update_schedule(season_id, game_assignments, week_dates_data):
-    """Update an existing schedule."""
+    """Update an existing schedule safely using database transaction."""
     season = get_object_or_404(Season, pk=season_id)
 
-    # Delete existing games first (before weeks, since week FK is now PROTECT)
-    deleted_count, _ = Game.objects.filter(level__season=season).delete()
+    # Create savepoint to rollback to if game creation fails
+    savepoint = transaction.savepoint()
+    
+    try:
+        # Delete existing games first (before weeks, since week FK is now PROTECT)
+        deleted_count, _ = Game.objects.filter(level__season=season).delete()
 
-    # Handle week date updates, deletions, and off-week insertions
-    update_season_weeks(season, week_dates_data)
+        # Handle week date updates, deletions, and off-week insertions
+        update_season_weeks(season, week_dates_data)
 
-    # Build lookups for new game creation (games already deleted above)
-    lookups = build_update_lookups(season)
+        # Build lookups for new game creation (games already deleted above)
+        lookups = build_update_lookups(season)
 
-    created_games_count, creation_errors = process_game_assignments(
-        game_assignments, is_create=False, lookups=lookups
-    )
+        created_games_count, creation_errors = process_game_assignments(
+            game_assignments, is_create=False, lookups=lookups
+        )
 
-    if creation_errors:
-        error_details = ". ".join(creation_errors)
-        raise ValueError(f"Schedule passed validation but had creation errors: {error_details}")
+        if creation_errors:
+            error_details = ". ".join(creation_errors)
+            # Rollback to savepoint to restore deleted games
+            transaction.savepoint_rollback(savepoint)
+            raise ValueError(f"Schedule passed validation but had creation errors: {error_details}")
 
-    return season, created_games_count, deleted_count
+        # Commit the savepoint - everything succeeded
+        transaction.savepoint_commit(savepoint)
+        return season, created_games_count, deleted_count
+        
+    except Exception as e:
+        # Rollback to savepoint to restore deleted games
+        transaction.savepoint_rollback(savepoint)
+        raise
 
 
 def build_schedule_response_data(is_create, season, created_games_count, deleted_count=None):

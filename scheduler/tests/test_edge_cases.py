@@ -1,5 +1,5 @@
 from django.test import TestCase
-from scheduler.models import Season, Level, Team, Game, Week
+from scheduler.models import Season, Level, TeamOrganization, SeasonTeam, Game, Week
 from django.db.utils import IntegrityError
 from django.utils import timezone
 from datetime import datetime, timedelta, date
@@ -12,9 +12,12 @@ class EdgeCaseTests(TestCase):
         self.level = Level.objects.create(season=self.season, name="X")
         
         # Create exactly 3 teams for minimal round-robin
+        self.team_orgs = []
         self.teams = []
         for i in range(3):
-            team = Team.objects.create(level=self.level, name=f"Team X{i+1}")
+            team_org = TeamOrganization.objects.create(name=f"Team X{i+1}")
+            self.team_orgs.append(team_org)
+            team = SeasonTeam.objects.create(season=self.season, team=team_org, level=self.level)
             self.teams.append(team)
         
         # Create weeks for testing
@@ -27,9 +30,9 @@ class EdgeCaseTests(TestCase):
         Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.teams[0],
-            team2=self.teams[1],
-            referee_team=self.teams[2]
+            season_team1=self.teams[0],
+            season_team2=self.teams[1],
+            referee_season_team=self.teams[2]
         )
         
         # Retrieve and verify
@@ -45,9 +48,9 @@ class EdgeCaseTests(TestCase):
         game = Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.teams[0],
-            team2=self.teams[1],
-            referee_team=self.teams[2],
+            season_team1=self.teams[0],
+            season_team2=self.teams[1],
+            referee_season_team=self.teams[2],
             day_of_week=1,
             time='18:00'
         )
@@ -75,13 +78,13 @@ class EdgeCaseTests(TestCase):
         game = Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.teams[0],
-            team2=self.teams[1],
-            referee_team=None  # No referee
+            season_team1=self.teams[0],
+            season_team2=self.teams[1],
+            referee_season_team=None  # No referee
         )
         
         # Verify the game was created correctly
-        self.assertIsNone(game.referee_team)
+        self.assertIsNone(game.referee_season_team)
         
         # Verified game created without referee - API tests removed as legacy endpoint was deleted
         
@@ -92,14 +95,14 @@ class EdgeCaseTests(TestCase):
         game = Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.teams[0],
-            team2=self.teams[1],
-            referee_team=None,
+            season_team1=self.teams[0],
+            season_team2=self.teams[1],
+            referee_season_team=None,
             referee_name=referee_name
         )
         
         # Verify the game was created correctly
-        self.assertIsNone(game.referee_team)
+        self.assertIsNone(game.referee_season_team)
         self.assertEqual(game.referee_name, referee_name)
         
         # Test string representation includes the correct referee name
@@ -113,17 +116,17 @@ class EdgeCaseTests(TestCase):
         game1 = Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.teams[0],
-            team2=self.teams[1],
-            referee_team=self.teams[2]
+            season_team1=self.teams[0],
+            season_team2=self.teams[1],
+            referee_season_team=self.teams[2]
         )
         
         game2 = Game.objects.create(
             level=self.level,
             week=self.week2,
-            team1=self.teams[0],
-            team2=self.teams[1],  # Same matchup
-            referee_team=self.teams[2]
+            season_team1=self.teams[0],
+            season_team2=self.teams[1],  # Same matchup
+            referee_season_team=self.teams[2]
         )
         
         # Both games should exist
@@ -135,9 +138,9 @@ class EdgeCaseTests(TestCase):
         game = Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.teams[0],
-            team2=self.teams[1],
-            referee_team=self.teams[2]
+            season_team1=self.teams[0],
+            season_team2=self.teams[1],
+            referee_season_team=self.teams[2]
         )
         
         # Try to delete team1 (should fail due to PROTECT constraint)
@@ -152,4 +155,4 @@ class EdgeCaseTests(TestCase):
         
         # Verify the game still exists but referee is NULL
         game.refresh_from_db()
-        self.assertIsNone(game.referee_team)
+        self.assertIsNone(game.referee_season_team)

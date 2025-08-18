@@ -1,6 +1,6 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from scheduler.models import Season, Level, Team, Game, Week
+from scheduler.models import Season, Level, TeamOrganization, SeasonTeam, Game, Week
 import json
 from datetime import date
 
@@ -13,9 +13,12 @@ class ViewTests(TestCase):
         # Create a level
         self.level = Level.objects.create(season=self.season, name="A")
         # Create teams
-        self.team1 = Team.objects.create(level=self.level, name="Team A1")
-        self.team2 = Team.objects.create(level=self.level, name="Team A2")
-        self.team3 = Team.objects.create(level=self.level, name="Team A3")
+        self.team_org1 = TeamOrganization.objects.create(name="Team A1")
+        self.team_org2 = TeamOrganization.objects.create(name="Team A2")
+        self.team_org3 = TeamOrganization.objects.create(name="Team A3")
+        self.team1 = SeasonTeam.objects.create(season=self.season, team=self.team_org1, level=self.level)
+        self.team2 = SeasonTeam.objects.create(season=self.season, team=self.team_org2, level=self.level)
+        self.team3 = SeasonTeam.objects.create(season=self.season, team=self.team_org3, level=self.level)
         # Create weeks
         self.week1 = Week.objects.create(season=self.season, week_number=1, monday_date=date(2024, 1, 1))
 
@@ -36,9 +39,9 @@ class ViewTests(TestCase):
         Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.team1,
-            team2=self.team2,
-            referee_team=self.team3
+            season_team1=self.team1,
+            season_team2=self.team2,
+            referee_season_team=self.team3
         )
         
         # Since we removed the legacy template views, just check the season exists
@@ -112,7 +115,7 @@ class ViewTests(TestCase):
         
         # Check that levels and teams were created
         self.assertEqual(new_season.levels.count(), 2)
-        self.assertEqual(Team.objects.filter(level__season=new_season).count(), 6)
+        self.assertEqual(SeasonTeam.objects.filter(season=new_season).count(), 6)
         
         # Check that the game was created
         self.assertEqual(Game.objects.filter(level__season=new_season).count(), 1)
@@ -176,7 +179,7 @@ class ViewTests(TestCase):
         
         # Check that the game was created with the correct referee
         game = Game.objects.get(level__season=new_season)
-        self.assertIsNone(game.referee_team)  # Should not be associated with a team
+        self.assertIsNone(game.referee_season_team)  # Should not be associated with a team
         self.assertEqual(game.referee_name, 'External Referee John')  # Should store the string name
         
     def test_save_schedule_with_no_referee(self):
@@ -226,7 +229,7 @@ class ViewTests(TestCase):
         # Check that the game was created with no referee
         new_season = Season.objects.get(name='Season With No Ref')
         game = Game.objects.get(level__season=new_season)
-        self.assertIsNone(game.referee_team)
+        self.assertIsNone(game.referee_season_team)
         self.assertIsNone(game.referee_name)
 
     def test_update_schedule_view(self):
@@ -235,9 +238,9 @@ class ViewTests(TestCase):
         game = Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.team1,
-            team2=self.team2,
-            referee_team=self.team3
+            season_team1=self.team1,
+            season_team2=self.team2,
+            referee_season_team=self.team3
         )
         
         # Prepare update data (creating a new game with different teams)
@@ -270,9 +273,9 @@ class ViewTests(TestCase):
         
         # Verify the new game has the correct attributes
         new_game = Game.objects.get(level__season=self.season)
-        self.assertEqual(new_game.team1, self.team1)
-        self.assertEqual(new_game.team2, self.team3)  # Should be team3
-        self.assertEqual(new_game.referee_team, self.team2)  # Should be team2
+        self.assertEqual(new_game.season_team1, self.team1)
+        self.assertEqual(new_game.season_team2, self.team3)  # Should be team3
+        self.assertEqual(new_game.referee_season_team, self.team2)  # Should be team2
         self.assertEqual(new_game.court, 'Court 2')
         self.assertEqual(new_game.team1_score, 30)
         self.assertEqual(new_game.team2_score, 25)
@@ -283,9 +286,9 @@ class ViewTests(TestCase):
         game = Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.team1,
-            team2=self.team2,
-            referee_team=self.team3
+            season_team1=self.team1,
+            season_team2=self.team2,
+            referee_season_team=self.team3
         )
         
         # Prepare update data with string referee
@@ -315,9 +318,9 @@ class ViewTests(TestCase):
         
         # Verify the new game has the correct attributes with string referee
         new_game = Game.objects.get(level__season=self.season)
-        self.assertEqual(new_game.team1, self.team1)
-        self.assertEqual(new_game.team2, self.team2)
-        self.assertIsNone(new_game.referee_team)  # No team referee
+        self.assertEqual(new_game.season_team1, self.team1)
+        self.assertEqual(new_game.season_team2, self.team2)
+        self.assertIsNone(new_game.referee_season_team)  # No team referee
         self.assertEqual(new_game.referee_name, 'External Referee Smith')  # String referee
         self.assertEqual(new_game.court, 'Court 3')
         self.assertEqual(new_game.team1_score, 45)
@@ -329,9 +332,9 @@ class ViewTests(TestCase):
         game = Game.objects.create(
             level=self.level,
             week=self.week1,
-            team1=self.team1,
-            team2=self.team2,
-            referee_team=self.team3
+            season_team1=self.team1,
+            season_team2=self.team2,
+            referee_season_team=self.team3
         )
         
         # Prepare update data with no referee
@@ -359,7 +362,7 @@ class ViewTests(TestCase):
         
         # Verify the new game has no referee
         new_game = Game.objects.get(level__season=self.season)
-        self.assertIsNone(new_game.referee_team)
+        self.assertIsNone(new_game.referee_season_team)
         self.assertIsNone(new_game.referee_name)
         self.assertEqual(new_game.court, 'Court 4')
 

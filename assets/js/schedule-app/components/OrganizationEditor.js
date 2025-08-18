@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const TeamCourtSetup = ({ 
+const OrganizationEditor = ({ 
   initialLevels = null, 
   initialCourts = null, 
   onSubmit, 
@@ -173,9 +173,9 @@ const TeamCourtSetup = ({
     });
     
     // Convert courts to array of objects with names and IDs
-    const courtNames = courts
-      .map(court => court.name.trim())
-      .filter(name => name !== '');
+    const courtData = courts
+      .map(court => ({ id: court.id, name: court.name.trim() }))
+      .filter(court => court.name !== '');
 
     // Check for empty team names
     let hasEmptyTeams = false;
@@ -194,11 +194,11 @@ const TeamCourtSetup = ({
     // Build the setup data with both old and new formats for backward compatibility
     const setupData = {
       // New format with IDs for rename tracking
-      levels: levelsData,
-      courts: courtNames,
+      levels: levelsData.map(level => ({ id: level.id, name: level.name })),
+      courts: courtData,
       slot_duration_minutes: slotDuration,
-      // Old format for backward compatibility
-      teams: levelsData.reduce((acc, level) => {
+      // Old format for backward compatibility - only include teams if not in edit mode
+      teams: editMode ? {} : levelsData.reduce((acc, level) => {
         acc[level.name] = level.teams.map(team => team.name);
         return acc;
       }, {})
@@ -260,6 +260,8 @@ const TeamCourtSetup = ({
         placeholder="Team Name" 
         value={team.name}
         onChange={(e) => updateTeamName(levelId, team.id, e.target.value)}
+        disabled={editMode}
+        style={editMode ? { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' } : {}}
         required
       />
     </div>
@@ -289,10 +291,11 @@ const TeamCourtSetup = ({
   
   return (
     <form id="teamSetupForm" className="mt-4" onSubmit={handleSubmit}>
+      
       {/* Team Levels Section */}
       <div className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <h4>Team Levels</h4>
+          <h4>{editMode ? 'Current Team Organization' : 'Team Levels'}</h4>
           {!editMode && (
             <button 
               type="button" 
@@ -371,4 +374,4 @@ const TeamCourtSetup = ({
   );
 };
 
-export default TeamCourtSetup;
+export default OrganizationEditor;

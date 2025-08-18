@@ -14,14 +14,16 @@
                 "0.0.0.0:8001"
             ],
             "django": true,
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}"
         },
         {
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}"
         }
     ]
 }

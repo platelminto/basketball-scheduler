@@ -1,5 +1,5 @@
 from django.test import TestCase, Client, RequestFactory
-from scheduler.models import Season, Level, Team, Game, Week, OffWeek
+from scheduler.models import Season, Level, TeamOrganization, SeasonTeam, Game, Week, OffWeek
 import json
 from datetime import date
 
@@ -10,9 +10,12 @@ class UnifiedScheduleTests(TestCase):
         # Create a test season with existing data for update tests
         self.season = Season.objects.create(name="Existing Season", is_active=True)
         self.level = Level.objects.create(season=self.season, name="A")
-        self.team1 = Team.objects.create(level=self.level, name="Team A1")
-        self.team2 = Team.objects.create(level=self.level, name="Team A2")
-        self.team3 = Team.objects.create(level=self.level, name="Team A3")
+        self.team_org1 = TeamOrganization.objects.create(name="Team A1")
+        self.team_org2 = TeamOrganization.objects.create(name="Team A2")
+        self.team_org3 = TeamOrganization.objects.create(name="Team A3")
+        self.team1 = SeasonTeam.objects.create(season=self.season, team=self.team_org1, level=self.level)
+        self.team2 = SeasonTeam.objects.create(season=self.season, team=self.team_org2, level=self.level)
+        self.team3 = SeasonTeam.objects.create(season=self.season, team=self.team_org3, level=self.level)
         
         # Create a week for update tests
         self.week = Week.objects.create(season=self.season, week_number=1, monday_date=date(2024, 1, 1))
@@ -89,7 +92,7 @@ class UnifiedScheduleTests(TestCase):
         # Verify season was created
         season = Season.objects.get(name='Unified Create Season')
         self.assertEqual(season.levels.count(), 1)
-        self.assertEqual(Team.objects.filter(level__season=season).count(), 3)
+        self.assertEqual(SeasonTeam.objects.filter(season=season).count(), 3)
         self.assertEqual(Game.objects.filter(level__season=season).count(), 2)
         
         # Verify off-week was created
@@ -101,9 +104,9 @@ class UnifiedScheduleTests(TestCase):
         existing_game = Game.objects.create(
             level=self.level,
             week=self.week,
-            team1=self.team1,
-            team2=self.team2,
-            referee_team=self.team3,
+            season_team1=self.team1,
+            season_team2=self.team2,
+            referee_season_team=self.team3,
             day_of_week=1,
             time='18:00',
             court='Old Court'
@@ -167,7 +170,7 @@ class UnifiedScheduleTests(TestCase):
         self.assertEqual(games[0].referee_name, 'Updated External Ref')
         self.assertEqual(games[0].team1_score, 10)
         self.assertEqual(games[0].team2_score, 8)
-        self.assertEqual(games[1].referee_team, self.team1)
+        self.assertEqual(games[1].referee_season_team, self.team1)
 
     def test_unified_function_create_mode_conflict(self):
         """Test save_or_update_schedule create mode with existing season name."""

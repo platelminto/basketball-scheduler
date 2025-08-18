@@ -1,5 +1,5 @@
 from django.test import TestCase
-from scheduler.models import Season, Level, Team, Game, Week, OffWeek
+from scheduler.models import Season, Level, TeamOrganization, SeasonTeam, Game, Week, OffWeek
 from django.db.utils import IntegrityError
 from datetime import date
 
@@ -11,11 +11,27 @@ class ModelTests(TestCase):
         # Create levels
         self.level_a = Level.objects.create(season=self.season, name="A")
         self.level_b = Level.objects.create(season=self.season, name="B")
-        # Create teams
-        self.team_a1 = Team.objects.create(level=self.level_a, name="Team A1")
-        self.team_a2 = Team.objects.create(level=self.level_a, name="Team A2")
-        self.team_b1 = Team.objects.create(level=self.level_b, name="Team B1")
-        self.team_b2 = Team.objects.create(level=self.level_b, name="Team B2")
+        
+        # Create team organizations
+        self.team_org_a1 = TeamOrganization.objects.create(name="Team A1")
+        self.team_org_a2 = TeamOrganization.objects.create(name="Team A2")
+        self.team_org_b1 = TeamOrganization.objects.create(name="Team B1")
+        self.team_org_b2 = TeamOrganization.objects.create(name="Team B2")
+        
+        # Create season teams
+        self.season_team_a1 = SeasonTeam.objects.create(
+            season=self.season, team=self.team_org_a1, level=self.level_a
+        )
+        self.season_team_a2 = SeasonTeam.objects.create(
+            season=self.season, team=self.team_org_a2, level=self.level_a
+        )
+        self.season_team_b1 = SeasonTeam.objects.create(
+            season=self.season, team=self.team_org_b1, level=self.level_b
+        )
+        self.season_team_b2 = SeasonTeam.objects.create(
+            season=self.season, team=self.team_org_b2, level=self.level_b
+        )
+        
         # Create weeks
         self.week1 = Week.objects.create(season=self.season, week_number=1, monday_date=date(2024, 1, 1))
         self.week2 = Week.objects.create(season=self.season, week_number=2, monday_date=date(2024, 1, 8))
@@ -28,45 +44,49 @@ class ModelTests(TestCase):
         self.season.refresh_from_db()
         # Check that the original season is no longer active
         self.assertFalse(self.season.is_active)
-        # Check that the new season is active
+        # The new season should be active
         self.assertTrue(new_season.is_active)
 
-    def test_level_uniqueness(self):
-        """Test that level names must be unique within a season."""
-        # Attempt to create a duplicate level name
+    def test_level_name_unique_per_season(self):
+        """Test that level names are unique within a season."""
+        # This should work - different season
+        new_season = Season.objects.create(name="Another Season")
+        Level.objects.create(season=new_season, name="A")
+        
+        # This should fail - same name within same season
         with self.assertRaises(IntegrityError):
             Level.objects.create(season=self.season, name="A")
 
-    def test_team_uniqueness(self):
-        """Test that team names must be unique within a level."""
-        # Attempt to create a duplicate team name
+    def test_week_number_unique_per_season(self):
+        """Test that week numbers are unique within a season."""
+        # This should work - different season
+        new_season = Season.objects.create(name="Another Season")
+        Week.objects.create(season=new_season, week_number=1, monday_date=date(2024, 2, 1))
+        
+        # This should fail - same week number within same season
         with self.assertRaises(IntegrityError):
-            Team.objects.create(level=self.level_a, name="Team A1")
+            Week.objects.create(season=self.season, week_number=1, monday_date=date(2024, 2, 1))
 
-    def test_active_season_helpers(self):
-        """Test the helper methods for getting active season data."""
-        # Test Level.get_active_season_levels()
-        active_levels = Level.get_active_season_levels()
-        self.assertEqual(active_levels.count(), 2)
-        self.assertIn(self.level_a, active_levels)
-        self.assertIn(self.level_b, active_levels)
+    def test_offweek_date_unique_per_season(self):
+        """Test that off-week dates are unique within a season."""
+        offweek_date = date(2024, 1, 22)
+        OffWeek.objects.create(season=self.season, monday_date=offweek_date)
+        
+        # This should work - different season
+        new_season = Season.objects.create(name="Another Season")
+        OffWeek.objects.create(season=new_season, monday_date=offweek_date)
+        
+        # This should fail - same date within same season
+        with self.assertRaises(IntegrityError):
+            OffWeek.objects.create(season=self.season, monday_date=offweek_date)
 
-        # Test Team.get_active_season_teams()
-        active_teams = Team.get_active_season_teams()
-        self.assertEqual(active_teams.count(), 4)
-        self.assertIn(self.team_a1, active_teams)
-        self.assertIn(self.team_a2, active_teams)
-        self.assertIn(self.team_b1, active_teams)
-        self.assertIn(self.team_b2, active_teams)
-
-        # Create a second season (inactive)
-        inactive_season = Season.objects.create(name="Inactive Season")
-        inactive_level = Level.objects.create(season=inactive_season, name="C")
-        Team.objects.create(level=inactive_level, name="Team C1")
-
-        # Active season should still return only the active season's data
-        self.assertEqual(Level.get_active_season_levels().count(), 2)
-        self.assertEqual(Team.get_active_season_teams().count(), 4)
+    def test_team_organization_participation_unique_per_season(self):
+        """Test that a team organization can only participate once per season."""
+        # This should fail - team already participating in this season
+        with self.assertRaises(IntegrityError):
+            SeasonTeam.objects.create(
+                season=self.season, team=self.team_org_a1, level=self.level_b
+            )
 
     def test_game_creation(self):
         """Test creating a game with valid and invalid data."""
@@ -74,25 +94,25 @@ class ModelTests(TestCase):
         game = Game.objects.create(
             level=self.level_a,
             week=self.week1,
-            team1=self.team_a1,
-            team2=self.team_a2,
-            referee_team=self.team_b1
+            season_team1=self.season_team_a1,
+            season_team2=self.season_team_a2,
+            referee_season_team=self.season_team_b1
         )
         self.assertEqual(game.level, self.level_a)
-        self.assertEqual(game.team1, self.team_a1)
-        self.assertEqual(game.team2, self.team_a2)
-        self.assertEqual(game.referee_team, self.team_b1)
+        self.assertEqual(game.season_team1, self.season_team_a1)
+        self.assertEqual(game.season_team2, self.season_team_a2)
+        self.assertEqual(game.referee_season_team, self.season_team_b1)
 
         # Test that a team cannot referee its own game (this is enforced at the application level, not DB)
         game_with_self_ref = Game.objects.create(
             level=self.level_a,
             week=self.week2,
-            team1=self.team_a1,
-            team2=self.team_a2,
-            referee_team=self.team_a1  # Same as team1
+            season_team1=self.season_team_a1,
+            season_team2=self.season_team_a2,
+            referee_season_team=self.season_team_a1  # Same as team1
         )
         # This doesn't raise an error because it's an application-level rule, not DB constraint
-        self.assertEqual(game_with_self_ref.referee_team, self.team_a1)
+        self.assertEqual(game_with_self_ref.referee_season_team, self.season_team_a1)
     
     def test_game_with_scores(self):
         """Test creating and querying games with scores."""
@@ -100,36 +120,78 @@ class ModelTests(TestCase):
         game1 = Game.objects.create(
             level=self.level_a,
             week=self.week1,
-            team1=self.team_a1,
-            team2=self.team_a2,
-            referee_team=self.team_b1,
-            team1_score=30,
-            team2_score=25
+            season_team1=self.season_team_a1,
+            season_team2=self.season_team_a2,
+            team1_score=85,
+            team2_score=78
         )
         
         game2 = Game.objects.create(
             level=self.level_a,
             week=self.week2,
-            team1=self.team_a1,
-            team2=self.team_a2,
-            referee_team=self.team_b1,
-            team1_score=28,
-            team2_score=28  # Tie
+            season_team1=self.season_team_a1,
+            season_team2=self.season_team_a2,
+            team1_score=None,  # Game not completed
+            team2_score=None
         )
         
-        game3 = Game.objects.create(
+        # Test that we can query for completed games
+        completed_games = Game.objects.filter(
+            team1_score__isnull=False, 
+            team2_score__isnull=False
+        )
+        self.assertEqual(completed_games.count(), 1)
+        self.assertEqual(completed_games.first(), game1)
+        
+        # Test that we can query for incomplete games
+        incomplete_games = Game.objects.filter(
+            team1_score__isnull=True, 
+            team2_score__isnull=True
+        )
+        self.assertEqual(incomplete_games.count(), 1)
+        self.assertEqual(incomplete_games.first(), game2)
+
+    def test_game_helper_methods(self):
+        """Test the helper methods on Game model."""
+        game = Game.objects.create(
             level=self.level_a,
-            week=self.week3,
-            team1=self.team_a1,
-            team2=self.team_a2,
-            referee_team=self.team_b1
-            # No scores set
+            week=self.week1,
+            season_team1=self.season_team_a1,
+            season_team2=self.season_team_a2,
+            referee_season_team=self.season_team_b1,
+            team1_score=85,
+            team2_score=78
         )
         
-        # Verify scores are stored correctly
-        self.assertEqual(game1.team1_score, 30)
-        self.assertEqual(game1.team2_score, 25)
-        self.assertEqual(game2.team1_score, 28)
-        self.assertEqual(game2.team2_score, 28)
-        self.assertIsNone(game3.team1_score)
-        self.assertIsNone(game3.team2_score)
+        # Test team name helpers
+        self.assertEqual(game.get_team1_name(), "Team A1")
+        self.assertEqual(game.get_team2_name(), "Team A2")
+        self.assertEqual(game.get_referee_name(), "Team B1")
+        
+        # Test with external referee
+        game_external_ref = Game.objects.create(
+            level=self.level_a,
+            week=self.week2,
+            season_team1=self.season_team_a1,
+            season_team2=self.season_team_a2,
+            referee_name="External Ref"
+        )
+        self.assertEqual(game_external_ref.get_referee_name(), "External Ref")
+
+    def test_model_string_representations(self):
+        """Test the string representations of models."""
+        self.assertEqual(str(self.season), "Test Season (Active)")
+        self.assertEqual(str(self.level_a), "A")
+        self.assertEqual(str(self.team_org_a1), "Team A1")
+        self.assertEqual(str(self.season_team_a1), "Team A1 in A (Test Season)")
+        self.assertEqual(str(self.week1), "1")
+        
+        # Test off-week string representation
+        off_week = OffWeek.objects.create(
+            season=self.season,
+            monday_date=date(2024, 1, 22),
+            title="Holiday Break",
+            description="No games this week"
+        )
+        expected_str = "Holiday Break: 2024-01-22 - No games this week"
+        self.assertEqual(str(off_week), expected_str)

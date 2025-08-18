@@ -101,11 +101,11 @@ def resolve_game_objects(game_data, is_create, lookups):
         team1_obj = valid_teams.get(str(game_data["team1_id"]))
         team2_obj = valid_teams.get(str(game_data["team2_id"]))
 
-        if not team1_obj or team1_obj.level_id != level_obj.id:
+        if not team1_obj or team1_obj.level.id != level_obj.id:
             errors.append(
                 f"Invalid Team 1 ID: {game_data['team1_id']} for Level {level_obj.name}"
             )
-        if not team2_obj or team2_obj.level_id != level_obj.id:
+        if not team2_obj or team2_obj.level.id != level_obj.id:
             errors.append(
                 f"Invalid Team 2 ID: {game_data['team2_id']} for Level {level_obj.name}"
             )
@@ -123,7 +123,7 @@ def resolve_game_objects(game_data, is_create, lookups):
                 if (
                     game_data["referee_value"]
                     and referee_obj
-                    and referee_obj.level_id != level_obj.id
+                    and referee_obj.level.id != level_obj.id
                 ):
                     errors.append(
                         f"Invalid Referee ID: {game_data['referee_value']} for Level {level_obj.name}"

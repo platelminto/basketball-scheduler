@@ -5,7 +5,7 @@ This module contains business logic for retrieving and formatting
 schedule data for API endpoints.
 """
 
-from scheduler.models import Season, Week, OffWeek, Game, Level, Team
+from scheduler.models import Season, Week, OffWeek, Game, Level, SeasonTeam
 
 
 def get_teams_and_levels_data(season):
@@ -14,12 +14,18 @@ def get_teams_and_levels_data(season):
     levels = Level.objects.filter(season=season).order_by("name")
     levels_data = [{"id": level.id, "name": level.name} for level in levels]
 
-    # Get all teams by level
+    # Get all teams by level using SeasonTeam
     teams_by_level = {}
     for level in levels:
-        teams = Team.objects.filter(level=level).order_by("name")
+        season_teams = SeasonTeam.objects.filter(level=level).select_related('team').order_by("team__name")
         teams_by_level[level.id] = [
-            {"id": team.id, "name": team.name} for team in teams
+            {
+                "id": season_team.id, 
+                "name": season_team.team.name, 
+                "season_team_id": season_team.id,
+                "team_org_id": season_team.team.id
+            } 
+            for season_team in season_teams
         ]
 
     return levels_data, teams_by_level
@@ -34,7 +40,7 @@ def format_games_by_week(all_week_data):
             week = week_data["week_obj"]
             games = (
                 Game.objects.filter(week=week)
-                .select_related("level", "team1", "team2", "referee_team")
+                .select_related("level", "season_team1__team", "season_team2__team", "referee_season_team__team")
                 .order_by("day_of_week", "time")
             )
 
@@ -48,14 +54,19 @@ def format_games_by_week(all_week_data):
                         "court": game.court,
                         "level_id": game.level.id if game.level else None,
                         "level_name": game.level.name if game.level else "",
-                        "team1_id": game.team1.id if game.team1 else None,
-                        "team1_name": game.team1.name if game.team1 else "",
-                        "team2_id": game.team2.id if game.team2 else None,
-                        "team2_name": game.team2.name if game.team2 else "",
+                        "team1_id": game.season_team1.id if game.season_team1 else None,
+                        "team1_name": game.season_team1.team.name if game.season_team1 else "",
+                        "team2_id": game.season_team2.id if game.season_team2 else None,
+                        "team2_name": game.season_team2.team.name if game.season_team2 else "",
+                        "season_team1_id": game.season_team1.id if game.season_team1 else None,
+                        "season_team2_id": game.season_team2.id if game.season_team2 else None,
                         "team1_score": game.team1_score,
                         "team2_score": game.team2_score,
                         "referee_team_id": (
-                            game.referee_team.id if game.referee_team else None
+                            game.referee_season_team.id if game.referee_season_team else None
+                        ),
+                        "referee_season_team_id": (
+                            game.referee_season_team.id if game.referee_season_team else None
                         ),
                         "referee_name": game.referee_name,
                     }

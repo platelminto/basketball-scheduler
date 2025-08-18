@@ -21,8 +21,8 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
 
   console.log('teamsByLevel:', teamsByLevel);
 
-  const generateCalendarUrl = (teamId) => {
-    const baseUrl = `/scheduler/api/teams/${teamId}/calendar.ics`;
+  const generateCalendarUrl = (team) => {
+    const baseUrl = `/scheduler/api/team-orgs/${team.team_org_id}/calendar.ics`;
     const params = new URLSearchParams();
     
     if (includeReffing) params.append('include_reffing', 'true');
@@ -33,13 +33,13 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
     return queryString ? `${baseUrl}?${queryString}` : baseUrl;
   };
 
-  const handleDownload = (teamId) => {
-    const url = generateCalendarUrl(teamId);
+  const handleDownload = (team) => {
+    const url = generateCalendarUrl(team);
     window.location.href = url;
   };
 
-  const copySubscriptionUrl = (teamId) => {
-    const url = window.location.origin + generateCalendarUrl(teamId);
+  const copySubscriptionUrl = (team) => {
+    const url = window.location.origin + generateCalendarUrl(team);
     navigator.clipboard.writeText(url).then(() => {
       setCopyStatus('copied');
       setTimeout(() => setCopyStatus(''), 2000);
@@ -227,7 +227,7 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
               <div style={{ marginBottom: '30px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <button
-                    onClick={() => copySubscriptionUrl(selectedTeam.id)}
+                    onClick={() => copySubscriptionUrl(selectedTeam)}
                     style={{
                       padding: '14px 20px',
                       border: copyStatus === 'copied' ? '1px solid #10b981' : '1px solid #e5e7eb',
@@ -266,7 +266,7 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
                   </button>
                   
                   <button
-                    onClick={() => handleDownload(selectedTeam.id)}
+                    onClick={() => handleDownload(selectedTeam)}
                     style={{
                       padding: '14px 20px',
                       border: '1px solid #e5e7eb',

@@ -16,6 +16,7 @@ from .game_operations import (
 from .seasons import (
     get_seasons_data,
     activate_season_logic,
+    update_season_organization,
 )
 
 # Schedule validation
@@ -48,10 +49,7 @@ from .schedule_data import (
     format_games_by_week,
 )
 
-# Team and level management
-from .teams import (
-    update_teams_and_levels,
-)
+# Team and level management - using new team_management service
 
 # Calendar export
 from .calendar import (
@@ -92,7 +90,6 @@ __all__ = [
     "format_games_by_week",
     
     # Team and level management
-    "update_teams_and_levels",
     
     # Calendar export
     "generate_team_calendar",

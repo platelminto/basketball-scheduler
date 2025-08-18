@@ -399,10 +399,14 @@
 .card-content {
   padding: var(--space-lg);
   background-color: var(--bg-primary);
+  display: block;
+}
+
+.card.expandable .card-content {
   display: none;
 }
 
-.card.expanded .card-content {
+.card.expandable.expanded .card-content {
   display: block;
 }
 

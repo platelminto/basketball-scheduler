@@ -179,11 +179,11 @@ const ScoreEdit = () => {
           time: game.time,
           court: game.court,
           level: game.level_id,
-          team1: game.team1_id,
-          team2: game.team2_id,
+          team1: game.season_team1_id,
+          team2: game.season_team2_id,
           score1: game.team1_score !== null && game.team1_score !== undefined ? String(game.team1_score) : '',
           score2: game.team2_score !== null && game.team2_score !== undefined ? String(game.team2_score) : '',
-          referee: game.referee_team_id ? String(game.referee_team_id) :
+          referee: game.referee_season_team_id ? String(game.referee_season_team_id) :
                   game.referee_name ? 'name:' + game.referee_name : ''
         });
       });

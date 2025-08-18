@@ -22,6 +22,13 @@ const NavBar = () => {
             </li>
             <li className="nav-item">
               <Link
+                className={`nav-link ${location.pathname === '/teams' ? 'active' : ''}`}
+                to="/teams">
+                Teams
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link
                 className={`nav-link ${location.pathname.includes('/seasons/create/') ? 'active' : ''}`}
                 to="/seasons/create/setup">
                 Create Season

@@ -190,6 +190,59 @@ const SeasonList = () => {
     }
   };
   
+  const handleDeleteSeason = async (seasonId, seasonName) => {
+    // Show confirmation dialog
+    if (!window.confirm(`Are you sure you want to delete the season "${seasonName}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+      const response = await fetch(`/scheduler/api/seasons/${seasonId}/delete/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({})
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP error! Status: ${response.status}`);
+      }
+
+      if (result.success) {
+        // Fetch updated seasons list
+        const updatedResponse = await fetch('/scheduler/api/seasons/');
+        if (!updatedResponse.ok) {
+          throw new Error('Failed to refresh seasons list');
+        }
+
+        const data = await updatedResponse.json();
+        dispatch({ type: SET_SEASON_LIST, payload: data });
+
+        // Update expanded states
+        const expandedStates = {};
+        data.forEach(season => {
+          expandedStates[season.id] = season.is_active;
+        });
+        setExpandedSeasons(expandedStates);
+        
+        alert(result.message || 'Season deleted successfully');
+      } else {
+        throw new Error(result.error || 'Failed to delete season');
+      }
+
+    } catch (error) {
+      console.error('Error deleting season:', error);
+      alert(`Failed to delete season: ${error.message}`);
+    }
+  };
+  
   if (state.isLoading) {
     return (
       <div className="page-container">
@@ -227,7 +280,7 @@ const SeasonList = () => {
           {state.seasons.map(season => (
             <div 
               key={season.id} 
-              className={`card ${season.is_active ? 'active' : ''} ${expandedSeasons[season.id] ? 'expanded' : ''}`}
+              className={`card expandable ${season.is_active ? 'active' : ''} ${expandedSeasons[season.id] ? 'expanded' : ''}`}
             >
               <div 
                 className={`card-header ${season.is_active ? 'active' : ''}`}
@@ -290,6 +343,14 @@ const SeasonList = () => {
                     >
                       <i className="fas fa-users-cog"></i> Edit Organization
                     </Link>
+                    {!season.is_active && (
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => handleDeleteSeason(season.id, season.name)}
+                      >
+                        <i className="fas fa-trash"></i> Delete
+                      </button>
+                    )}
                   </div>
                 </div>
                 
@@ -339,7 +400,7 @@ const SeasonStandings = ({ scheduleData, levels }) => {
   if (!standings || standings.length === 0) {
     return (
       <div className="alert alert-info">
-        No standings available yet. Games need to be completed to calculate standings.
+        No teams found for standings.
       </div>
     );
   }

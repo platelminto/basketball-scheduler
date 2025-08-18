@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils import timezone
 from icalendar import Calendar, Event
-from scheduler.models import Team, Game, OffWeek
+from scheduler.models import TeamOrganization, SeasonTeam, Game, OffWeek, Season
 
 
 def handle_calendar_options(request):
@@ -24,9 +24,9 @@ def handle_calendar_options(request):
 
 def format_game_title(game, team, include_scores):
     """Format the title for a game event."""
-    if game.team1 == team or game.team2 == team:
+    if game.season_team1.team == team or game.season_team2.team == team:
         # Playing game - respect team1 vs team2 order
-        title = f"{game.team1.name} vs {game.team2.name}"
+        title = f"{game.season_team1.team.name} vs {game.season_team2.team.name}"
 
         # Add winner indicator to title if game is completed and scores are requested
         if (
@@ -35,15 +35,15 @@ def format_game_title(game, team, include_scores):
             and game.team2_score is not None
         ):
             if game.team1_score > game.team2_score:
-                title = f"{game.team1.name} (W) vs {game.team2.name}"
+                title = f"{game.season_team1.team.name} (W) vs {game.season_team2.team.name} (L)"
             elif game.team2_score > game.team1_score:
-                title = f"{game.team1.name} vs {game.team2.name} (W)"
+                title = f"{game.season_team1.team.name} (L) vs {game.season_team2.team.name} (W)"
             # If tied, leave title as is
 
         return title, "Playing"
     else:
         # Reffing game - shortened format
-        title = f"Ref: {game.team1.name} vs {game.team2.name}"
+        title = f"Ref: {game.season_team1.team.name} vs {game.season_team2.team.name}"
 
         # Add winner indicator to title if game is completed and scores are requested
         if (
@@ -52,9 +52,9 @@ def format_game_title(game, team, include_scores):
             and game.team2_score is not None
         ):
             if game.team1_score > game.team2_score:
-                title = f"Ref: {game.team1.name} (W) vs {game.team2.name}"
+                title = f"Ref: {game.season_team1.team.name} (W) vs {game.season_team2.team.name} (L)"
             elif game.team2_score > game.team1_score:
-                title = f"Ref: {game.team1.name} vs {game.team2.name} (W)"
+                title = f"Ref: {game.season_team1.team.name} (L) vs {game.season_team2.team.name} (W)"
             # If tied, leave title as is
 
         return title, "Reffing"
@@ -62,12 +62,12 @@ def format_game_title(game, team, include_scores):
 
 def format_game_description(game, include_scores):
     """Format the description for a game event."""
-    description_parts = [f"Level: {game.level.name}"]
+    description_parts = [f"• Level: {game.level.name}"]
 
-    if game.referee_team:
-        description_parts.append(f"Referee: {game.referee_team.name}")
+    if game.referee_season_team:
+        description_parts.append(f"• Referee: {game.referee_season_team.team.name}")
     elif game.referee_name:
-        description_parts.append(f"Referee: {game.referee_name}")
+        description_parts.append(f"• Referee: {game.referee_name}")
 
     # Add scores if game is completed and scores are requested
     if (
@@ -75,10 +75,10 @@ def format_game_description(game, include_scores):
         and game.team1_score is not None
         and game.team2_score is not None
     ):
-        score_line = f"Final Score: {game.team1.name} {game.team1_score} - {game.team2_score} {game.team2.name}"
+        score_line = f"• Final Score: {game.season_team1.team.name} {game.team1_score} - {game.team2_score} {game.season_team2.team.name}"
         description_parts.append(score_line)
 
-    return "\\n\\n".join(description_parts)
+    return "\n".join(description_parts)
 
 
 def format_calendar_events(games, team, include_scores):
@@ -161,9 +161,9 @@ def format_tournament_events(off_weeks):
     return events
 
 
-def generate_team_calendar(team_id, include_reffing, include_scores, include_tournaments):
-    """Generate iCal calendar for a team's schedule."""
-    team = get_object_or_404(Team, pk=team_id)
+def generate_team_calendar(team_org_id, include_reffing, include_scores, include_tournaments):
+    """Generate iCal calendar for a team organization's schedule across all seasons."""
+    team_org = get_object_or_404(TeamOrganization, pk=team_org_id)
 
     # Create calendar
     cal = Calendar()
@@ -171,32 +171,36 @@ def generate_team_calendar(team_id, include_reffing, include_scores, include_tou
     cal.add("version", "2.0")
     cal.add("calscale", "GREGORIAN")
     cal.add("method", "PUBLISH")
-    cal.add("x-wr-calname", f"{team.name} - {team.level.season.name}")
-    cal.add("x-wr-caldesc", f"Basketball schedule for {team.name}")
+    cal.add("x-wr-calname", f"{team_org.name}")
+    cal.add("x-wr-caldesc", f"USBF schedule for {team_org.name}")
 
-    # Query for games
-    games_query = Q(team1=team) | Q(team2=team)
+    # Query for games across all seasons for this team organization
+    games_query = Q(season_team1__team=team_org) | Q(season_team2__team=team_org)
     if include_reffing:
-        games_query |= Q(referee_team=team)
+        games_query |= Q(referee_season_team__team=team_org)
 
     games = (
         Game.objects.filter(games_query)
-        .select_related("level", "team1", "team2", "referee_team", "week")
+        .select_related("level", "season_team1__team", "season_team2__team", "referee_season_team__team", "week")
         .order_by("week__monday_date", "day_of_week", "time")
     )
 
     # Format and add game events
-    game_events = format_calendar_events(games, team, include_scores)
+    game_events = format_calendar_events(games, team_org, include_scores)
     for event in game_events:
         cal.add_component(event)
 
     # Add off-weeks/tournaments if requested
     if include_tournaments:
-        season = team.level.season
-        off_weeks = OffWeek.objects.filter(season=season).select_related("season")
+        # Get all seasons this team has participated in (managers automatically filter deleted seasons)
+        seasons = Season.objects.filter(
+            levels__season_teams__team=team_org
+        ).distinct()
         
-        tournament_events = format_tournament_events(off_weeks)
-        for event in tournament_events:
-            cal.add_component(event)
+        for season in seasons:
+            off_weeks = OffWeek.objects.filter(season=season).select_related("season")
+            tournament_events = format_tournament_events(off_weeks)
+            for event in tournament_events:
+                cal.add_component(event)
 
-    return cal, team
+    return cal, team_org

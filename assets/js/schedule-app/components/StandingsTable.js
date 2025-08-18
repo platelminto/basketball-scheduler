@@ -3,7 +3,7 @@ import React from 'react';
 const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
   const isSummary = mode === "summary";
   
-  if (standings.length === 0) {
+  if (!standings || standings.length === 0) {
     return (
       <div style={{ 
         padding: '20px', 
@@ -13,9 +13,7 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
         textAlign: 'center',
         color: '#666'
       }}>
-        No standings data available yet.
-        <br />
-        <small>Games need to be completed to calculate standings.</small>
+        No teams found for standings.
       </div>
     );
   }
