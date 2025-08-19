@@ -280,9 +280,6 @@ def generation_progress(request):
                         if week_data:
                             formatted_schedule = format_generated_schedule(progress['best_schedule'], week_data)
                             progress['best_schedule'] = formatted_schedule
-                            print(f"Successfully formatted best_schedule for progress")
-                        else:
-                            print(f"No week_data found in cache for formatting")
                     except Exception as e:
                         print(f"Error formatting best_schedule in progress: {e}")
                         import traceback
