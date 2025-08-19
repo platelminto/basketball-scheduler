@@ -10,7 +10,7 @@ def get_round_robin_length(num_teams):
     """Calculates the number of weeks for one full round-robin."""
     return num_teams - 1 if num_teams % 2 == 0 else num_teams
 
-def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_find=5, verbose=False):
+def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_find=5, verbose=False, cancellation_checker=None):
     """
     Solves for weekly matchups multiple times, finding a different valid
     blueprint each time. This provides multiple starting points for Phase 2.
@@ -64,6 +64,11 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
     found_blueprints = []
     
     for i in range(num_blueprints_to_find):
+        # Check for cancellation before each blueprint
+        if cancellation_checker and cancellation_checker():
+            print(f"\\nBlueprint generation cancelled after {len(found_blueprints)} blueprints.")
+            break
+            
         prob.solve(solver)
         
         if pulp.LpStatus[prob.status] == "Optimal":
@@ -168,7 +173,7 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
     slot_weights = {}
     for s in slots_range:
         if s == 1 or s == num_slots:  # First or last slot
-            slot_weights[s] = 3.0  # Higher weight for extreme slots
+            slot_weights[s] = 5.0  # Higher weight for extreme slots
         else:  # Middle slots
             slot_weights[s] = 1.0  # Standard weight for middle slots
     
@@ -187,7 +192,51 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
             weighted_deviation = slot_weights[s] * abs_deviation
             slot_deviations.append(weighted_deviation)
     
-    prob.setObjective(pulp.lpSum(slot_deviations))
+    # Progressive penalty for teams with excessive first/last slot assignments
+    progressive_penalties = []
+    for t in all_teams:
+        first_slot_games = pulp.lpSum(is_playing[(t,w,1)] for w in weeks_range)
+        last_slot_games = pulp.lpSum(is_playing[(t,w,num_slots)] for w in weeks_range)
+        total_first_last = first_slot_games + last_slot_games
+        
+        # Quadratic-like penalty: escalating cost for each assignment beyond 1
+        penalty_var = pulp.LpVariable(f"FirstLastProgressivePenalty_{t}", lowBound=0, cat='Continuous')
+        prob += penalty_var >= (total_first_last - 1) * 15  # 15 points penalty per assignment beyond 1
+        progressive_penalties.append(penalty_var)
+    
+    # Referee-specific penalties for first/last slots
+    ref_first_last_penalties = []
+    for t in all_teams:
+        first_refs = pulp.lpSum(is_reffing[(t,w,1)] for w in weeks_range)
+        last_refs = pulp.lpSum(is_reffing[(t,w,num_slots)] for w in weeks_range)
+        total_first_last_refs = first_refs + last_refs
+        
+        # Penalty for excessive reffing in first/last slots
+        ref_penalty_var = pulp.LpVariable(f"RefFirstLastPenalty_{t}", lowBound=0, cat='Continuous')
+        prob += ref_penalty_var >= (total_first_last_refs - 1) * 12  # 12 points penalty per ref assignment beyond 1
+        ref_first_last_penalties.append(ref_penalty_var)
+    
+    # Consecutive week penalty for first/last slots
+    consecutive_penalties = []
+    for t in all_teams:
+        for w in range(total_weeks - 1):
+            # First slot consecutive penalty
+            consec_first = pulp.LpVariable(f"ConsecFirst_{t}_{w}", lowBound=0, cat='Binary')
+            prob += consec_first >= is_playing[(t,w,1)] + is_playing[(t,w+1,1)] - 1
+            consecutive_penalties.append(consec_first * 10)
+            
+            # Last slot consecutive penalty
+            consec_last = pulp.LpVariable(f"ConsecLast_{t}_{w}", lowBound=0, cat='Binary')  
+            prob += consec_last >= is_playing[(t,w,num_slots)] + is_playing[(t,w+1,num_slots)] - 1
+            consecutive_penalties.append(consec_last * 10)
+    
+    # Combined objective: slot distribution + progressive + ref penalties + consecutive penalties
+    total_objective = (pulp.lpSum(slot_deviations) + 
+                      pulp.lpSum(progressive_penalties) + 
+                      pulp.lpSum(ref_first_last_penalties) + 
+                      pulp.lpSum(consecutive_penalties))
+    
+    prob.setObjective(total_objective)
 
     # Check for cancellation before solving
     if cancellation_checker and cancellation_checker():
@@ -352,7 +401,7 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
         progress_callback: Optional function to call with progress updates
     """
     # Phase 1: Generate a list of potential blueprints
-    blueprints = phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_generate, verbose=verbose)
+    blueprints = phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_generate, verbose=verbose, cancellation_checker=cancellation_checker)
 
     if not blueprints:
         print("\nScheduling failed in Phase 1. No valid matchup blueprints could be found.")
