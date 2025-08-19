@@ -13,26 +13,23 @@ from django.core.cache import cache
 from utils import get_config_from_schedule_creator
 
 
+DEFAULT_TIME_PER_BLUEPRINT = 6
+MAX_NUM_BLUEPRINTS = 100
+
+
 def generate_schedule_process(config, time_limit, num_blueprints_to_generate, gap_rel, 
-                             cancellation_key, use_best_key, progress_key, shared_dict, session_key):
+                             progress_key, shared_dict, session_key, week_data):
     """Function that runs in a separate process for schedule generation."""
     try:
         # Import here to avoid Django issues in subprocess
         from schedule import generate_schedule
         
-        # Create cancellation checker function using file (since cache doesn't work across processes)
+        # Create cancellation checker function using persistent files
         def is_cancelled():
-            import tempfile
             import os
-            cancel_file = os.path.join(tempfile.gettempdir(), f"{cancellation_key}.flag")
+            from django.conf import settings
+            cancel_file = os.path.join(settings.BASE_DIR, "tmp", f"schedule_cancel_{session_key}")
             return os.path.exists(cancel_file)
-        
-        # Create use_best checker function using file
-        def is_use_best():
-            import tempfile
-            import os
-            use_best_file = os.path.join(tempfile.gettempdir(), f"{use_best_key}.flag")
-            return os.path.exists(use_best_file)
         
 
         # Create simple progress callback that just stores data without formatting
@@ -63,7 +60,7 @@ def generate_schedule_process(config, time_limit, num_blueprints_to_generate, ga
             num_blueprints_to_generate=num_blueprints_to_generate,
             gapRel=gap_rel,
             cancellation_checker=is_cancelled,
-            use_best_checker=is_use_best,
+            use_best_checker=None,
             progress_callback=update_progress,
         )
         
@@ -141,6 +138,10 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     from schedule import generate_schedule
     import json
     
+    # Store week_data in cache so progress endpoint can access it for formatting
+    week_data_key = f"schedule_generation_week_data_{session_key}"
+    cache.set(week_data_key, week_data, timeout=300)
+    
     # Get configuration from the setup data
     config = get_config_from_schedule_creator(setup_data, week_data)
 
@@ -161,22 +162,42 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     time_limit = parameters.get("time_limit", 10.0)
     # If empty it's an empty string, which means the get() succeeds, so we can't just use default
     if not parameters.get("num_blueprints_to_generate"):
-        num_blueprints_to_generate = max(1, int(time_limit / 10))
+        num_blueprints_to_generate = min(max(1, int(time_limit / DEFAULT_TIME_PER_BLUEPRINT)), MAX_NUM_BLUEPRINTS)
     else:
         num_blueprints_to_generate = int(
             parameters["num_blueprints_to_generate"]
         )
-    gap_rel = parameters.get("gapRel", 0.25)
+    gap_rel = parameters.get("gapRel", 0.01)
 
-    # Create cancellation event and session key for this generation
-    cancellation_key = f"schedule_generation_cancelled_{session_key}"
-    use_best_key = f"schedule_generation_use_best_{session_key}"
+    # Create progress key for this generation
     progress_key = f"schedule_generation_progress_{session_key}"
 
-    # Clear any existing flags and progress data
-    cache.delete(cancellation_key)
-    cache.delete(use_best_key)
+    # Clear any existing progress data and cancel files
     cache.delete(progress_key)
+    
+    # Clean up any leftover cancel files from previous generations
+    import os
+    from django.conf import settings
+    tmp_dir = os.path.join(settings.BASE_DIR, "tmp")
+    os.makedirs(tmp_dir, exist_ok=True)
+    cancel_file = os.path.join(tmp_dir, f"schedule_cancel_{session_key}")
+    
+    try:
+        if os.path.exists(cancel_file):
+            os.remove(cancel_file)
+    except Exception as e:
+        print(f"Error cleaning up cancel file: {e}")
+    
+    # Clean up any leftover progress files from previous generations
+    import tempfile
+    import os
+    progress_file = os.path.join(tempfile.gettempdir(), f"{progress_key}.json")
+    
+    try:
+        if os.path.exists(progress_file):
+            os.remove(progress_file)
+    except Exception as e:
+        print(f"Error cleaning up progress file {progress_file}: {e}")
 
     # Create multiprocessing manager for shared state
     manager = multiprocessing.Manager()
@@ -191,7 +212,7 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     generation_process = multiprocessing.Process(
         target=generate_schedule_process,
         args=(config, time_limit, num_blueprints_to_generate, gap_rel,
-              cancellation_key, use_best_key, progress_key, shared_dict, session_key)
+              progress_key, shared_dict, session_key, week_data)
     )
     generation_process.start()
     
@@ -199,11 +220,13 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     process_key = f"schedule_generation_process_{session_key}"
     cache.set(process_key, generation_process.pid, timeout=300)
 
-    # Wait for completion or timeout
-    generation_process.join(timeout=time_limit + 10)  # Add 10 seconds buffer
+    # Wait for completion (no timeout - let it finish naturally or be cancelled by user)
+    generation_process.join()
 
-    # Clean up process cache entry
+    # Clean up process cache entry and week_data
     cache.delete(process_key)
+    week_data_key = f"schedule_generation_week_data_{session_key}"
+    cache.delete(week_data_key)
     
     # Small delay to allow any pending cancellation requests to be processed
     # (race condition: user clicks cancel right as process finishes)
@@ -213,25 +236,14 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     # Check if process was killed/terminated (indicating cancellation)
     process_was_killed = generation_process.exitcode is not None and generation_process.exitcode != 0
     
-    # Check cancellation status first (both cache and file, due to race conditions)
-    was_cancelled = cache.get(cancellation_key, False)
-    use_best_requested = cache.get(use_best_key, False)
-    
-    # Also check file-based flags (in case cache hasn't been set yet due to timing)
-    import tempfile
+    # Check cancellation status from files
     import os
-    cancel_file = os.path.join(tempfile.gettempdir(), f"{cancellation_key}.flag")
-    use_best_file = os.path.join(tempfile.gettempdir(), f"{use_best_key}.flag")
-    
-    file_cancelled = os.path.exists(cancel_file)
-    file_use_best = os.path.exists(use_best_file)
-    
-    # Use either source
-    was_cancelled = was_cancelled or file_cancelled
-    use_best_requested = use_best_requested or file_use_best
+    from django.conf import settings
+    cancel_file = os.path.join(settings.BASE_DIR, "tmp", f"schedule_cancel_{session_key}")
+    was_cancelled = os.path.exists(cancel_file)
     
     # If process was killed externally (likely by cancellation), treat as cancelled
-    if process_was_killed and not was_cancelled and not use_best_requested:
+    if process_was_killed and not was_cancelled:
         was_cancelled = True
     
     # Check if process is still running (timeout or cancellation)
@@ -243,50 +255,37 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     
     # Check if cancelled (complete cancellation should return a specific response, not error)
     if was_cancelled:
-        cache.delete(cancellation_key)
-        # Clean up progress file on cancellation
+        # Clean up progress file and cancel file on cancellation
         import tempfile
-        import os
         progress_file = os.path.join(tempfile.gettempdir(), f"{progress_key}.json")
         try:
             if os.path.exists(progress_file):
                 os.remove(progress_file)
+            if os.path.exists(cancel_file):
+                os.remove(cancel_file)
         except Exception as e:
-            print(f"Error cleaning up progress file on cancellation: {e}")
+            print(f"Error cleaning up files on cancellation: {e}")
         return {"message": "Schedule generation was cancelled"}
     
-    # Check if "use best" was requested - this is not an error, just early termination
-    if use_best_requested:
-        cache.delete(use_best_key)
-        # Return the best schedule found so far from shared state
-        best_schedule = shared_dict.get('best_schedule')
-        if best_schedule is not None:
-            # We have a best schedule, use it as the final result
-            schedule = best_schedule
-            # Continue to formatting and validation below
+    # Normal completion case - check for error and schedule
+    if shared_dict.get("error"):
+        raise Exception(shared_dict["error"])
+
+    schedule = shared_dict.get("schedule")
+
+    if not schedule:
+        # Before throwing error, check one more time if cancellation was requested
+        # (race condition: cancellation might come in after the initial check)
+        final_cancel_check = os.path.exists(cancel_file)
+        if final_cancel_check:
+            try:
+                if os.path.exists(cancel_file):
+                    os.remove(cancel_file)
+            except:
+                pass
+            return {"message": "Schedule generation was cancelled"}
         else:
-            return {"message": "Use best requested but no valid schedule found yet"}
-    else:
-        # Normal completion case - check for error and schedule
-        
-        if shared_dict.get("error"):
-            raise Exception(shared_dict["error"])
-
-        schedule = shared_dict.get("schedule")
-
-        if not schedule:
-            # Before throwing error, check one more time if cancellation was requested
-            # (race condition: cancellation might come in after the initial check)
-            final_cancel_check = cache.get(cancellation_key, False)
-            final_use_best_check = cache.get(use_best_key, False)
-            if final_cancel_check:
-                cache.delete(cancellation_key)
-                return {"message": "Schedule generation was cancelled"}
-            elif final_use_best_check:
-                cache.delete(use_best_key)
-                return {"message": "Use best requested but no valid schedule found yet"}
-            else:
-                raise Exception("No schedule found")
+            raise Exception("No schedule found")
 
     # Validate that court capacity matches expected games per week
     validate_generation_constraints(schedule, week_data)
@@ -297,18 +296,28 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     return {"config": config, "schedule": scheduled_week_data}
 
 
-def handle_generation_cancellation(session_key, use_best=False):
+def handle_generation_cancellation(session_key):
     """Handle cancellation of ongoing schedule generation.
     
     Args:
-        session_key: The session key  
-        use_best: If True, stop generation but return best schedule found so far
+        session_key: The session key
     """
     if session_key:
-        cancellation_key = f"schedule_generation_cancelled_{session_key}"
-        use_best_key = f"schedule_generation_use_best_{session_key}"
         progress_key = f"schedule_generation_progress_{session_key}"
         process_key = f"schedule_generation_process_{session_key}"
+        
+        # Create cancellation flag file
+        import os
+        from django.conf import settings
+        tmp_dir = os.path.join(settings.BASE_DIR, "tmp")
+        os.makedirs(tmp_dir, exist_ok=True)
+        
+        cancel_file = os.path.join(tmp_dir, f"schedule_cancel_{session_key}")
+        try:
+            with open(cancel_file, 'w') as f:
+                f.write('1')
+        except Exception as e:
+            print(f"Error creating cancel file: {e}")
         
         # Get the process ID if it exists
         process_pid = cache.get(process_key)
@@ -327,44 +336,12 @@ def handle_generation_cancellation(session_key, use_best=False):
             except Exception as e:
                 print(f"Error killing process {process_pid}: {e}")
         
-        # Set the appropriate flag for the return logic using files (for cross-process communication)
-        import tempfile
-        import os
-        if use_best:
-            cache.set(use_best_key, True, timeout=300)
-            # Also create file for subprocess
-            use_best_file = os.path.join(tempfile.gettempdir(), f"{use_best_key}.flag")
-            try:
-                with open(use_best_file, 'w') as f:
-                    f.write('1')
-            except Exception as e:
-                print(f"Error creating use_best flag file: {e}")
-            message = "Generation stopped, using best schedule found"
-        else:
-            cache.set(cancellation_key, True, timeout=300)
-            # Also create file for subprocess
-            cancel_file = os.path.join(tempfile.gettempdir(), f"{cancellation_key}.flag")
-            try:
-                with open(cancel_file, 'w') as f:
-                    f.write('1')
-            except Exception as e:
-                print(f"Error creating cancellation flag file: {e}")
-            message = "Generation cancelled"
+        # The main generation function will detect the process death and treat it as cancellation
+        message = "Generation cancelled"
             
-        # Clean up cache entries and flag files
+        # Clean up cache entries
         cache.delete(process_key)
         cache.delete(progress_key)
-        
-        # Clean up flag files
-        try:
-            cancel_file = os.path.join(tempfile.gettempdir(), f"{cancellation_key}.flag")
-            if os.path.exists(cancel_file):
-                os.remove(cancel_file)
-            use_best_file = os.path.join(tempfile.gettempdir(), f"{use_best_key}.flag")
-            if os.path.exists(use_best_file):
-                os.remove(use_best_file)
-        except Exception as e:
-            print(f"Error cleaning up flag files: {e}")
         
         return {"message": message}
     else:

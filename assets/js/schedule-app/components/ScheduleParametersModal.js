@@ -17,6 +17,22 @@ const ScheduleParametersModal = ({
       setAbortController(null);
       setProgressData(null);
       setGeneratedSchedule(null);
+      // Reset parameters to defaults
+      setParameters({
+        min_referee_count: 4,
+        max_referee_count: 6,
+        slot_limits: {
+          1: 3,
+          2: 4,
+          3: 4,
+          4: 4
+        },
+        time_limit: 600,
+        // Advanced options
+        num_blueprints_to_generate: '',
+        gapRel: 0.07
+      });
+      setShowAdvanced(false);
     }
   }, [isOpen]);
   const [parameters, setParameters] = useState({
@@ -28,10 +44,10 @@ const ScheduleParametersModal = ({
       3: 4,
       4: 4
     },
-    time_limit: 60,
+    time_limit: 600,
     // Advanced options
     num_blueprints_to_generate: '',
-    gapRel: 0.1
+    gapRel: 0.07
   });
 
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -121,7 +137,7 @@ const ScheduleParametersModal = ({
         await pollProgress();
         
         // Keep progressData for final results display
-        setGeneratedSchedule(result);
+        setGeneratedSchedule(result.schedule);
         // Don't close modal automatically - let user apply the schedule
       }
     } catch (error) {
@@ -154,7 +170,44 @@ const ScheduleParametersModal = ({
   const handleStopAndUseBest = async () => {
     if (isGenerating && progressData && progressData.best_score !== null && progressData.best_score !== undefined) {
       
-      // Tell backend to stop generation with use_best flag
+      // First, poll for the latest progress to get the best schedule
+      let latestProgressData = progressData;
+      try {
+        const progressResponse = await fetch('/scheduler/api/seasons/generation-progress/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          }
+        });
+        
+        if (progressResponse.ok) {
+          const latestProgress = await progressResponse.json();
+          if (latestProgress && latestProgress.progress && latestProgress.progress.best_schedule) {
+            latestProgressData = latestProgress.progress;
+          }
+        }
+      } catch (error) {
+        console.warn('Could not fetch latest progress, using current data:', error);
+      }
+      
+      // Store the best schedule before canceling
+      const bestSchedule = latestProgressData.best_schedule;
+      
+      if (!bestSchedule) {
+        alert('No best schedule available yet. Try generating for longer before stopping.');
+        return;
+      }
+      
+      // Stop the generation loop first to prevent further polling
+      setIsGenerating(false);
+      setAbortController(null);
+      
+      // Set the generated schedule to the best one we found
+      setGeneratedSchedule(bestSchedule);
+      setProgressData(latestProgressData);
+      
+      // Then cancel the backend generation (after we've set our state)
       try {
         await fetch('/scheduler/api/seasons/cancel-generation/', {
           method: 'POST',
@@ -162,13 +215,12 @@ const ScheduleParametersModal = ({
             'Content-Type': 'application/json',
             'X-CSRFToken': getCsrfToken(),
           },
-          body: JSON.stringify({ use_best: true })
+          body: JSON.stringify({})
         });
       } catch (error) {
-        // Ignore errors - the normal generation flow will handle the result
+        // Ignore cancellation errors
       }
       
-      // The schedule will come from the normal generation completion flow
     } else {
       alert('No best schedule available yet. Try generating for longer before stopping.');
     }
@@ -187,7 +239,7 @@ const ScheduleParametersModal = ({
             'Content-Type': 'application/json',
             'X-CSRFToken': getCsrfToken(),
           },
-          body: JSON.stringify({ use_best: false })
+          body: JSON.stringify({})
         });
       } catch (error) {
         // Ignore cancellation request errors
@@ -385,7 +437,7 @@ const ScheduleParametersModal = ({
                     <i 
                       className="fas fa-info-circle text-muted ms-2" 
                       style={{ fontSize: '14px', cursor: 'help' }}
-                      title="Longer times generally produce better schedules but take more time. Start with 60 seconds for most schedules. Increase if you need better balance, decrease if you want faster results."
+                      title="Longer times generally produce better schedules but take more time. Start with 300 seconds for most schedules. Increase if you need better balance, decrease if you want faster results."
                     ></i>
                   </h6>
                   <div className="row">
@@ -398,7 +450,7 @@ const ScheduleParametersModal = ({
                         value={parameters.time_limit}
                         onChange={(e) => handleParameterChange('time_limit', e.target.value)}
                       />
-                      <small className="text-muted">Total time to spend optimizing the schedule</small>
+                      <small className="text-muted">Total time to spend optimizing the schedule. Let it run for 10 minutes and you should get a really balanced schedule.</small>
                     </div>
                   </div>
                 </div>
@@ -437,7 +489,7 @@ const ScheduleParametersModal = ({
                         />
                         <small className="text-muted">
                           Fewer blueprints = spend more time optimizing each schedule. 
-                          More blueprints = try more variations but less optimization per attempt. Default is 1 blueprint per 10 seconds of the time limit.
+                          More blueprints = try more variations but less optimization per attempt. Default is 1 blueprint per 5 seconds of the time limit.
                         </small>
                       </div>
                       <div className="col-md-6">

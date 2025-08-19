@@ -233,11 +233,17 @@ def cancel_schedule_generation(request):
                 except (json.JSONDecodeError, AttributeError):
                     pass
             
-            result = handle_generation_cancellation(session_key, use_best=use_best)
+            result = handle_generation_cancellation(session_key)
             return JsonResponse(result, status=200)
         except ValueError as e:
+            import traceback
+            print(f"ValueError in cancel_schedule_generation: {e}")
+            traceback.print_exc()
             return JsonResponse({"error": str(e)}, status=400)
         except Exception as e:
+            import traceback
+            print(f"Exception in cancel_schedule_generation: {e}")
+            traceback.print_exc()
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -262,6 +268,28 @@ def generation_progress(request):
                 
             progress = get_generation_progress(session_key)
             if progress:
+                # Format best_schedule if present (exactly like full auto-generation does)
+                if 'best_schedule' in progress and progress['best_schedule'] is not None:
+                    from .services.generation import format_generated_schedule
+                    from django.core.cache import cache
+                    
+                    try:
+                        # Get week_data from cache (stored when generation started)
+                        week_data_key = f"schedule_generation_week_data_{session_key}"
+                        week_data = cache.get(week_data_key)
+                        if week_data:
+                            formatted_schedule = format_generated_schedule(progress['best_schedule'], week_data)
+                            progress['best_schedule'] = formatted_schedule
+                            print(f"Successfully formatted best_schedule for progress")
+                        else:
+                            print(f"No week_data found in cache for formatting")
+                    except Exception as e:
+                        print(f"Error formatting best_schedule in progress: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        # Keep unformatted version as fallback
+                        pass
+                
                 return JsonResponse({"progress": progress}, status=200)
             else:
                 return JsonResponse({"progress": None}, status=200)

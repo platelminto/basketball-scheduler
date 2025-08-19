@@ -235,7 +235,7 @@ const ScheduleEditor = ({
               {mode === 'create' && isDevelopment && onAutoGenerate && (
                 <button 
                   type="button" 
-                  className="btn btn-success" 
+                  className="btn btn-info" 
                   onClick={onAutoGenerate}
                 >
                   Auto-generate Schedule

@@ -24,7 +24,26 @@ const ScheduleGenerationScreen = ({
     return (
       <div className="text-center">
         <div className="spinner-border text-primary mb-3" role="status"></div>
-        <p>Generating schedule... {elapsedTime}s / {parameters.time_limit}s</p>
+        <p>
+          {progressData ? 'Optimizing blueprints' : 'Generating blueprints'}... {elapsedTime}s / {parameters.time_limit}s
+        </p>
+        
+        {/* Explanation of the generation process */}
+        <div className="alert alert-info mb-3" style={{ fontSize: '0.9em', textAlign: 'left' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+            <i className="fas fa-info-circle"></i> How Schedule Generation Works
+          </div>
+          <div style={{ lineHeight: '1.4' }}>
+            <strong>Blueprints</strong> are different starting points for schedules, each with random team assignments. 
+            The algorithm then optimizes each blueprint to improve balance and fairness.
+            <br /><br />
+            <strong>Strategy:</strong> It's more effective to try many blueprints for shorter periods than to spend all time on just a few. 
+            Starting with a good random foundation often beats heavily optimizing a poor one.
+            <br /><br />
+            <strong>Infeasible blueprints</strong> mean the constraints are too tight for that particular starting arrangement. 
+            Some infeasible results is normal and healthy - it shows the algorithm is exploring the boundaries of what's possible.
+          </div>
+        </div>
         
         {/* Progress information */}
         {progressData && (
@@ -244,7 +263,7 @@ const ScheduleGenerationScreen = ({
           <button type="button" className="btn btn-success" onClick={() => {
             // Apply the generated schedule by calling the parent's apply function
             if (onApply && generatedSchedule) {
-              onApply(generatedSchedule);
+              onApply({ schedule: generatedSchedule });
             }
             onClose();
           }}>

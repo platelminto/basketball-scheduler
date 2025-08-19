@@ -105,7 +105,8 @@ const StatsResults = ({ statisticsResults }) => {
   const renderLevelStats = (level) => {
     const playData = statisticsResults.team_play_counts[level] || {};
     const refData = statisticsResults.team_ref_counts[level] || {};
-    const teams = Object.keys(playData).sort();
+    // Use the properly filtered team list from summary to ensure we only show teams from this level
+    const teams = (statisticsResults.summary?.team_names_by_level?.[level] || []).sort();
     const slotTimes = statisticsResults.slot_times || {};
     
     if (teams.length === 0) return null;
