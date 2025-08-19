@@ -126,13 +126,11 @@
 }
 
 .btn:hover {
-  transform: translateY(-0.5px);
   box-shadow: var(--shadow-sm);
   text-decoration: none;
 }
 
 .btn:active {
-  transform: translateY(0);
 }
 
 .btn:disabled {
@@ -360,7 +358,6 @@
 
 .card:hover {
   box-shadow: var(--shadow-sm);
-  transform: translateY(-0.5px);
 }
 
 .card-header {

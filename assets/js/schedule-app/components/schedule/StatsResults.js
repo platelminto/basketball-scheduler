@@ -124,14 +124,15 @@ const StatsResults = ({ statisticsResults }) => {
       <div key={level} className="card mb-3">
         <div 
           className="card-header"
-          style={{ padding: '0.75rem 1rem' }}
+          style={{ 
+            padding: '0.75rem 1rem', 
+            cursor: 'default',
+            background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-muted) 100%)',
+            pointerEvents: 'none'
+          }}
         >
-          <h6 className="mb-0">
-            <i className="fas fa-chart-bar me-2"></i>
-            Level {level} Team Activity
-            <small className="text-muted ms-2">
-              ({teams.length} teams × {slots.length} time slots)
-            </small>
+          <h6 className="mb-0" style={{ pointerEvents: 'none' }}>
+            {level} Team Activity
           </h6>
         </div>
         
@@ -165,8 +166,8 @@ const StatsResults = ({ statisticsResults }) => {
           </div>
           
           {/* Chart - Teams on X-axis, Grouped bars for each time slot */}
-          <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-end', minWidth: `${teams.length * (slots.length * 70 + 30) + 120}px`, paddingBottom: '20px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '20px' }}>
               
               {/* Y-axis labels */}
               <div style={{ 
