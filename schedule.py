@@ -66,7 +66,7 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
     for i in range(num_blueprints_to_find):
         # Check for cancellation before each blueprint
         if cancellation_checker and cancellation_checker():
-            print(f"\\nBlueprint generation cancelled after {len(found_blueprints)} blueprints.")
+            print(f"\nBlueprint generation cancelled after {len(found_blueprints)} blueprints.")
             break
             
         prob.solve(solver)
@@ -105,7 +105,6 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
         cancellation_checker: Optional function that returns True if generation should be cancelled
         use_best_checker: Optional function that returns True if generation should stop and use best found
     """
-    # ... (The entire setup, variables, and constraints of Phase 2 are UNCHANGED) ...
     # --- Setup ---
     total_weeks = config["total_weeks"]
     num_slots = config["num_slots"]
@@ -167,9 +166,9 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
     slot_weights = {}
     for s in slots_range:
         if s == 1 or s == num_slots:  # First or last slot
-            slot_weights[s] = 5.0  # Higher weight for extreme slots
+            slot_weights[s] = 15.0  # Higher weight for extreme slots (balanced with other objectives)
         else:  # Middle slots
-            slot_weights[s] = 1.0  # Standard weight for middle slots
+            slot_weights[s] = 1.0  # Lower weight for middle slots
     
     # Calculate weighted deviations from target for each team
     slot_deviations = []
@@ -186,92 +185,68 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
             weighted_deviation = slot_weights[s] * abs_deviation
             slot_deviations.append(weighted_deviation)
     
-    # Penalties for first/last slots being outside the expected integer range
-    discrete_penalties = []
-    for t in all_teams:
-        # Apply penalties to first and last slots only
-        for s in [1, num_slots]:  # First and last slots
-            slot_games = pulp.lpSum(is_playing[(t,w,s)] for w in weeks_range)
-            target_for_slot = target_games_per_slot[s]
-            
-            # Expected range is floor and ceil of target (e.g., 3 and 4 for target 3.333)
-            expected_low = int(target_for_slot)      # e.g., 3
-            expected_high = int(target_for_slot) + 1 # e.g., 4
-            
-            # Quadratic penalty based on distance from actual target (not range boundaries)
-            # Only penalize if outside the acceptable range [expected_low, expected_high]
-            # But base penalty on distance from actual target
-            out_of_range_penalty = pulp.LpVariable(f"Slot{s}OutOfRangePenalty_{t}", lowBound=0, cat='Continuous')
-            
-            # Check if we're outside range and calculate distance-based penalty
-            for actual_games in range(0, total_weeks + 1):  # Support 0 to total_weeks games per team per slot
-                # Binary var: is this team assigned exactly 'actual_games' in this slot?
-                is_this_count = pulp.LpVariable(f"Slot{s}_{t}_is_{actual_games}", cat='Binary')
-                prob += slot_games >= actual_games * is_this_count
-                prob += slot_games <= actual_games * is_this_count + (1 - is_this_count) * total_weeks  # Big M constraint
-                
-                if actual_games < expected_low or actual_games > expected_high:
-                    # Out of range - calculate quadratic penalty based on distance from target
-                    distance_from_target = abs(actual_games - target_for_slot)
-                    penalty = 20 * (distance_from_target ** 2)
-                    prob += out_of_range_penalty >= penalty * is_this_count
-            
-            discrete_penalties.append(out_of_range_penalty)
+    # Slot distribution weights handle everything - no discrete penalties needed
     
-    # Referee-specific penalties for first/last slots
-    ref_first_last_penalties = []
-    for t in all_teams:
-        first_refs = pulp.lpSum(is_reffing[(t,w,1)] for w in weeks_range)
-        last_refs = pulp.lpSum(is_reffing[(t,w,num_slots)] for w in weeks_range)
-        total_first_last_refs = first_refs + last_refs
-        
-        # Penalty for excessive reffing in first/last slots
-        ref_penalty_var = pulp.LpVariable(f"RefFirstLastPenalty_{t}", lowBound=0, cat='Continuous')
-        prob += ref_penalty_var >= (total_first_last_refs - 1) * 12  # 12 points penalty per ref assignment beyond 1
-        ref_first_last_penalties.append(ref_penalty_var)
-    
-    # Consecutive week penalty for first/last slots
-    consecutive_penalties = []
-    for t in all_teams:
-        for w in range(total_weeks - 1):
-            # First slot consecutive penalty
-            consec_first = pulp.LpVariable(f"ConsecFirst_{t}_{w}", lowBound=0, cat='Binary')
-            prob += consec_first >= is_playing[(t,w,1)] + is_playing[(t,w+1,1)] - 1
-            consecutive_penalties.append(consec_first * 10)
-            
-            # Last slot consecutive penalty
-            consec_last = pulp.LpVariable(f"ConsecLast_{t}_{w}", lowBound=0, cat='Binary')  
-            prob += consec_last >= is_playing[(t,w,num_slots)] + is_playing[(t,w+1,num_slots)] - 1
-            consecutive_penalties.append(consec_last * 10)
-    
-    # Referee balance penalties - asymmetric penalties for extreme cases only
+    # Calculate referee target for soft hard limits
     total_games = len(all_games)
     target_refs_per_team = total_games / len(all_teams)
-    ref_balance_penalties = []
-    
+
+    # Soft hard limits for referee balance (±1 from target)
+    ref_soft_hard_limits = []
     for t in all_teams:
         total_refs = pulp.lpSum(is_reffing[(t, w, s)] for w in weeks_range for s in slots_range)
         
-        # Define thresholds as deviations from target
-        # Allow ±1 from target without penalty, then escalate for ±2 or more
-        acceptable_range = 1.5  # Teams can be 1.5 refs away from target without penalty
+        # Soft hard limit: team should ref between target-1 and target+1
+        target_min = max(0, target_refs_per_team - 1)
+        target_max = target_refs_per_team + 1
         
-        # Penalty for being too far below target (< target - 1.5)
-        too_few_penalty = pulp.LpVariable(f"RefTooFew_{t}", lowBound=0, cat='Continuous')
-        prob += too_few_penalty >= (target_refs_per_team - acceptable_range) - total_refs
-        ref_balance_penalties.append(too_few_penalty * 8)  # Strong penalty for too few
+        # Slack variables for violations
+        under_slack = pulp.LpVariable(f"RefUnderSlack_{t}", lowBound=0, cat='Continuous')
+        over_slack = pulp.LpVariable(f"RefOverSlack_{t}", lowBound=0, cat='Continuous')
         
-        # Penalty for being too far above target (> target + 1.5)
-        too_many_penalty = pulp.LpVariable(f"RefTooMany_{t}", lowBound=0, cat='Continuous')
-        prob += too_many_penalty >= total_refs - (target_refs_per_team + acceptable_range)
-        ref_balance_penalties.append(too_many_penalty * 8)  # Strong penalty for too many
+        # Constraints with slack
+        prob += total_refs + under_slack >= target_min
+        prob += total_refs - over_slack <= target_max
+        
+        # High penalties for violations
+        ref_soft_hard_limits.append(under_slack * 1000)  # 1000 points per ref under minimum
+        ref_soft_hard_limits.append(over_slack * 1000)   # 1000 points per ref over maximum
 
-    # Combined objective: slot distribution + discrete range + ref penalties + consecutive penalties + ref balance
+    # Soft hard limits for FIRST slot games per team
+    expected_first_games_per_team = target_games_per_slot[1]
+    min_first_games = int(expected_first_games_per_team)  # floor
+    max_first_games = min_first_games + 1  # floor + 1
+    
+    # Soft hard limits for LAST slot games per team  
+    expected_last_games_per_team = target_games_per_slot[num_slots]
+    min_last_games = int(expected_last_games_per_team)  # floor
+    max_last_games = min_last_games + 1  # floor + 1
+    
+    first_last_soft_hard_limits = []
+    for t in all_teams:
+        # FIRST slot limits
+        team_first_games = pulp.lpSum(is_playing[(t, w, 1)] for w in weeks_range)
+        first_under_slack = pulp.LpVariable(f"FirstUnderSlack_{t}", lowBound=0, cat='Continuous') 
+        first_over_slack = pulp.LpVariable(f"FirstOverSlack_{t}", lowBound=0, cat='Continuous')
+        prob += team_first_games + first_under_slack >= min_first_games
+        prob += team_first_games - first_over_slack <= max_first_games
+        first_last_soft_hard_limits.append(first_under_slack * 500)
+        first_last_soft_hard_limits.append(first_over_slack * 500)
+        
+        # LAST slot limits
+        team_last_games = pulp.lpSum(is_playing[(t, w, num_slots)] for w in weeks_range)
+        last_under_slack = pulp.LpVariable(f"LastUnderSlack_{t}", lowBound=0, cat='Continuous') 
+        last_over_slack = pulp.LpVariable(f"LastOverSlack_{t}", lowBound=0, cat='Continuous')
+        prob += team_last_games + last_under_slack >= min_last_games
+        prob += team_last_games - last_over_slack <= max_last_games
+        first_last_soft_hard_limits.append(last_under_slack * 500)
+        first_last_soft_hard_limits.append(last_over_slack * 500)
+    
+
+    # Combined objective: slot distribution + soft hard limits
     total_objective = (pulp.lpSum(slot_deviations) + 
-                      pulp.lpSum(discrete_penalties) + 
-                      pulp.lpSum(ref_first_last_penalties) + 
-                      pulp.lpSum(consecutive_penalties) +
-                      pulp.lpSum(ref_balance_penalties))
+                      pulp.lpSum(ref_soft_hard_limits) +
+                      pulp.lpSum(first_last_soft_hard_limits))
     
     prob.setObjective(total_objective)
 
@@ -438,7 +413,7 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
         progress_callback: Optional function to call with progress updates
     """
     # Phase 1: Generate a list of potential blueprints
-    blueprints = phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_generate, verbose=verbose, cancellation_checker=cancellation_checker)
+    blueprints = phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_generate, verbose=False, cancellation_checker=cancellation_checker)
 
     if not blueprints:
         print("\nScheduling failed in Phase 1. No valid matchup blueprints could be found.")
@@ -558,6 +533,51 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
         
     print(f"\n--- Evaluation Complete. The best schedule found has an imbalance score of {best_score} ---")
     
+    # Print summary statistics
+    print("\n=== BLUEPRINT SUMMARY STATISTICS ===")
+    feasible_scores = [result['score'] for result in blueprint_results.values() if result['score'] != 'infeasible']
+    infeasible_count = sum(1 for result in blueprint_results.values() if result['score'] == 'infeasible')
+    
+    print(f"Total blueprints evaluated: {len(blueprint_results)}")
+    print(f"Feasible blueprints: {len(feasible_scores)}")
+    print(f"Infeasible blueprints: {infeasible_count}")
+    
+    if feasible_scores:
+        avg_score = sum(feasible_scores) / len(feasible_scores)
+        min_score = min(feasible_scores)
+        max_score = max(feasible_scores)
+        
+        print(f"Score statistics (feasible only):")
+        print(f"  Best (minimum): {min_score:.2f}")
+        print(f"  Worst (maximum): {max_score:.2f}")
+        print(f"  Average: {avg_score:.2f}")
+        print(f"  Range: {max_score - min_score:.2f}")
+        
+        if theoretical_best_score is not None and theoretical_best_score > 0:
+            gap_from_theoretical = ((min_score - theoretical_best_score) / theoretical_best_score) * 100
+            print(f"  Gap from theoretical best: {gap_from_theoretical:.1f}%")
+        
+        # Show feasible rate
+        feasible_rate = (len(feasible_scores) / len(blueprint_results)) * 100
+        print(f"Feasibility rate: {feasible_rate:.1f}%")
+        
+        # Show top 10 scores with blueprint numbers
+        print(f"\nTop 10 scores:")
+        # Create list of (blueprint_num, score) for feasible results
+        blueprint_scores = [(bp_num, result['score']) for bp_num, result in blueprint_results.items() 
+                           if result['score'] != 'infeasible']
+        # Sort by score (best first)
+        blueprint_scores.sort(key=lambda x: x[1])
+        
+        for i, (bp_num, score) in enumerate(blueprint_scores[:10]):
+            rank = i + 1
+            print(f"  #{rank}: Blueprint {bp_num} - {score:.2f}")
+            if i == 0 and theoretical_best_score is not None and theoretical_best_score > 0:
+                gap = ((score - theoretical_best_score) / theoretical_best_score) * 100
+                print(f"      (gap from theoretical: {gap:.1f}%)")
+    else:
+        print("No feasible solutions found!")
+    
     # Phase 3: Post-process the single best schedule found
     final_schedule = flip_teams_by_round(best_schedule, team_names_by_level)
         
@@ -647,9 +667,6 @@ if __name__ == "__main__":
         #     3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
         #     4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
         # },
-        "slot_limits": {1: 3, 2: 4, 3: 4, 4: 4},
-        "min_referee_count": 4,
-        "max_referee_count": 6,
     }
     TEAM_NAMES = {
         "A": [f"TeamA{i}" for i in range(1, CONFIG["teams_per_level"]["A"] + 1)],
@@ -659,7 +676,7 @@ if __name__ == "__main__":
     
     ### NEW/MODIFIED ###
     # We now call the generator with a total time limit and the number of blueprints to try
-    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=120, num_blueprints_to_generate=20, gapRel=0.01, verbose=True)
+    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=80, num_blueprints_to_generate=20, gapRel=0.01, verbose=True)
 
     if final_schedule:
         # These functions for testing and stats would be run as before

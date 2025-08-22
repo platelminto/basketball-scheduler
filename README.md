@@ -56,6 +56,7 @@ The schedule generator is highly configurable through the `config` dictionary:
 ```python
 config = {
     # League structure
+    "total_weeks": 10,
     "levels": ["A", "B", "C"], # Names of the levels/divisions
     "teams_per_level": { # Number of teams in each level
         "A": 6,
@@ -69,31 +70,44 @@ config = {
         3: 2,
         4: 3,
     }, # Number of courts available in each slot (1-indexed)
-    # Constraints for play balance
-    "slot_limits": {
-        1: 3, # Teams can play at most 3 games in slot 1
-        2: 6, # Teams can play at most 6 games in slots 2 and 3
-        3: 6,
-        4: 4, # Teams can play at most 4 games in slot 4
-    },
-    # Constraints for referee balance
-    "min_referee_count": 4, # Minimum times a team must referee in a season per level
-    "max_referee_count": 6, # Maximum times a team can referee in a season per level
-    # Optimization priorities
-    "priority_slots": [1, 4], # Slots where balance is more important
-    "priority_multiplier": 100, # Extra weight for priority slots in balance calculations
 }
 ```
 
 ## Schedule Generation Algorithm
 
-The schedule generation process follows these steps:
+The schedule generation uses a **two-phase optimization approach**:
 
-1. **Round-Robin Generation**: Creates a round-robin pairing for each level
-2. **First Half Scheduling**: Uses backtracking to assign time slots and referees for the first half
-3. **Second Half Scheduling**: Mirrors the first half's pairings with new slot and referee assignments
-4. **Schedule Balancing**: Uses simulated annealing to improve the balance of play and referee assignments
-5. **Validation**: Ensures the final schedule meets all constraints
+### Phase 1: Matchup Generation
+- Creates multiple unique round-robin matchup blueprints
+- Ensures each team plays every other team in their level equally
+- Generates different valid matchup combinations to explore
+
+### Phase 2: Slot & Referee Optimization  
+- Takes each matchup blueprint and optimizes slot/referee assignments
+- Uses **soft constraints** with penalty-based objective function
+- Automatically balances without requiring manual limits
+
+## Automatic Balancing System
+
+The algorithm uses **weighted soft constraints** instead of hard limits:
+
+### **Slot Distribution Balancing**
+- **Target-based**: Calculates expected games per slot based on court availability
+- **Weighted penalties**: 15x higher weight for first/last slots vs middle slots
+- **Automatic fairness**: No team consistently stuck with early/late times
+
+### **Referee Balancing** 
+- **Soft hard limits**: Teams should referee target ±1 games (1000pt penalty for violations)
+- **Adjacent-slot rule**: Referees must play in adjacent time slots (prevents conflicts)
+- **Level-based**: Only teams from same level can referee each other
+
+### **First/Last Slot Protection**
+- **Special constraints**: 500pt penalties for teams getting too many first/last slot games
+- **Fair distribution**: Ensures inconvenient times are shared equally
+
+### **No Manual Configuration Required**
+- Algorithm automatically determines optimal balance based on league structure
+- Penalty-based system finds best possible solution within constraints
 
 ## Installation
 

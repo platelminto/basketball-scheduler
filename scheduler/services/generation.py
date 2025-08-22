@@ -145,18 +145,8 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     # Get configuration from the setup data
     config = get_config_from_schedule_creator(setup_data, week_data)
 
-    # Apply parameters from the frontend, with fallbacks to defaults
-    config["min_referee_count"] = parameters.get("min_referee_count", 4)
-    config["max_referee_count"] = parameters.get("max_referee_count", 6)
-    config["slot_limits"] = parameters.get(
-        "slot_limits", {1: 3, 2: 5, 3: 5, 4: 4}
-    )
-
-    # Convert string keys to integers for slot_limits
-    if isinstance(config["slot_limits"], dict):
-        config["slot_limits"] = {
-            int(k): v for k, v in config["slot_limits"].items()
-        }
+    # Apply parameters from the frontend - these are no longer used by the scheduler
+    # but kept for potential future use or backwards compatibility
 
     # Extract optimization parameters
     time_limit = parameters.get("time_limit", 10.0)

@@ -154,7 +154,7 @@ const PublicSchedule = () => {
         alignItems: 'start'
       }}>
         {(showBoth || showStandingsOnly) && (
-          <div>
+          <div style={{ position: 'sticky', top: '20px', alignSelf: 'start' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '15px' }}>
               League Standings
             </h2>

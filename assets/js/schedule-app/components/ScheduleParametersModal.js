@@ -8,83 +8,102 @@ const ScheduleParametersModal = ({
   onApply,
   setupData 
 }) => {
-  // Reset modal state when closed
-  useEffect(() => {
-    if (!isOpen) {
-      // Reset all generation-related state when modal is closed
-      setIsGenerating(false);
-      setElapsedTime(0);
-      setAbortController(null);
-      setProgressData(null);
-      setGeneratedSchedule(null);
-      // Reset parameters to defaults
-      setParameters({
-        min_referee_count: 4,
-        max_referee_count: 6,
-        slot_limits: {
-          1: 3,
-          2: 4,
-          3: 4,
-          4: 4
-        },
-        time_limit: 600,
-        // Advanced options
-        num_blueprints_to_generate: '',
-        gapRel: 0.07
-      });
-      setShowAdvanced(false);
-    }
-  }, [isOpen]);
-  const [parameters, setParameters] = useState({
-    min_referee_count: 4,
-    max_referee_count: 6,
-    slot_limits: {
-      1: 3,
-      2: 4,
-      3: 4,
-      4: 4
+  // Clean state machine - only one state object
+  const [state, setState] = useState({
+    mode: 'configure',  // 'configure' | 'generating' | 'results'
+    parameters: {
+      time_limit: 600,
+      num_blueprints_to_generate: '',
+      gapRel: 0.07
     },
-    time_limit: 600,
-    // Advanced options
-    num_blueprints_to_generate: '',
-    gapRel: 0.07
+    showAdvanced: false,
+    generationData: null,  // { schedule, progressData, elapsedTime }
+    abortController: null
   });
 
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [abortController, setAbortController] = useState(null);
-  const [progressData, setProgressData] = useState(null);
-  const [generatedSchedule, setGeneratedSchedule] = useState(null);
-
-  // Cancel generation if page is unloaded
+  // Reset when modal opens/closes
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (isGenerating && abortController) {
-        // Cancel the generation
-        abortController.abort();
+    if (!isOpen) {
+      setState({
+        mode: 'configure',
+        parameters: {
+          time_limit: 600,
+          num_blueprints_to_generate: '',
+          gapRel: 0.07
+        },
+        showAdvanced: false,
+        generationData: null,
+        abortController: null
+      });
+    }
+  }, [isOpen]);
+
+  // Progress polling - simple and clean
+  useEffect(() => {
+    if (state.mode !== 'generating') return;
+
+    const pollProgress = async () => {
+      try {
+        const response = await fetch('/scheduler/api/seasons/generation-progress/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.progress) {
+            setState(prev => ({
+              ...prev,
+              generationData: {
+                ...prev.generationData,
+                progressData: data.progress
+              }
+            }));
+          }
+        }
+      } catch (error) {
+        // Ignore polling errors
       }
     };
 
-    if (isGenerating) {
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }
-  }, [isGenerating, abortController]);
+    // Start polling immediately, then every 2 seconds
+    pollProgress();
+    const interval = setInterval(pollProgress, 2000);
+    
+    return () => clearInterval(interval);
+  }, [state.mode]);
 
-  const handleParameterChange = (key, value) => {
-    setParameters(prev => ({
-      ...prev,
-      [key]: value === '' ? '' : (key === 'gapRel' ? parseFloat(value) : parseInt(value))
-    }));
+  // Time counter
+  useEffect(() => {
+    if (state.mode !== 'generating') return;
+
+    const interval = setInterval(() => {
+      setState(prev => ({
+        ...prev,
+        generationData: {
+          ...prev.generationData,
+          elapsedTime: (prev.generationData?.elapsedTime || 0) + 1
+        }
+      }));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [state.mode]);
+
+  // Helper function to get CSRF token
+  const getCsrfToken = () => {
+    return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
   };
 
-  const handleSlotLimitChange = (slot, value) => {
-    setParameters(prev => ({
+  const handleParameterChange = (key, value) => {
+    setState(prev => ({
       ...prev,
-      slot_limits: {
-        ...prev.slot_limits,
-        [slot]: value === '' ? '' : parseInt(value)
+      parameters: {
+        ...prev.parameters,
+        [key]: value === '' ? '' : (key === 'gapRel' ? parseFloat(value) : parseInt(value))
       }
     }));
   };
@@ -93,236 +112,153 @@ const ScheduleParametersModal = ({
     // Validate all fields are filled
     const emptyFields = [];
     
-    if (parameters.min_referee_count === '') emptyFields.push('Minimum Referee Count');
-    if (parameters.max_referee_count === '') emptyFields.push('Maximum Referee Count');
-    if (parameters.time_limit === '') emptyFields.push('Time Limit');
-    // num_blueprints_to_generate is optional - backend handles default
-    if (parameters.gapRel === '') emptyFields.push('Relative Gap Tolerance');
-    
-    // Check slot limits
-    for (const [slot, value] of Object.entries(parameters.slot_limits)) {
-      if (value === '') emptyFields.push(`Slot ${slot} Limit`);
-    }
+    if (state.parameters.time_limit === '') emptyFields.push('Time Limit');
+    if (state.parameters.gapRel === '') emptyFields.push('Relative Gap Tolerance');
     
     if (emptyFields.length > 0) {
       alert(`Please fill in all fields:\n• ${emptyFields.join('\n• ')}`);
       return;
     }
     
-    // Create new AbortController for this generation
+    // Create abort controller and start generation
     const controller = new AbortController();
-    setAbortController(controller);
     
-    setIsGenerating(true);
-    setElapsedTime(0);
-    setProgressData(null);
-    setGeneratedSchedule(null);
-    
-    // Start the simple time counter
-    const timeInterval = setInterval(() => {
-      setElapsedTime(prev => prev + 1);
-    }, 1000);
+    setState(prev => ({
+      ...prev,
+      mode: 'generating',
+      abortController: controller,
+      generationData: {
+        schedule: null,
+        progressData: null,
+        elapsedTime: 0
+      }
+    }));
     
     try {
-      const result = await onGenerate(parameters, controller.signal);
+      const result = await onGenerate(state.parameters, controller.signal);
       
       // Only proceed if not cancelled
       if (!controller.signal.aborted) {
-        clearInterval(timeInterval);
-        setIsGenerating(false);
-        setElapsedTime(0);
-        setAbortController(null);
-        
-        // Do one final poll to get the last blueprint results
-        await pollProgress();
-        
-        // Keep progressData for final results display
-        setGeneratedSchedule(result.schedule);
-        // Don't close modal automatically - let user apply the schedule
+        // Success - transition to results
+        setState(prev => ({
+          ...prev,
+          mode: 'results',
+          abortController: null,
+          generationData: {
+            ...prev.generationData,
+            schedule: result.schedule
+          }
+        }));
       }
     } catch (error) {
-      clearInterval(timeInterval);
-      
-      // Check if this was a user cancellation (AbortError or DOMException with abort message)
-      if (error.name === 'AbortError' || 
-          (error.name === 'DOMException' && error.message.includes('aborted')) ||
-          controller.signal.aborted) {
-        // Brief delay then reset
-        setTimeout(() => {
-          setIsGenerating(false);
-          setElapsedTime(0);
-          setAbortController(null);
-          setProgressData(null);
-          setGeneratedSchedule(null);
-        }, 500);
-      } else {
-        // Actual error - reset immediately
-        setIsGenerating(false);
-        setElapsedTime(0);
-        setAbortController(null);
-        setProgressData(null);
-        setGeneratedSchedule(null);
-        // Error handling is done by the parent component
+      // Only reset if this isn't an expected abort (from cancel or stop & use best)
+      if (!controller.signal.aborted) {
+        // Actual error - go back to configure
+        setState(prev => ({
+          ...prev,
+          mode: 'configure',
+          abortController: null,
+          generationData: null
+        }));
       }
-    }
-  };
-
-  const handleStopAndUseBest = async () => {
-    if (isGenerating && progressData && progressData.best_score !== null && progressData.best_score !== undefined) {
-      
-      // First, poll for the latest progress to get the best schedule
-      let latestProgressData = progressData;
-      try {
-        const progressResponse = await fetch('/scheduler/api/seasons/generation-progress/', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken(),
-          }
-        });
-        
-        if (progressResponse.ok) {
-          const latestProgress = await progressResponse.json();
-          if (latestProgress && latestProgress.progress && latestProgress.progress.best_schedule) {
-            latestProgressData = latestProgress.progress;
-          }
-        }
-      } catch (error) {
-        console.warn('Could not fetch latest progress, using current data:', error);
-      }
-      
-      // Store the best schedule before canceling
-      const bestSchedule = latestProgressData.best_schedule;
-      
-      if (!bestSchedule) {
-        alert('No best schedule available yet. Try generating for longer before stopping.');
-        return;
-      }
-      
-      // Stop the generation loop first to prevent further polling
-      setIsGenerating(false);
-      setAbortController(null);
-      
-      // Set the generated schedule to the best one we found
-      setGeneratedSchedule(bestSchedule);
-      setProgressData(latestProgressData);
-      
-      // Then cancel the backend generation (after we've set our state)
-      try {
-        await fetch('/scheduler/api/seasons/cancel-generation/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken(),
-          },
-          body: JSON.stringify({})
-        });
-      } catch (error) {
-        // Ignore cancellation errors
-      }
-      
-    } else {
-      alert('No best schedule available yet. Try generating for longer before stopping.');
+      // If aborted, we don't touch state - it was set by cancel/stop handlers
     }
   };
 
   const handleCancel = async () => {
-    if (isGenerating && abortController) {
-      // Immediately abort the frontend request
-      abortController.abort();
-      
-      // Tell backend to cancel generation
-      try {
-        await fetch('/scheduler/api/seasons/cancel-generation/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCsrfToken(),
-          },
-          body: JSON.stringify({})
-        });
-      } catch (error) {
-        // Ignore cancellation request errors
-      }
-      
-      // Reset state back to initial modal
-      setIsGenerating(false);
-      setElapsedTime(0);
-      setAbortController(null);
-      setProgressData(null);
-      setGeneratedSchedule(null);
-    } else {
-      // Not generating, just close
-      onClose();
+    // Cancel backend generation
+    try {
+      await fetch('/scheduler/api/seasons/cancel-generation/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({})
+      });
+    } catch (error) {
+      // Ignore cancellation errors
     }
+
+    // Abort frontend request and go back to configure
+    if (state.abortController) {
+      state.abortController.abort();
+    }
+    
+    setState(prev => ({
+      ...prev,
+      mode: 'configure',
+      abortController: null,
+      generationData: null
+    }));
   };
 
-  // Helper function to get CSRF token
-  const getCsrfToken = () => {
-    return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
-  };
+  const handleStopAndUseBest = async () => {
+    const progressData = state.generationData?.progressData;
+    
+    if (!progressData || progressData.best_score === null || progressData.best_score === undefined) {
+      alert('No best schedule available yet. Try generating for longer before stopping.');
+      return;
+    }
 
-  // Poll for progress updates
-  const pollProgress = async () => {
+    // Get the latest progress to ensure we have the best schedule
+    let latestProgressData = progressData;
     try {
       const response = await fetch('/scheduler/api/seasons/generation-progress/', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': getCsrfToken(),
-        },
+        }
       });
-
+      
       if (response.ok) {
         const data = await response.json();
-        if (data.progress) {
-          setProgressData(data.progress);
+        if (data.progress && data.progress.best_schedule) {
+          latestProgressData = data.progress;
         }
       }
     } catch (error) {
-      // Ignore polling errors - they're not critical
+      console.warn('Could not fetch latest progress, using current data:', error);
     }
-  };
-
-  // Set up progress polling when generation starts
-  useEffect(() => {
-    let progressInterval;
     
-    if (isGenerating) {
-      // Reset progress data when starting
-      setProgressData(null);
-      
-      // Start polling every 2 seconds
-      progressInterval = setInterval(pollProgress, 2000);
+    const bestSchedule = latestProgressData.best_schedule;
+    
+    if (!bestSchedule) {
+      alert('No best schedule available yet. Try generating for longer before stopping.');
+      return;
     }
 
-    return () => {
-      if (progressInterval) {
-        clearInterval(progressInterval);
-      }
-    };
-  }, [isGenerating]);
+    // Cancel backend generation
+    try {
+      await fetch('/scheduler/api/seasons/cancel-generation/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({})
+      });
+    } catch (error) {
+      // Ignore cancellation errors
+    }
 
-
-  const getNumSlots = () => {
-    if (!setupData || !setupData.schedule || !setupData.schedule.weeks) return 4;
+    // Abort frontend request and transition to results with best schedule
+    if (state.abortController) {
+      state.abortController.abort();
+    }
     
-    // Find the maximum number of time slots across all weeks
-    let maxSlots = 0;
-    setupData.schedule.weeks.forEach(week => {
-      if (!week.isOffWeek && week.days) {
-        week.days.forEach(day => {
-          if (day.times) {
-            maxSlots = Math.max(maxSlots, day.times.length);
-          }
-        });
+    setState(prev => ({
+      ...prev,
+      mode: 'results',
+      abortController: null,
+      generationData: {
+        ...prev.generationData,
+        schedule: bestSchedule,
+        progressData: latestProgressData
       }
-    });
-    
-    return Math.max(maxSlots, 4); // Default to 4 if no data found
+    }));
   };
-
-  const numSlots = getNumSlots();
 
   if (!isOpen) return null;
 
@@ -332,7 +268,7 @@ const ScheduleParametersModal = ({
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">Schedule Generation Parameters</h5>
-            {!isGenerating && (
+            {state.mode === 'configure' && (
               <button 
                 type="button" 
                 className="btn-close" 
@@ -343,93 +279,17 @@ const ScheduleParametersModal = ({
           </div>
 
           <div className="modal-body">
-            {/* Show info only when configuring parameters */}
-            {!isGenerating && !generatedSchedule && (
-              <div className="alert alert-info mb-4">
-                <h6><i className="fas fa-info-circle"></i> Schedule Generation</h6>
-                <p className="mb-0">
-                  These parameters help create a balanced schedule that's fair to all teams. 
-                  Default values work well for a 10-week, 6-teams-per-level case. Adjust them if generation fails or you need different balance requirements.
-                </p>
-              </div>
-            )}
-            
-            {/* Use the generation screen component for both generating and results */}
-            {(isGenerating || generatedSchedule) ? (
-              <ScheduleGenerationScreen
-                isGenerating={isGenerating}
-                elapsedTime={elapsedTime}
-                parameters={parameters}
-                progressData={progressData}
-                onCancel={handleCancel}
-                onStopAndUseBest={handleStopAndUseBest}
-                generatedSchedule={generatedSchedule}
-                onApply={onApply}
-                onClose={onClose}
-              />
-            ) : (
-              // Parameter Configuration View
-              <div>
-                {/* Basic Parameters */}
-                <div className="form-section mb-4">
-                  <h6 className="form-label">
-                    Referee Requirements 
-                    <i 
-                      className="fas fa-info-circle text-muted ms-2" 
-                      style={{ fontSize: '14px', cursor: 'help' }}
-                      title="For a 10-week season, each team would ideally referee 5 games. A range of 4-6 games provides good balance while allowing schedule flexibility."
-                    ></i>
-                  </h6>
-                  <div className="row">
-                    <div className="col-md-6">
-                      <label className="form-label">Minimum Referee Count</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        min="0"
-                        value={parameters.min_referee_count}
-                        onChange={(e) => handleParameterChange('min_referee_count', e.target.value)}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Maximum Referee Count</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        min="0"
-                        value={parameters.max_referee_count}
-                        onChange={(e) => handleParameterChange('max_referee_count', e.target.value)}
-                      />
-                    </div>
-                  </div>
+            {state.mode === 'configure' && (
+              <>
+                {/* Info banner */}
+                <div className="alert alert-info mb-4">
+                  <h6><i className="fas fa-info-circle"></i> Schedule Generation</h6>
+                  <p className="mb-0">
+                    Configure the optimization settings for schedule generation. 
+                    The generator automatically balances referee assignments and time slot distribution.
+                  </p>
                 </div>
-
-                {/* Slot Limits */}
-                <div className="form-section mb-4">
-                  <h6 className="form-label">
-                    Maximum Games per Team per Time Slot 
-                    <i 
-                      className="fas fa-info-circle text-muted ms-2" 
-                      style={{ fontSize: '14px', cursor: 'help' }}
-                      title="These limits prevent teams from playing too many games at the same time each week. Higher numbers give more flexibility but may create uneven schedules. Lower numbers ensure fairness but may make scheduling impossible if too restrictive."
-                    ></i>
-                  </h6>
-                  <div className="row">
-                    {Array.from({ length: numSlots }, (_, i) => i + 1).map(slot => (
-                      <div key={slot} className="col-md-3 mb-2">
-                        <label className="form-label">Slot {slot}</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          min="0"
-                          value={parameters.slot_limits[slot] || ''}
-                          onChange={(e) => handleSlotLimitChange(slot, e.target.value)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
+                
                 {/* Time Limit */}
                 <div className="form-section mb-4">
                   <h6 className="form-label">
@@ -437,7 +297,7 @@ const ScheduleParametersModal = ({
                     <i 
                       className="fas fa-info-circle text-muted ms-2" 
                       style={{ fontSize: '14px', cursor: 'help' }}
-                      title="Longer times generally produce better schedules but take more time. Start with 300 seconds for most schedules. Increase if you need better balance, decrease if you want faster results."
+                      title="Longer times generally produce better schedules but take more time. Start with 300 seconds for most schedules."
                     ></i>
                   </h6>
                   <div className="row">
@@ -447,10 +307,10 @@ const ScheduleParametersModal = ({
                         type="number"
                         className="form-control"
                         min="1"
-                        value={parameters.time_limit}
+                        value={state.parameters.time_limit}
                         onChange={(e) => handleParameterChange('time_limit', e.target.value)}
                       />
-                      <small className="text-muted">Total time to spend optimizing the schedule. Let it run for 10 minutes and you should get a really balanced schedule.</small>
+                      <small className="text-muted">Total time to spend optimizing the schedule.</small>
                     </div>
                   </div>
                 </div>
@@ -460,19 +320,18 @@ const ScheduleParametersModal = ({
                   <button
                     type="button"
                     className="btn btn-outline-secondary btn-sm"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    onClick={() => setState(prev => ({ ...prev, showAdvanced: !prev.showAdvanced }))}
                   >
-                    {showAdvanced ? 'Hide' : 'Show'} Advanced Options
+                    {state.showAdvanced ? 'Hide' : 'Show'} Advanced Options
                   </button>
                 </div>
 
                 {/* Advanced Options */}
-                {showAdvanced && (
+                {state.showAdvanced && (
                   <div className="form-section mb-4">
                     <div className="alert alert-warning">
                       <small>
-                        <strong>Advanced Options:</strong> These parameters control the internal optimization algorithm. 
-                        Only modify if you understand their impact on performance and solution quality.
+                        <strong>Advanced Options:</strong> These parameters control the internal optimization algorithm.
                       </small>
                     </div>
                     
@@ -484,12 +343,11 @@ const ScheduleParametersModal = ({
                           className="form-control"
                           min="1"
                           max="100"
-                          value={parameters.num_blueprints_to_generate}
+                          value={state.parameters.num_blueprints_to_generate}
                           onChange={(e) => handleParameterChange('num_blueprints_to_generate', e.target.value)}
                         />
                         <small className="text-muted">
-                          Fewer blueprints = spend more time optimizing each schedule. 
-                          More blueprints = try more variations but less optimization per attempt. Default is 1 blueprint per 5 seconds of the time limit.
+                          Leave empty for automatic. Default is 1 blueprint per 6 seconds.
                         </small>
                       </div>
                       <div className="col-md-6">
@@ -500,23 +358,36 @@ const ScheduleParametersModal = ({
                           min="0"
                           max="1"
                           step="0.01"
-                          value={parameters.gapRel}
+                          value={state.parameters.gapRel}
                           onChange={(e) => handleParameterChange('gapRel', e.target.value)}
                         />
                         <small className="text-muted">
-                          How close to "perfect" the schedule needs to be. Lower values = more optimal but slower. 
-                          Higher values = accept slightly less balanced schedules for faster results.
+                          How close to "perfect" the schedule needs to be. Lower = more optimal but slower.
                         </small>
                       </div>
                     </div>
                   </div>
                 )}
-              </div>
+              </>
+            )}
+
+            {(state.mode === 'generating' || state.mode === 'results') && (
+              <ScheduleGenerationScreen
+                isGenerating={state.mode === 'generating'}
+                elapsedTime={state.generationData?.elapsedTime || 0}
+                parameters={state.parameters}
+                progressData={state.generationData?.progressData}
+                onCancel={handleCancel}
+                onStopAndUseBest={handleStopAndUseBest}
+                generatedSchedule={state.generationData?.schedule}
+                onApply={onApply}
+                onClose={onClose}
+              />
             )}
           </div>
 
-          {/* Only show footer for parameter configuration */}
-          {!isGenerating && !generatedSchedule && (
+          {/* Footer only for configure mode */}
+          {state.mode === 'configure' && (
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={onClose}>
                 Cancel
