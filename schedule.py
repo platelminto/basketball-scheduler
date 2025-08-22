@@ -151,12 +151,6 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
                 if s > 1: adjacent_play += is_playing[(t_ref, w, s - 1)]
                 if s < num_slots: adjacent_play += is_playing[(t_ref, w, s + 1)]
                 prob += is_reffing[(t_ref, w, s)] <= adjacent_play
-    for t in all_teams:
-        total_refs = pulp.lpSum(is_reffing[(t, w, s)] for w in weeks_range for s in slots_range)
-        prob += total_refs >= config["min_referee_count"]
-        prob += total_refs <= config["max_referee_count"]
-        for s in slots_range:
-            prob += pulp.lpSum(is_playing[(t, w, s)] for w in weeks_range) <= config["slot_limits"][s]
     # --- Objective Function: Weighted deviation from expected slot distribution ---
     # Calculate target slot distribution based on court availability
     total_courts_per_slot = {s: sum(config["courts_per_slot"][s]) for s in slots_range}
@@ -192,17 +186,37 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
             weighted_deviation = slot_weights[s] * abs_deviation
             slot_deviations.append(weighted_deviation)
     
-    # Progressive penalty for teams with excessive first/last slot assignments
-    progressive_penalties = []
+    # Penalties for first/last slots being outside the expected integer range
+    discrete_penalties = []
     for t in all_teams:
-        first_slot_games = pulp.lpSum(is_playing[(t,w,1)] for w in weeks_range)
-        last_slot_games = pulp.lpSum(is_playing[(t,w,num_slots)] for w in weeks_range)
-        total_first_last = first_slot_games + last_slot_games
-        
-        # Quadratic-like penalty: escalating cost for each assignment beyond 1
-        penalty_var = pulp.LpVariable(f"FirstLastProgressivePenalty_{t}", lowBound=0, cat='Continuous')
-        prob += penalty_var >= (total_first_last - 1) * 15  # 15 points penalty per assignment beyond 1
-        progressive_penalties.append(penalty_var)
+        # Apply penalties to first and last slots only
+        for s in [1, num_slots]:  # First and last slots
+            slot_games = pulp.lpSum(is_playing[(t,w,s)] for w in weeks_range)
+            target_for_slot = target_games_per_slot[s]
+            
+            # Expected range is floor and ceil of target (e.g., 3 and 4 for target 3.333)
+            expected_low = int(target_for_slot)      # e.g., 3
+            expected_high = int(target_for_slot) + 1 # e.g., 4
+            
+            # Quadratic penalty based on distance from actual target (not range boundaries)
+            # Only penalize if outside the acceptable range [expected_low, expected_high]
+            # But base penalty on distance from actual target
+            out_of_range_penalty = pulp.LpVariable(f"Slot{s}OutOfRangePenalty_{t}", lowBound=0, cat='Continuous')
+            
+            # Check if we're outside range and calculate distance-based penalty
+            for actual_games in range(0, total_weeks + 1):  # Support 0 to total_weeks games per team per slot
+                # Binary var: is this team assigned exactly 'actual_games' in this slot?
+                is_this_count = pulp.LpVariable(f"Slot{s}_{t}_is_{actual_games}", cat='Binary')
+                prob += slot_games >= actual_games * is_this_count
+                prob += slot_games <= actual_games * is_this_count + (1 - is_this_count) * total_weeks  # Big M constraint
+                
+                if actual_games < expected_low or actual_games > expected_high:
+                    # Out of range - calculate quadratic penalty based on distance from target
+                    distance_from_target = abs(actual_games - target_for_slot)
+                    penalty = 20 * (distance_from_target ** 2)
+                    prob += out_of_range_penalty >= penalty * is_this_count
+            
+            discrete_penalties.append(out_of_range_penalty)
     
     # Referee-specific penalties for first/last slots
     ref_first_last_penalties = []
@@ -230,11 +244,34 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
             prob += consec_last >= is_playing[(t,w,num_slots)] + is_playing[(t,w+1,num_slots)] - 1
             consecutive_penalties.append(consec_last * 10)
     
-    # Combined objective: slot distribution + progressive + ref penalties + consecutive penalties
+    # Referee balance penalties - asymmetric penalties for extreme cases only
+    total_games = len(all_games)
+    target_refs_per_team = total_games / len(all_teams)
+    ref_balance_penalties = []
+    
+    for t in all_teams:
+        total_refs = pulp.lpSum(is_reffing[(t, w, s)] for w in weeks_range for s in slots_range)
+        
+        # Define thresholds as deviations from target
+        # Allow ±1 from target without penalty, then escalate for ±2 or more
+        acceptable_range = 1.5  # Teams can be 1.5 refs away from target without penalty
+        
+        # Penalty for being too far below target (< target - 1.5)
+        too_few_penalty = pulp.LpVariable(f"RefTooFew_{t}", lowBound=0, cat='Continuous')
+        prob += too_few_penalty >= (target_refs_per_team - acceptable_range) - total_refs
+        ref_balance_penalties.append(too_few_penalty * 8)  # Strong penalty for too few
+        
+        # Penalty for being too far above target (> target + 1.5)
+        too_many_penalty = pulp.LpVariable(f"RefTooMany_{t}", lowBound=0, cat='Continuous')
+        prob += too_many_penalty >= total_refs - (target_refs_per_team + acceptable_range)
+        ref_balance_penalties.append(too_many_penalty * 8)  # Strong penalty for too many
+
+    # Combined objective: slot distribution + discrete range + ref penalties + consecutive penalties + ref balance
     total_objective = (pulp.lpSum(slot_deviations) + 
-                      pulp.lpSum(progressive_penalties) + 
+                      pulp.lpSum(discrete_penalties) + 
                       pulp.lpSum(ref_first_last_penalties) + 
-                      pulp.lpSum(consecutive_penalties))
+                      pulp.lpSum(consecutive_penalties) +
+                      pulp.lpSum(ref_balance_penalties))
     
     prob.setObjective(total_objective)
 
@@ -477,7 +514,7 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
             
             # Check if this is a new best
             if score < best_score:
-                print(f"    -> NEW BEST FOUND!")
+                print(f"    -> NEW BEST FOUND! (gapRel: {(score - theoretical_best_score) / theoretical_best_score if theoretical_best_score else 0})")
                 best_score = score
                 best_schedule = schedule
             
@@ -622,7 +659,7 @@ if __name__ == "__main__":
     
     ### NEW/MODIFIED ###
     # We now call the generator with a total time limit and the number of blueprints to try
-    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=60, num_blueprints_to_generate=6, gapRel=0.01, verbose=True)
+    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=120, num_blueprints_to_generate=20, gapRel=0.01, verbose=True)
 
     if final_schedule:
         # These functions for testing and stats would be run as before
