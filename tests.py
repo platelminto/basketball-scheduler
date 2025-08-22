@@ -15,20 +15,26 @@ def pairing_tests(schedule, levels, teams_per_level):
     passed = True
     errors = []  # Initialize list to store error messages
 
-    # Find max number of teams to calculate season length
-    max_teams = max(teams_per_level.values())
+    # Find actual season length from schedule
+    season_length = len(schedule)
 
     for level in levels:
         pairing_counts = {}
         n_teams = teams_per_level[level]
 
         # Calculate expected number of times each pairing should appear
-        # For a level with n teams in a season sized for max_teams,
-        # each pairing appears 2*(max_teams-1)/(n-1) times on average
-        expected_count_float = 2 * (max_teams - 1) / (n_teams - 1)
+        # Based on cyclical schedule: each pairing appears once per round-robin cycle
+        round_robin_length = n_teams - 1 if n_teams % 2 == 0 else n_teams
+        complete_cycles = season_length // round_robin_length
+        extra_weeks = season_length % round_robin_length
         
-        # Calculate total games for this level
-        total_level_games = n_teams * (max_teams - 1)
+        # Base count from complete cycles
+        base_count = complete_cycles
+        # Some pairings get +1 from extra weeks (those that appear in first 'extra_weeks' weeks)
+        expected_count_float = base_count + (extra_weeks / round_robin_length)
+        
+        # Calculate total games for this level (each team plays once per week)
+        total_level_games = n_teams * season_length // 2
         expected_pairs = n_teams * (n_teams - 1) // 2
         
         # Calculate how many pairs should get floor vs ceil count

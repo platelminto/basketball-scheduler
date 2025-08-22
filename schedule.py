@@ -676,7 +676,7 @@ if __name__ == "__main__":
     
     ### NEW/MODIFIED ###
     # We now call the generator with a total time limit and the number of blueprints to try
-    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=80, num_blueprints_to_generate=20, gapRel=0.01, verbose=True)
+    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=60, num_blueprints_to_generate=10, gapRel=0.01, verbose=True)
 
     if final_schedule:
         # These functions for testing and stats would be run as before
