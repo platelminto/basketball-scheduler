@@ -465,7 +465,7 @@ class ViewTests(TestCase):
         result = json.loads(response.content)
         
         # Check at least referee test passed
-        self.assertTrue(result['Referee-Player']['passed'])
+        self.assertTrue(result['validation']['Referee-Player']['passed'])
 
     def test_validation_with_errors(self):
         """Test the validation endpoint with an invalid schedule."""
@@ -504,9 +504,9 @@ class ViewTests(TestCase):
         result = json.loads(response.content)
         
         # Check that the referee-player test failed
-        self.assertFalse(result['Referee-Player']['passed'])
+        self.assertFalse(result['validation']['Referee-Player']['passed'])
         # Verify the error message contains information about the conflict
-        self.assertTrue(any("Referee Team A1 is playing in game" in error for error in result['Referee-Player']['errors']))
+        self.assertTrue(any("Referee Team A1 is playing in game" in error for error in result['validation']['Referee-Player']['errors']))
         
     def test_validation_with_string_referee(self):
         """Test the validation endpoint with string referees."""
@@ -569,12 +569,12 @@ class ViewTests(TestCase):
         result = json.loads(response.content)
         
         # Check that the referee-player test passed (string refs can't be playing)
-        self.assertTrue(result['Referee-Player']['passed'])
+        self.assertTrue(result['validation']['Referee-Player']['passed'])
         
         # Check that adjacent slot test was skipped or passed
         # A string referee can't be matched to a team, so it should either pass or be skipped
         # The exact behavior depends on how the validator is implemented
         self.assertTrue(
-            result['Adjacent Slots']['passed'] or 
-            any("External Referee not found in any pairing" in error for error in result['Adjacent Slots'].get('errors', []))
+            result['validation']['Adjacent Slots']['passed'] or 
+            any("External Referee not found in any pairing" in error for error in result['validation']['Adjacent Slots'].get('errors', []))
         )
