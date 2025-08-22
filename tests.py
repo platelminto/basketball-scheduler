@@ -1,4 +1,4 @@
-def pairing_tests(schedule, levels, teams_per_level):
+def pairing_tests(schedule, teams_per_level):
     """
     Tests that each team pair plays the correct number of times during the season.
     When levels have different team counts, pairings may occur more than twice.
@@ -18,9 +18,9 @@ def pairing_tests(schedule, levels, teams_per_level):
     # Find actual season length from schedule
     season_length = len(schedule)
 
-    for level in levels:
+    for level, teams in teams_per_level.items():
         pairing_counts = {}
-        n_teams = teams_per_level[level]
+        n_teams = len(teams)
 
         # Calculate expected number of times each pairing should appear
         # Based on cyclical schedule: each pairing appears once per round-robin cycle
@@ -116,7 +116,7 @@ def pairing_tests(schedule, levels, teams_per_level):
     return passed, errors
 
 
-def global_slot_distribution_test(schedule, expected_courts_per_slot, num_slots):
+def global_slot_distribution_test(schedule, expected_courts_per_slot: dict[int, list[int]]):
     """
     Tests that each slot has the correct number of games across all levels for each week.
 
@@ -128,6 +128,7 @@ def global_slot_distribution_test(schedule, expected_courts_per_slot, num_slots)
         tuple[bool, list[str]]: A tuple containing a boolean indicating if the test passed
                                 and a list of error messages.
     """
+    num_slots = len(expected_courts_per_slot)
     all_ok = True
     errors = []  # Initialize list to store error messages
 
@@ -259,7 +260,7 @@ def adjacent_slot_test(schedule):
 
     return passed, errors
 
-def cycle_pairing_test(schedule, levels, teams_per_level):
+def cycle_pairing_test(schedule, teams_per_level):
     """
     Tests that teams follow a proper cycling pattern based on their level's round-robin length.
     For a level with n teams:
@@ -282,8 +283,8 @@ def cycle_pairing_test(schedule, levels, teams_per_level):
     actual_weeks = [week["week"] for week in schedule]
     actual_weeks.sort()
 
-    for level in levels:
-        n_teams = teams_per_level[level]
+    for level, teams in teams_per_level.items():
+        n_teams = len(teams)
         # Calculate round robin length correctly
         round_robin_weeks = n_teams - 1 if n_teams % 2 == 0 else n_teams
 

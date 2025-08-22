@@ -14,16 +14,13 @@ from tests import (
 from .stats import compute_schedule_statistics
 
 
-def run_all_validation_tests(schedule_data, config_data):
+def run_all_validation_tests(schedule_data, teams_per_level):
     """Run all validation tests and return aggregated results."""
-    # Extract levels and teams_per_level from the provided config
-    levels = config_data["levels"]
-    teams_per_level = config_data["teams_per_level"]
 
     validation_results = {}
 
     # Run Pairing Test
-    pt_passed, pt_errors = pairing_tests(schedule_data, levels, teams_per_level)
+    pt_passed, pt_errors = pairing_tests(schedule_data, teams_per_level)
     validation_results["Pairings"] = {
         "passed": pt_passed,
         "message": "Teams play the correct number of times based on their level size.",
@@ -32,7 +29,7 @@ def run_all_validation_tests(schedule_data, config_data):
 
     # Run Cycle Pairing Test
     cpt_passed, cpt_errors = cycle_pairing_test(
-        schedule_data, levels, teams_per_level
+        schedule_data, teams_per_level
     )
     validation_results["Cycle Pairings"] = {
         "passed": cpt_passed,
@@ -63,14 +60,12 @@ def validate_schedule_data(data):
     """Validate schedule data and configuration, including statistics."""
     try:
         schedule_data = data["schedule"]
-        config_data = data["config"]
-        
-        # Run validation tests
-        validation_results = run_all_validation_tests(schedule_data, config_data)
-        
-        # Compute schedule statistics
-        statistics = compute_schedule_statistics(schedule_data, config_data)
-        
+        teams_per_level = data["teams_per_level"]
+
+        validation_results = run_all_validation_tests(schedule_data, teams_per_level)
+
+        statistics = compute_schedule_statistics(schedule_data, teams_per_level)
+
         return {
             "validation": validation_results,
             "statistics": statistics

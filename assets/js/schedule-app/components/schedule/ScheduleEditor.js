@@ -273,7 +273,7 @@ const ScheduleEditor = ({
       {/* Statistics results - shown after validation */}
       {showValidation && statisticsResults && (
         <div className="statistics-results">
-          <StatsResults statisticsResults={statisticsResults} />
+          <StatsResults statisticsResults={statisticsResults} state={state} />
         </div>
       )}
     </div>

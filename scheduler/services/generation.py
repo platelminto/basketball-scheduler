@@ -5,10 +5,10 @@ This module contains business logic for schedule generation including
 threading, cancellation handling, and generation validation.
 """
 
+import copy
 import multiprocessing
-import json
-import os
-import signal
+import random
+
 from django.core.cache import cache
 from utils import get_config_from_schedule_creator
 
@@ -17,7 +17,7 @@ DEFAULT_TIME_PER_BLUEPRINT = 6
 MAX_NUM_BLUEPRINTS = 100
 
 
-def generate_schedule_process(config, time_limit, num_blueprints_to_generate, gap_rel, 
+def generate_schedule_process(courts_per_slot, team_names_by_level, time_limit, num_blueprints_to_generate, gap_rel, 
                              progress_key, shared_dict, session_key, week_data):
     """Function that runs in a separate process for schedule generation."""
     try:
@@ -53,9 +53,17 @@ def generate_schedule_process(config, time_limit, num_blueprints_to_generate, ga
             if 'best_schedule' in progress_data and progress_data['best_schedule'] is not None:
                 shared_dict['best_schedule'] = progress_data['best_schedule']
         
+        # randomise teams within each level
+        randomized_team_names_by_level = {}
+        for level, teams in team_names_by_level.items():
+            randomized_teams = teams.copy()
+            random.shuffle(randomized_teams)
+            randomized_team_names_by_level[level] = randomized_teams
+        
+
         schedule = generate_schedule(
-            config,
-            config["team_names_by_level"],
+            courts_per_slot,
+            randomized_team_names_by_level,
             time_limit=time_limit,
             num_blueprints_to_generate=num_blueprints_to_generate,
             gapRel=gap_rel,
@@ -135,15 +143,17 @@ def format_generated_schedule(schedule, week_data):
 
 def generate_schedule_async(setup_data, week_data, parameters, session_key):
     """Generate a schedule asynchronously with cancellation support."""
-    from schedule import generate_schedule
-    import json
     
     # Store week_data in cache so progress endpoint can access it for formatting
     week_data_key = f"schedule_generation_week_data_{session_key}"
     cache.set(week_data_key, week_data, timeout=300)
     
-    # Get configuration from the setup data
-    config = get_config_from_schedule_creator(setup_data, week_data)
+    # Extract needed data directly instead of using config
+    from utils import get_config_from_schedule_creator
+    temp_config = get_config_from_schedule_creator(setup_data, week_data)
+    
+    courts_per_slot = temp_config["courts_per_slot"]
+    team_names_by_level = temp_config["team_names_by_level"]
 
     # Apply parameters from the frontend - these are no longer used by the scheduler
     # but kept for potential future use or backwards compatibility
@@ -201,7 +211,7 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     # Create and start the generation process
     generation_process = multiprocessing.Process(
         target=generate_schedule_process,
-        args=(config, time_limit, num_blueprints_to_generate, gap_rel,
+        args=(courts_per_slot, team_names_by_level, time_limit, num_blueprints_to_generate, gap_rel,
               progress_key, shared_dict, session_key, week_data)
     )
     generation_process.start()
@@ -283,7 +293,7 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     # Format the schedule
     scheduled_week_data = format_generated_schedule(schedule, week_data)
 
-    return {"config": config, "schedule": scheduled_week_data}
+    return {"schedule": scheduled_week_data}
 
 
 def handle_generation_cancellation(session_key):

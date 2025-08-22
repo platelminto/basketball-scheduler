@@ -176,13 +176,12 @@ export const collectWeekData = (weeks) => {
 };
 
 /**
- * Prepares validation config from schedule state
+ * Prepares teams_per_level data from schedule state
  * @param {Object} state - Schedule context state
- * @returns {Object} Minimal config object for validation
+ * @returns {Object} teams_per_level mapping
  */
-export const prepareValidationConfig = (state) => {
+export const prepareTeamsPerLevel = (state) => {
   const teams = state.teamsByLevel;
-  const levels = [];
   const teams_per_level = {};
   
   for (let levelId of Object.keys(teams)) {
@@ -196,16 +195,12 @@ export const prepareValidationConfig = (state) => {
       }
       
       if (level) {
-        levels.push(level.name);
-        teams_per_level[level.name] = teams[levelId].length;
+        teams_per_level[level.name] = teams[levelId].map(team => team.name);
       }
     }
   }
   
-  return { 
-    levels: levels, 
-    teams_per_level: teams_per_level 
-  };
+  return teams_per_level;
 };
 
 /**

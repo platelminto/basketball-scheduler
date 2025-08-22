@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import os
 
@@ -184,7 +185,6 @@ def print_schedule(schedule_data):
                 print(f"  {level}: {team1} vs {team2} (Ref: {referee})")
 
     print("\n" + "=" * 50)
-
 
 if __name__ == "__main__":
     team_setup_output = """

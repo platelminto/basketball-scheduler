@@ -1,7 +1,34 @@
 import React, { useState } from 'react';
 
-const StatsResults = ({ statisticsResults }) => {
+const StatsResults = ({ statisticsResults, state }) => {
   if (!statisticsResults) return null;
+  
+  // Derive slot times from state
+  const slotTimes = (() => {
+    const result = {};
+    if (!state?.weeks) return result;
+    
+    // Collect all unique times and assign them slot numbers
+    const timeToSlotMap = {};
+    let slotCounter = 1;
+    
+    Object.values(state.weeks).forEach(week => {
+      if (week.games) {
+        week.games.forEach(game => {
+          if (game.time && !timeToSlotMap[game.time]) {
+            timeToSlotMap[game.time] = slotCounter++;
+          }
+        });
+      }
+    });
+    
+    // Reverse the mapping for slot -> time
+    Object.entries(timeToSlotMap).forEach(([time, slot]) => {
+      result[slot] = time;
+    });
+    
+    return result;
+  })();
 
   // Fixed scale of 0-10 for all charts
   const getMaxValues = (level) => {
@@ -106,8 +133,7 @@ const StatsResults = ({ statisticsResults }) => {
     const playData = statisticsResults.team_play_counts[level] || {};
     const refData = statisticsResults.team_ref_counts[level] || {};
     // Use the properly filtered team list from summary to ensure we only show teams from this level
-    const teams = (statisticsResults.summary?.team_names_by_level?.[level] || []).sort();
-    const slotTimes = statisticsResults.slot_times || {};
+    const teams = (statisticsResults.summary?.teams_per_level?.[level] || []).sort();
     
     if (teams.length === 0) return null;
     
@@ -250,7 +276,6 @@ const StatsResults = ({ statisticsResults }) => {
 
   const renderOverview = () => {
     const { summary, games_per_slot } = statisticsResults;
-    const slotTimes = statisticsResults.slot_times || {};
     
     // Calculate total games per time slot
     const slotTotals = {};
@@ -272,13 +297,13 @@ const StatsResults = ({ statisticsResults }) => {
                 </div>
                 <div className="d-flex align-items-center">
                   <i className="fas fa-layer-group text-info me-2"></i>
-                  <span>{summary.levels.length} levels ({summary.levels.join(', ')})</span>
+                  <span>{Object.keys(summary.teams_per_level).length} levels ({Object.keys(summary.teams_per_level).join(', ')})</span>
                 </div>
                 <div className="d-flex align-items-center">
                   <i className="fas fa-users text-success me-2"></i>
                   <span>
-                    {Object.entries(summary.teams_per_level).map(([level, count]) => 
-                      `${count} × ${level}`
+                    {Object.entries(summary.teams_per_level).map(([level, teams]) => 
+                      `${teams.length} × ${level}`
                     ).join(', ')} teams
                   </span>
                 </div>
@@ -313,7 +338,7 @@ const StatsResults = ({ statisticsResults }) => {
       {renderOverview()}
       
       {/* Level-based team activity charts */}
-      {statisticsResults.summary.levels.map(level => renderLevelStats(level))}
+      {Object.keys(statisticsResults.summary.teams_per_level).map(level => renderLevelStats(level))}
     </div>
   );
 };

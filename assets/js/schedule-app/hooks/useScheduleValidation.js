@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { collectGameAssignments, webToScheduleFormat, prepareValidationConfig, getCsrfToken } from '../utils/scheduleDataTransforms';
+import { collectGameAssignments, webToScheduleFormat, prepareTeamsPerLevel, getCsrfToken } from '../utils/scheduleDataTransforms';
 
 /**
  * Custom hook for managing schedule validation
@@ -129,8 +129,8 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
       // Convert to backend format
       const scheduleData = webToScheduleFormat(gameAssignments, state);
       
-      // Prepare validation config
-      const minimalConfig = prepareValidationConfig(state);
+      // Prepare teams data
+      const teams_per_level = prepareTeamsPerLevel(state);
       
       // Call validation API
       const response = await fetch('/scheduler/api/seasons/validate/', {
@@ -141,7 +141,7 @@ export const useScheduleValidation = (state, showValidation = false, initialShow
         },
         body: JSON.stringify({
           schedule: scheduleData,
-          config: minimalConfig
+          teams_per_level: teams_per_level
         })
       });
       

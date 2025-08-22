@@ -385,7 +385,7 @@ const ScheduleEdit = () => {
           
           {/* Statistics Results */}
           {validation.statisticsResults && (
-            <StatsResults statisticsResults={validation.statisticsResults} />
+            <StatsResults statisticsResults={validation.statisticsResults} state={state} />
           )}
         </div>
       )}

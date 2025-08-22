@@ -10,16 +10,14 @@ def get_round_robin_length(num_teams):
     """Calculates the number of weeks for one full round-robin."""
     return num_teams - 1 if num_teams % 2 == 0 else num_teams
 
-def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_find=5, verbose=False, cancellation_checker=None):
+def phase_1_generate_multiple_matchups(total_weeks, team_names_by_level, num_blueprints_to_find=5, verbose=False, cancellation_checker=None):
     """
     Solves for weekly matchups multiple times, finding a different valid
     blueprint each time. This provides multiple starting points for Phase 2.
     """
     print(f"\n--- Starting Phase 1: Generating up to {num_blueprints_to_find} unique matchup blueprints ---")
-    
-    # --- Setup (Identical to the original Phase 1) ---
-    total_weeks = config["total_weeks"]
-    levels = config["levels"]
+
+    levels = list(team_names_by_level.keys())
     all_teams = sorted([team for teams in team_names_by_level.values() for team in teams])
     team_to_level = {team: lvl for lvl, teams in team_names_by_level.items() for team in teams}
     weeks_range = range(total_weeks)
@@ -30,7 +28,6 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
     plays_in_week = pulp.LpVariable.dicts("PlaysInWeek", (all_possible_pairs, weeks_range), cat='Binary')
     matchup_counts = pulp.LpVariable.dicts("MatchupCount", all_possible_pairs, cat='Integer')
 
-    # --- Constraints (Identical to the original Phase 1) ---
     for level in levels:
         teams = team_names_by_level[level]
         num_teams = len(teams)
@@ -60,7 +57,7 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
                 prob += plays_in_week[pair][w] == plays_in_week[pair][w + rr_len]
 
     # --- The "Find Multiple Solutions" Logic ---
-    solver = pulp.PULP_CBC_CMD(msg=1 if verbose else 0)
+    solver = pulp.PULP_CBC_CMD(msg=verbose)
     found_blueprints = []
     
     for i in range(num_blueprints_to_find):
@@ -95,7 +92,7 @@ def phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprin
             
     return found_blueprints
 
-def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, time_limit: float, gapRel: float, cancellation_checker=None, use_best_checker=None):
+def phase_2_assign_slots_and_refs(total_weeks, courts_per_slot, team_names_by_level, weekly_matchups, time_limit: float, gapRel: float, cancellation_checker=None, use_best_checker=None):
     """
     Takes a fixed weekly matchup schedule and assigns slots and referees.
     This phase contains the optimization objectives.
@@ -106,8 +103,7 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
         use_best_checker: Optional function that returns True if generation should stop and use best found
     """
     # --- Setup ---
-    total_weeks = config["total_weeks"]
-    num_slots = config["num_slots"]
+    num_slots = len(courts_per_slot)
     all_teams = sorted([team for teams in team_names_by_level.values() for team in teams])
     team_to_level = {team: lvl for lvl, teams in team_names_by_level.items() for team in teams}
     weeks_range = range(total_weeks)
@@ -137,7 +133,7 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
     for w in weeks_range:
         games_this_week = [g for g, week in all_games if week == w]
         for s in slots_range:
-            prob += pulp.lpSum(game_in_slot[g, w][s] for g in games_this_week) <= config["courts_per_slot"][s][w]
+            prob += pulp.lpSum(game_in_slot[g, w][s] for g in games_this_week) <= courts_per_slot[s][w]
     for (t1, t2), w in all_games:
         level = team_to_level[t1]
         possible_refs = [t for t in team_names_by_level[level] if t != t1 and t != t2]
@@ -152,7 +148,7 @@ def phase_2_assign_slots_and_refs(config, team_names_by_level, weekly_matchups, 
                 prob += is_reffing[(t_ref, w, s)] <= adjacent_play
     # --- Objective Function: Weighted deviation from expected slot distribution ---
     # Calculate target slot distribution based on court availability
-    total_courts_per_slot = {s: sum(config["courts_per_slot"][s]) for s in slots_range}
+    total_courts_per_slot = {s: sum(courts_per_slot[s]) for s in slots_range}
     total_courts = sum(total_courts_per_slot.values())
     
     # Calculate expected games per team per slot
@@ -402,7 +398,7 @@ def flip_teams_by_round(schedule, team_names_by_level):
     return schedule
 
 ### NEW/MODIFIED ###
-def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprints_to_generate=6, gapRel=0.25, cancellation_checker=None, use_best_checker=None, progress_callback=None, verbose=False):
+def generate_schedule(courts_per_slot, team_names_by_level, time_limit=60.0, num_blueprints_to_generate=6, gapRel=0.25, cancellation_checker=None, use_best_checker=None, progress_callback=None):
     """
     Generates a schedule by first finding multiple unique matchup blueprints,
     then running a timed optimization on each one to find the best final schedule.
@@ -412,8 +408,18 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
         use_best_checker: Optional function that returns True if generation should stop and use best found
         progress_callback: Optional function to call with progress updates
     """
+
+    if not courts_per_slot:
+        print("No courts available for scheduling.")
+        return None
+    elif any(len(weeks) != len(list(courts_per_slot.values())[0]) for weeks in courts_per_slot.values()):
+        print("Inconsistent week lengths found in court schedules.")
+        return None
+
+    total_weeks = len(list(courts_per_slot.values())[0])
+
     # Phase 1: Generate a list of potential blueprints
-    blueprints = phase_1_generate_multiple_matchups(config, team_names_by_level, num_blueprints_to_generate, verbose=False, cancellation_checker=cancellation_checker)
+    blueprints = phase_1_generate_multiple_matchups(total_weeks, team_names_by_level, num_blueprints_to_generate, verbose=False, cancellation_checker=cancellation_checker)
 
     if not blueprints:
         print("\nScheduling failed in Phase 1. No valid matchup blueprints could be found.")
@@ -470,7 +476,7 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
             
         print(f"  Optimizing for Blueprint #{i+1}/{len(blueprints)} (time limit: {time_per_run:.1f}s)...")
 
-        schedule, score, theoretical_best = phase_2_assign_slots_and_refs(config, team_names_by_level, blueprint, time_limit=time_per_run, gapRel=gapRel, cancellation_checker=cancellation_checker, use_best_checker=use_best_checker)
+        schedule, score, theoretical_best = phase_2_assign_slots_and_refs(total_weeks, courts_per_slot, team_names_by_level, blueprint, time_limit=time_per_run, gapRel=gapRel, cancellation_checker=cancellation_checker, use_best_checker=use_best_checker)
 
         if schedule and score is not None:
             print(f"    -> Result: Feasible, Imbalance Score: {score}")
@@ -584,7 +590,7 @@ def generate_schedule(config, team_names_by_level, time_limit=60.0, num_blueprin
     print("\nSuccessfully generated a complete schedule!")
     return final_schedule
 
-def run_comprehensive_tests(schedule, config, team_names_by_level):
+def run_comprehensive_tests(schedule, teams_per_level, courts_per_slot):
     """Run all tests from tests.py on the generated schedule."""
     if not schedule:
         print("No schedule to test.")
@@ -592,22 +598,16 @@ def run_comprehensive_tests(schedule, config, team_names_by_level):
     
     print("\n=== COMPREHENSIVE SCHEDULE TESTING ===")
     
-    # Extract parameters from config
-    levels = config["levels"]
-    teams_per_level = config["teams_per_level"]
-    expected_courts_per_slot = config["courts_per_slot"]
-    num_slots = config["num_slots"]
-    
     all_passed = True
     
     # Run each test
     tests_to_run = [
-        ("Pairing Tests", lambda: pairing_tests(schedule, levels, teams_per_level)),
-        ("Global Slot Distribution", lambda: global_slot_distribution_test(schedule, expected_courts_per_slot, num_slots)),
+        ("Pairing Tests", lambda: pairing_tests(schedule, teams_per_level)),
+        ("Global Slot Distribution", lambda: global_slot_distribution_test(schedule, courts_per_slot)),
         ("Referee Player Conflict", lambda: referee_player_test(schedule)),
         ("Adjacent Slot Referee", lambda: adjacent_slot_test(schedule)),
         # ("Mirror Pairing", lambda: mirror_pairing_test(schedule, first_half_weeks)),
-        ("Cycle Pairing", lambda: cycle_pairing_test(schedule, levels, teams_per_level))
+        ("Cycle Pairing", lambda: cycle_pairing_test(schedule, teams_per_level))
     ]
     
     for test_name, test_func in tests_to_run:
@@ -623,62 +623,36 @@ def run_comprehensive_tests(schedule, config, team_names_by_level):
                 print(f"✅ {test_name} PASSED")
         except Exception as e:
             print(f"❌ {test_name} ERROR: {e}")
+            import traceback
+            traceback.print_exc()
             all_passed = False
     
     print(f"\n=== OVERALL RESULT: {'✅ ALL TESTS PASSED' if all_passed else '❌ SOME TESTS FAILED'} ===")
     return all_passed
 
-def print_schedule_statistics(schedule, config, team_names_by_level):
-    """Print detailed statistics about the generated schedule."""
-    if not schedule:
-        print("No schedule to analyze.")
-        return
-    
-    # Adapt config format for stats.py functions
-    stats_config = config.copy()
-    stats_config["team_names_by_level"] = team_names_by_level
-    
-    # Use the levels from config
-    levels = config["levels"]
-    
-    # Create team indices mapping for stats.py (it expects integer team indices)
-    teams_as_indices = {}
-    for level in levels:
-        teams_as_indices[level] = list(range(len(team_names_by_level[level])))
-    
-    # Print statistics using stats.py
-    print_statistics(schedule, teams_as_indices, levels, stats_config)
-
 if __name__ == "__main__":
-    CONFIG = {
-        "levels": ["A", "B", "C"],
-        "teams_per_level": {"A": 6, "B": 6, "C": 6},
-        "total_weeks": 10,
-        "num_slots": 4,
-        "courts_per_slot": {
-            1: [1, 1, 2, 2, 2, 2, 2, 2, 2, 2],
-            2: [3, 3, 2, 2, 2, 2, 2, 2, 2, 2],
-            3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-            4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
-        },
-        # "courts_per_slot": {
-        #     1: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        #     2: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-        #     3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-        #     4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
-        # },
+    courts_per_slot = {
+        1: [1, 1, 2, 2, 2, 2, 2, 2, 2, 2],
+        2: [3, 3, 2, 2, 2, 2, 2, 2, 2, 2],
+        3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+        4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
     }
-    TEAM_NAMES = {
-        "A": [f"TeamA{i}" for i in range(1, CONFIG["teams_per_level"]["A"] + 1)],
-        "B": [f"TeamB{i}" for i in range(1, CONFIG["teams_per_level"]["B"] + 1)],
-        "C": [f"TeamC{i}" for i in range(1, CONFIG["teams_per_level"]["C"] + 1)],
+    # courts_per_slot = {
+    #     1: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    #     2: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    #     3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+    #     4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    # }
+
+    team_names_by_level = {
+        "A": [f"TeamA{i}" for i in range(1, 7)],
+        "B": [f"TeamB{i}" for i in range(1, 7)],
+        "C": [f"TeamC{i}" for i in range(1, 7)],
     }
     
-    ### NEW/MODIFIED ###
-    # We now call the generator with a total time limit and the number of blueprints to try
-    final_schedule = generate_schedule(CONFIG, TEAM_NAMES, time_limit=60, num_blueprints_to_generate=10, gapRel=0.01, verbose=True)
+    final_schedule = generate_schedule(courts_per_slot, team_names_by_level, time_limit=8, num_blueprints_to_generate=4, gapRel=0.01)
 
     if final_schedule:
-        # These functions for testing and stats would be run as before
-        run_comprehensive_tests(final_schedule, CONFIG, TEAM_NAMES)
-        print_schedule_statistics(final_schedule, CONFIG, TEAM_NAMES)
+        run_comprehensive_tests(final_schedule, team_names_by_level, courts_per_slot)
+        print_statistics(final_schedule, team_names_by_level)
+
