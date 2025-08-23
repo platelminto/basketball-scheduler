@@ -28,7 +28,12 @@ const PublicSchedule = () => {
       try {
         const response = await fetch('/scheduler/api/public/schedule/');
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          if (response.status === 404) {
+            setError('no_active_season');
+          } else {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return;
         }
         const data = await response.json();
         setScheduleData(data);
@@ -95,6 +100,18 @@ const PublicSchedule = () => {
   }
 
   if (error) {
+    if (error === 'no_active_season') {
+      return (
+        <div className="container mt-4">
+          <div className="alert alert-warning">
+            <h4>No Active Season</h4>
+            <p>There is currently no published schedule.</p>
+            <p>Please contact the game secretary to get on it!</p>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="container mt-4">
         <div className="alert alert-danger">

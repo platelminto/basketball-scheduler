@@ -5,9 +5,9 @@ Time -> Level -> Referee -> Team1 -> Score -> Team2
 """
 
 # Configuration flags
-DATA_FILE = 'lobster_migrate/2425/2425_03.txt'
-SEASON_NAME = "USBF 2024-2025, Season 3"
-FORCE_CREATE_TEAMS = False  # If True, always create new teams. If False, use interactive selection
+DATA_FILE = 'lobster_migrate/2223/2223_03.txt'
+SEASON_NAME = "USBF 2022-2023, Season 3"
+FORCE_CREATE_TEAMS = True  # If True, always create new teams. If False, use get_or_create
 
 import os
 import sys
@@ -67,20 +67,27 @@ def parse_schedule_simple(filename):
     while i < len(lines):
         line = lines[i]
         
-        # Week header
+        # Week header - skip duplicate week headers after dates
         if line.startswith('Week '):
             week_num = int(re.search(r'Week (\d+)', line).group(1))
-            # Real week number = file week number + off-weeks encountered so far
-            current_week = week_num + off_week_count
-            print(f"Week {week_num} -> Week {current_week} (after {off_week_count} off-weeks)")
+            # Only process if this is a new week (not a duplicate after date)
+            if current_week != week_num + off_week_count:
+                # Real week number = file week number + off-weeks encountered so far
+                current_week = week_num + off_week_count
+                print(f"Week {week_num} -> Week {current_week} (after {off_week_count} off-weeks)")
             i += 1
             continue
             
         # Date
         if re.match(r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), ', line):
             date_str = line.split(', ')[1]
-            year = 2025  # All dates are 2025
+            year = 2023
             current_date = datetime.strptime(f"{date_str} {year}", "%B %d %Y").date()
+            i += 1
+            continue
+            
+        # Skip court labels
+        if line.endswith(' court'):
             i += 1
             continue
             
@@ -137,11 +144,25 @@ def parse_schedule_simple(filename):
                     team2 = lines[i + 5]
                     skip_lines = 6
             
-            # Parse score
+            # Parse score - handle both played games (score) and unplayed games (V)
             score_match = re.search(r'(\d+)\s*:\s*(\d+)', score_line)
-            if score_match and level in ['Top', 'High', 'Mid'] and team1 and team2:
-                team1_score = int(score_match.group(1))
-                team2_score = int(score_match.group(2))
+            unplayed_match = re.search(r'^V(\s*\d+)?$', score_line.strip())
+            
+            if level in ['Top', 'High', 'Mid'] and team1 and team2:
+                if score_match:
+                    # Played game with actual scores
+                    team1_score = int(score_match.group(1))
+                    team2_score = int(score_match.group(2))
+                    score_display = f"{team1_score}-{team2_score}"
+                elif unplayed_match:
+                    # Unplayed game marked with V
+                    team1_score = None
+                    team2_score = None
+                    score_display = "unplayed"
+                else:
+                    print(f"FAILED to parse game at line {i}: time={time_str} level={level} team1={team1} score={score_line} team2={team2}")
+                    i += skip_lines
+                    continue
                 
                 games.append({
                     'week': current_week,
@@ -155,7 +176,7 @@ def parse_schedule_simple(filename):
                     'team2_score': team2_score
                 })
                 ref_str = f"ref:{referee}" if referee else "no ref"
-                print(f"Game {len(games)}: {time_str} {level} {team1} vs {team2} ({team1_score}-{team2_score}) {ref_str}")
+                print(f"Game {len(games)}: {time_str} {level} {team1} vs {team2} ({score_display}) {ref_str}")
             else:
                 print(f"FAILED to parse game at line {i}: time={time_str} level={level} team1={team1} score={score_line} team2={team2}")
             
@@ -171,10 +192,28 @@ def parse_schedule_simple(filename):
 def import_data(filename):
     teams_by_level, games, off_weeks = parse_schedule_simple(filename)
     
+    # Delete existing season if it exists to avoid duplicates
+    existing_seasons = Season.objects.filter(name=SEASON_NAME)
+    if existing_seasons.exists():
+        # Delete all related objects first
+        for season in existing_seasons:
+            # Delete games first (they reference weeks/levels)
+            Game.objects.filter(level__season=season).delete()
+            # Delete weeks and levels
+            Week.objects.filter(season=season).delete()
+            Level.objects.filter(season=season).delete()
+            OffWeek.objects.filter(season=season).delete()
+            # Delete season teams
+            SeasonTeam.objects.filter(season=season).delete()
+        # Now delete the season itself
+        existing_seasons.delete()
+        print(f"Deleted existing season and related data: {SEASON_NAME}")
+    
     # Create season
-    season, created = Season.objects.get_or_create(
+    season = Season.objects.create(
         name=SEASON_NAME,
-        defaults={'is_active': False, 'slot_duration_minutes': 70}
+        is_active=False, 
+        slot_duration_minutes=70
     )
     
     # Create levels
@@ -190,56 +229,6 @@ def import_data(filename):
     for level_teams in teams_by_level.values():
         all_teams.update(level_teams)
     
-    def get_team_organization(team_name):
-        """Get or create team organization, handling multiple matches based on FORCE_CREATE_TEAMS flag"""
-        if FORCE_CREATE_TEAMS:
-            # Always create new teams
-            return TeamOrganization.objects.create(
-                name=team_name,
-                is_archived=False,
-                is_deleted=False
-            )
-        
-        existing_teams = TeamOrganization.objects.filter(name=team_name)
-        
-        if existing_teams.count() > 1:
-            print(f"\nMultiple teams found with name '{team_name}':")
-            for i, team in enumerate(existing_teams, 1):
-                # Get seasons this team has played in
-                seasons = Season.objects.filter(
-                    season_teams__team=team
-                ).distinct().values_list('name', flat=True)
-                seasons_str = ', '.join(seasons) if seasons else 'No seasons'
-                print(f"  {i}. Team ID {team.pk}: {team.name} (Seasons: {seasons_str})")
-            
-            print(f"  {existing_teams.count() + 1}. Create new team")
-            
-            while True:
-                try:
-                    choice = int(input(f"Select team for '{team_name}' (1-{existing_teams.count() + 1}): "))
-                    if 1 <= choice <= existing_teams.count():
-                        return list(existing_teams)[choice - 1]
-                    elif choice == existing_teams.count() + 1:
-                        return TeamOrganization.objects.create(
-                            name=team_name,
-                            is_archived=False,
-                            is_deleted=False
-                        )
-                    else:
-                        print(f"Please enter a number between 1 and {existing_teams.count() + 1}")
-                except ValueError:
-                    print("Please enter a valid number")
-        
-        elif existing_teams.count() == 1:
-            return existing_teams.first()
-        else:
-            # No existing team, create new one
-            return TeamOrganization.objects.create(
-                name=team_name,
-                is_archived=False,
-                is_deleted=False
-            )
-    
     season_teams = {}
     for team_name in all_teams:
         # Find level
@@ -250,7 +239,19 @@ def import_data(filename):
                 break
         
         if team_level:
-            team_org = get_team_organization(team_name)
+            if FORCE_CREATE_TEAMS:
+                # Always create new teams
+                team_org = TeamOrganization.objects.create(
+                    name=team_name,
+                    is_archived=False,
+                    is_deleted=False
+                )
+            else:
+                # Use get_or_create (reuse existing teams)
+                team_org, created = TeamOrganization.objects.get_or_create(
+                    name=team_name,
+                    defaults={'is_archived': False, 'is_deleted': False}
+                )
             season_team, created = SeasonTeam.objects.get_or_create(
                 season=season, team=team_org,
                 defaults={'level': levels[team_level]}
@@ -360,7 +361,4 @@ def import_data(filename):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2:
-        import_data(sys.argv[1])
-    else:
-        import_data(DATA_FILE)
+    import_data(DATA_FILE)

@@ -4,6 +4,11 @@ Simple parser that follows the exact format:
 Time -> Level -> Referee -> Team1 -> Score -> Team2
 """
 
+# Configuration flags
+DATA_FILE = 'lobster_migrate/2425/2425_02.txt'
+SEASON_NAME = "USBF 2024-2025, Season 2"
+FORCE_CREATE_TEAMS = False  # If True, always create new teams. If False, use interactive selection
+
 import os
 import sys
 import django
@@ -164,7 +169,7 @@ def import_data(filename):
     
     # Create season
     season, created = Season.objects.get_or_create(
-        name="USBF 2024-2025, Season 2",
+        name=SEASON_NAME,
         defaults={'is_active': False, 'slot_duration_minutes': 70}
     )
     
@@ -181,6 +186,56 @@ def import_data(filename):
     for level_teams in teams_by_level.values():
         all_teams.update(level_teams)
     
+    def get_team_organization(team_name):
+        """Get or create team organization, handling multiple matches based on FORCE_CREATE_TEAMS flag"""
+        if FORCE_CREATE_TEAMS:
+            # Always create new teams
+            return TeamOrganization.objects.create(
+                name=team_name,
+                is_archived=False,
+                is_deleted=False
+            )
+        
+        existing_teams = TeamOrganization.objects.filter(name=team_name)
+        
+        if existing_teams.count() > 1:
+            print(f"\nMultiple teams found with name '{team_name}':")
+            for i, team in enumerate(existing_teams, 1):
+                # Get seasons this team has played in
+                seasons = Season.objects.filter(
+                    season_teams__team=team
+                ).distinct().values_list('name', flat=True)
+                seasons_str = ', '.join(seasons) if seasons else 'No seasons'
+                print(f"  {i}. Team ID {team.pk}: {team.name} (Seasons: {seasons_str})")
+            
+            print(f"  {existing_teams.count() + 1}. Create new team")
+            
+            while True:
+                try:
+                    choice = int(input(f"Select team for '{team_name}' (1-{existing_teams.count() + 1}): "))
+                    if 1 <= choice <= existing_teams.count():
+                        return list(existing_teams)[choice - 1]
+                    elif choice == existing_teams.count() + 1:
+                        return TeamOrganization.objects.create(
+                            name=team_name,
+                            is_archived=False,
+                            is_deleted=False
+                        )
+                    else:
+                        print(f"Please enter a number between 1 and {existing_teams.count() + 1}")
+                except ValueError:
+                    print("Please enter a valid number")
+        
+        elif existing_teams.count() == 1:
+            return existing_teams.first()
+        else:
+            # No existing team, create new one
+            return TeamOrganization.objects.create(
+                name=team_name,
+                is_archived=False,
+                is_deleted=False
+            )
+    
     season_teams = {}
     for team_name in all_teams:
         # Find level
@@ -191,10 +246,7 @@ def import_data(filename):
                 break
         
         if team_level:
-            team_org, created = TeamOrganization.objects.get_or_create(
-                name=team_name,
-                defaults={'is_archived': False, 'is_deleted': False}
-            )
+            team_org = get_team_organization(team_name)
             season_team, created = SeasonTeam.objects.get_or_create(
                 season=season, team=team_org,
                 defaults={'level': levels[team_level]}
@@ -304,8 +356,7 @@ def import_data(filename):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print("Usage: python import_schedule_simple.py <file.txt>")
-        sys.exit(1)
-    
-    import_data(sys.argv[1])
+    if len(sys.argv) == 2:
+        import_data(sys.argv[1])
+    else:
+        import_data(DATA_FILE)

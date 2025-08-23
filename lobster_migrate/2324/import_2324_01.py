@@ -8,6 +8,8 @@ Time -> Level -> Referee -> Team1 -> Score -> Team2
 DATA_FILE = 'lobster_migrate/2324/2324_01.txt'
 SEASON_NAME = "USBF 2023-2024, Season 1"
 FORCE_CREATE_TEAMS = True  # If True, always create new teams. If False, use get_or_create
+YEAR_1 = 2023  # August-December dates
+YEAR_2 = 2024  # January-July dates
 
 import os
 import sys
@@ -81,7 +83,14 @@ def parse_schedule_simple(filename):
         # Date
         if re.match(r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), ', line):
             date_str = line.split(', ')[1]
-            year = 2023
+            # Extract month to determine year
+            month = date_str.split()[0]
+            if month in ['August', 'September', 'October', 'November', 'December']:
+                year = YEAR_1
+            elif month in ['January', 'February', 'March', 'April', 'May', 'June', 'July']:
+                year = YEAR_2
+            else:
+                year = YEAR_1  # Default fallback
             current_date = datetime.strptime(f"{date_str} {year}", "%B %d %Y").date()
             i += 1
             continue

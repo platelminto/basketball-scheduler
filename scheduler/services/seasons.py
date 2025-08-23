@@ -39,6 +39,16 @@ def is_season_complete(season):
     return True
 
 
+def get_last_game_date(season):
+    """Get the last game date for a season."""
+    games = Game.objects.filter(level__season=season).exclude(week__monday_date__isnull=True)
+    if not games.exists():
+        return None
+    
+    latest_game = games.order_by('-week__monday_date', '-day_of_week').first()
+    return latest_game.week.monday_date if latest_game else None
+
+
 def get_seasons_data():
     """Get all seasons with their levels and teams."""
     seasons = (
@@ -65,6 +75,7 @@ def get_seasons_data():
                 {"id": level.id, "name": level.name, "teams": teams_data}
             )
 
+        last_game_date = get_last_game_date(season)
         seasons_data.append(
             {
                 "id": season.id,
@@ -73,6 +84,7 @@ def get_seasons_data():
                 "created_at": season.created_at.isoformat(),
                 "levels": levels_data,
                 "is_complete": is_season_complete(season),
+                "last_game_date": last_game_date.isoformat() if last_game_date else None,
             }
         )
 

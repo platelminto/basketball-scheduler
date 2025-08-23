@@ -132,9 +132,8 @@ def global_slot_distribution_test(schedule, expected_courts_per_slot: dict[int, 
     all_ok = True
     errors = []  # Initialize list to store error messages
 
-    for week in schedule:
-        week_num = week["week"]
-        week_idx = week_num - 1  # Convert 1-based week to 0-based index
+    for game_week_idx, week in enumerate(schedule):
+        game_week_num = game_week_idx + 1
         week_counts = {s: 0 for s in range(1, num_slots + 1)}
 
         # Count games in each slot
@@ -145,12 +144,12 @@ def global_slot_distribution_test(schedule, expected_courts_per_slot: dict[int, 
 
         # Check against expected values for this week
         expected_this_week = {
-            s: expected_courts_per_slot[s][week_idx] for s in expected_courts_per_slot
+            s: expected_courts_per_slot[s][game_week_idx] for s in expected_courts_per_slot
         }
 
         if week_counts != expected_this_week:
             message = (
-                f"Week {week_num}: Global slot distribution incorrect: {week_counts} "
+                f"Game week {game_week_num}: Global slot distribution incorrect: {week_counts} "
                 f"(expected {expected_this_week})"
             )
             print(message)
@@ -179,8 +178,8 @@ def referee_player_test(schedule):
     passed = True
     errors = []  # Initialize list to store error messages
 
-    for week in schedule:
-        week_num = week["week"]
+    for game_week_idx, week in enumerate(schedule):
+        game_week_num = game_week_idx + 1
 
         # Check each slot present in the week
         for slot_key, games in week["slots"].items():
@@ -191,7 +190,7 @@ def referee_player_test(schedule):
                 referee = game["ref"]
 
                 if referee in [team1, team2]:
-                    message = f"Week {week_num}, Level {level}: Referee {referee} is playing in game ({team1} vs {team2})"
+                    message = f"Game week {game_week_num}, Level {level}: Referee {referee} is playing in game ({team1} vs {team2})"
                     print(message)
                     errors.append(message)
                     passed = False
@@ -216,8 +215,8 @@ def adjacent_slot_test(schedule):
     passed = True
     errors = []  # Initialize list to store error messages
 
-    for week in schedule:
-        week_num = week["week"]
+    for game_week_idx, week in enumerate(schedule):
+        game_week_num = game_week_idx + 1
 
         # Create a mapping of teams to their playing slots for this week
         team_playing_slots = {}
@@ -242,7 +241,7 @@ def adjacent_slot_test(schedule):
                     # Check if the absolute difference between the ref's playing slot and the current game's slot is not 1
                     if abs(ref_play_slot - slot_num) != 1:
                         message = (
-                            f"Week {week_num}, Level {level}: Game in slot {slot_num} has referee {referee} "
+                            f"Game week {game_week_num}, Level {level}: Game in slot {slot_num} has referee {referee} "
                             f"whose playing slot is {ref_play_slot} (diff {abs(ref_play_slot - slot_num)})"
                         )
                         print(message)
@@ -251,7 +250,7 @@ def adjacent_slot_test(schedule):
                 else:
                     # If referee is not in team_playing_slots, assume it's an external referee
                     # External referees don't need to follow the adjacent slot rule
-                    message = f"Week {week_num}, Level {level}: External referee '{referee}' used (not a team)"
+                    message = f"Game week {game_week_num}, Level {level}: External referee '{referee}' used (not a team)"
                     print(message)
                     # Don't add to errors or set passed=False since this is expected behavior
 
@@ -335,20 +334,21 @@ def cycle_pairing_test(schedule, teams_per_level):
                 
                 # Check if matchups are the same - they should be identical pairs since we sort them
                 if base_matchups != repeat_matchups:
-                    actual_week_base = schedule[base_pos]["week"]
-                    actual_week_repeat = schedule[repeat_pos]["week"]
-                    message = f"Level {level}: Position {base_pos} (week {actual_week_base}) and repeat position {repeat_pos} (week {actual_week_repeat}) should have the same matchups but differ"
+                    # Use position-based game week numbers for clearer understanding
+                    game_week_base = base_pos + 1
+                    game_week_repeat = repeat_pos + 1
+                    message = f"Level {level}: Game week {game_week_base} and game week {game_week_repeat} should have the same matchups but differ"
                     print(message)
                     errors.append(message)
                     # Add details about the differences
                     diff1 = base_matchups - repeat_matchups
                     diff2 = repeat_matchups - base_matchups
                     if diff1:
-                        errors.append(f"  Only in position {base_pos}: {diff1}")
-                        print(f"  Only in position {base_pos}: {diff1}")
+                        errors.append(f"  Only in game week {game_week_base}: {diff1}")
+                        print(f"  Only in game week {game_week_base}: {diff1}")
                     if diff2:
-                        errors.append(f"  Only in position {repeat_pos}: {diff2}")
-                        print(f"  Only in position {repeat_pos}: {diff2}")
+                        errors.append(f"  Only in game week {game_week_repeat}: {diff2}")
+                        print(f"  Only in game week {game_week_repeat}: {diff2}")
                     passed = False
                 
                 cycle += 1

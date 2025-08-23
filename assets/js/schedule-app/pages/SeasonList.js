@@ -108,6 +108,7 @@ const SeasonList = () => {
         ...prev,
         [seasonId]: data
       }));
+      
       return data;
     } catch (error) {
       console.error('Error fetching season schedule:', error);
@@ -283,7 +284,23 @@ const SeasonList = () => {
 
       {state.seasons?.length > 0 ? (() => {
         const activeSeason = state.seasons.find(season => season.is_active);
-        const inactiveSeasons = state.seasons.filter(season => !season.is_active);
+        const inactiveSeasons = state.seasons.filter(season => !season.is_active)
+          .sort((a, b) => {
+            const dateA = a.last_game_date ? new Date(a.last_game_date) : null;
+            const dateB = b.last_game_date ? new Date(b.last_game_date) : null;
+            
+            // If we don't have date info for either, sort by created_at (newest first)
+            if (!dateA && !dateB) {
+              return new Date(b.created_at) - new Date(a.created_at);
+            }
+            
+            // If only one has date info, prioritize the one with date info
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            
+            // Both have date info, sort by last game date (newest first)
+            return dateB - dateA;
+          });
         const recentSeasons = inactiveSeasons.slice(0, 5);
         const olderSeasons = inactiveSeasons.slice(5);
         
