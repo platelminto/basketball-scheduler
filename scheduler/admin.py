@@ -98,23 +98,34 @@ class SeasonAdmin(admin.ModelAdmin):
             return
         
         deleted_count = 0
+        skipped_count = 0
         season_names = []
+        skipped_names = []
         
         for season in queryset:
+            # Only allow hard deletion if season is already soft deleted
+            if not season.is_deleted:
+                skipped_count += 1
+                skipped_names.append(season.name)
+                continue
+            
             season_names.append(season.name)
             # This will cascade delete all related Level, Week, OffWeek, SeasonTeam, Game objects
             season.delete()
             deleted_count += 1
         
+        messages = []
         if deleted_count > 0:
             names_str = ", ".join(season_names)
-            self.message_user(
-                request, 
-                f"⚠️ PERMANENTLY deleted {deleted_count} season(s) and ALL related data: {names_str}",
-                level="warning"
-            )
-        else:
-            self.message_user(request, "No seasons were deleted.", level="warning")
+            messages.append(f"⚠️ PERMANENTLY deleted {deleted_count} season(s) and ALL related data: {names_str}")
+        if skipped_count > 0:
+            skipped_str = ", ".join(skipped_names)
+            messages.append(f"Skipped {skipped_count} season(s) that must be soft-deleted first: {skipped_str}")
+        if not deleted_count and not skipped_count:
+            messages.append("No seasons were deleted")
+        
+        message_level = "warning" if deleted_count > 0 else "error" if skipped_count > 0 else "info"
+        self.message_user(request, ". ".join(messages), level=message_level)
 
 
 # Custom filter for distinct Level names
