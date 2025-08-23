@@ -30,16 +30,48 @@ const StatsResults = ({ statisticsResults, state }) => {
     return result;
   })();
 
-  // Fixed scale of 0-10 for all charts
-  const getMaxValues = (level) => {
-    return { maxPlays: 10, maxRefs: 10, maxTotal: 10 };
+  // Calculate max values across all levels for consistent scaling
+  const getMaxValues = () => {
+    let globalMax = 0;
+    
+    // Check all levels for the highest total (plays + refs) per team per slot
+    Object.keys(statisticsResults.team_play_counts || {}).forEach(level => {
+      const playData = statisticsResults.team_play_counts[level] || {};
+      const refData = statisticsResults.team_ref_counts[level] || {};
+      
+      // For each team in this level
+      Object.keys(playData).forEach(team => {
+        // For each slot this team has data for
+        Object.keys(playData[team] || {}).forEach(slot => {
+          const playCount = playData[team][slot] || 0;
+          const refCount = (refData[team] && refData[team][slot]) || 0;
+          const total = playCount + refCount;
+          globalMax = Math.max(globalMax, total);
+        });
+      });
+      
+      // Also check ref data in case there are refs without plays
+      Object.keys(refData).forEach(team => {
+        Object.keys(refData[team] || {}).forEach(slot => {
+          const playCount = (playData[team] && playData[team][slot]) || 0;
+          const refCount = refData[team][slot] || 0;
+          const total = playCount + refCount;
+          globalMax = Math.max(globalMax, total);
+        });
+      });
+    });
+    
+    // Add some padding to the max (round up to next multiple of 2 or minimum of 4)
+    const maxTotal = Math.max(4, Math.ceil(globalMax / 2) * 2);
+    
+    return { maxPlays: maxTotal, maxRefs: maxTotal, maxTotal };
   };
 
   const renderSlotBar = (team, slot, playCount, refCount, maxTotal, slotTime) => {
     const totalCount = playCount + refCount;
     
-    // SIMPLE: Total bar height = total count as % of 10
-    const totalHeightPercent = (totalCount / 10) * 100; // 8 total = 80%, 10 total = 100%
+    // SIMPLE: Total bar height = total count as % of maxTotal
+    const totalHeightPercent = (totalCount / maxTotal) * 100;
     
     // Within that total height, split between play and ref proportionally
     const playPortion = totalCount > 0 ? playCount / totalCount : 0; // e.g., 3/8 = 37.5%
@@ -137,7 +169,7 @@ const StatsResults = ({ statisticsResults, state }) => {
     
     if (teams.length === 0) return null;
     
-    const { maxTotal } = getMaxValues(level);
+    const { maxTotal } = getMaxValues();
     
     // Determine available slots
     const allSlots = new Set();
@@ -193,7 +225,12 @@ const StatsResults = ({ statisticsResults, state }) => {
           
           {/* Chart - Teams on X-axis, Grouped bars for each time slot */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '20px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              paddingBottom: '20px',
+              position: 'relative'
+            }}>
               
               {/* Y-axis labels */}
               <div style={{ 
@@ -202,15 +239,17 @@ const StatsResults = ({ statisticsResults, state }) => {
                 display: 'flex', 
                 flexDirection: 'column', 
                 justifyContent: 'space-between',
-                alignItems: 'center',
+                alignItems: 'flex-end',
                 fontSize: '11px',
                 color: '#666',
-                marginRight: '15px'
+                marginRight: '15px',
+                paddingRight: '5px',
+                transform: 'translateY(-10px)'
               }}>
-                <span>10</span>
-                <span>7.5</span>
-                <span>5</span>
-                <span>2.5</span>
+                <span>{maxTotal}</span>
+                <span>{Math.round(maxTotal * 0.75)}</span>
+                <span>{Math.round(maxTotal * 0.5)}</span>
+                <span>{Math.round(maxTotal * 0.25)}</span>
                 <span>0</span>
               </div>
               
