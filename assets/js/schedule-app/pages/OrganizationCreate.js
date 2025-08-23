@@ -213,7 +213,10 @@ const OrganizationCreate = () => {
       courts: courtNames,
       slot_duration_minutes: slotDuration,
       teams: levelsData.reduce((acc, level) => {
-        acc[level.name] = level.teams.map(team => team.name);
+        acc[level.name] = level.teams.map(team => ({
+          id: team.sourceId || team.id,
+          name: team.name
+        }));
         return acc;
       }, {})
     };

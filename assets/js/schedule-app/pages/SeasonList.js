@@ -286,8 +286,8 @@ const SeasonList = () => {
         const activeSeason = state.seasons.find(season => season.is_active);
         const inactiveSeasons = state.seasons.filter(season => !season.is_active)
           .sort((a, b) => {
-            const dateA = a.last_game_date ? new Date(a.last_game_date) : null;
-            const dateB = b.last_game_date ? new Date(b.last_game_date) : null;
+            const dateA = a.first_game_date ? new Date(a.first_game_date) : null;
+            const dateB = b.first_game_date ? new Date(b.first_game_date) : null;
             
             // If we don't have date info for either, sort by created_at (newest first)
             if (!dateA && !dateB) {
@@ -298,7 +298,7 @@ const SeasonList = () => {
             if (!dateA) return 1;
             if (!dateB) return -1;
             
-            // Both have date info, sort by last game date (newest first)
+            // Both have date info, sort by first game date (newest first)
             return dateB - dateA;
           });
         const recentSeasons = inactiveSeasons.slice(0, 5);

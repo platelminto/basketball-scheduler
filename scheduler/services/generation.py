@@ -77,8 +77,9 @@ def generate_schedule_process(courts_per_slot, team_names_by_level, time_limit, 
         shared_dict['error'] = None
         
     except Exception as e:
+        import traceback
         shared_dict['schedule'] = None
-        shared_dict['error'] = str(e)
+        shared_dict['error'] = traceback.format_exc()
     finally:
         # Clean up progress data when done
         cache.delete(progress_key)

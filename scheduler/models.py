@@ -189,8 +189,6 @@ class SeasonTeam(models.Model):
         return cls.objects.none()
 
 
-
-
 class WeekManager(models.Manager):
     """Custom manager that filters out weeks from deleted seasons by default."""
     

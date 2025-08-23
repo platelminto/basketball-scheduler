@@ -58,14 +58,13 @@ def resolve_game_objects(game_data, is_create, lookups):
             errors.append(f"Level '{game_data['level_name']}' not found")
             return None, None, None, None, None, None, errors
 
-        # Resolve teams
-        team1_obj = team_instances.get(game_data["level_name"], {}).get(
-            game_data["team1_name"]
-        )
-        team2_obj = team_instances.get(game_data["level_name"], {}).get(
-            game_data["team2_name"]
-        )
-
+        # Resolve teams - handle both string and integer IDs
+        level_teams = team_instances.get(game_data["level_name"], {})
+        team1_key = str(game_data["team1_name"])  # Ensure string lookup
+        team2_key = str(game_data["team2_name"])  # Ensure string lookup
+        team1_obj = level_teams.get(team1_key)
+        team2_obj = level_teams.get(team2_key)
+        
         if not team1_obj:
             errors.append(
                 f"Team '{game_data['team1_name']}' not found in level '{game_data['level_name']}'"
@@ -79,9 +78,9 @@ def resolve_game_objects(game_data, is_create, lookups):
         referee_obj = None
         referee_name = None
         if game_data["referee_name"]:
-            referee_obj = team_instances.get(game_data["level_name"], {}).get(
-                game_data["referee_name"]
-            )
+            # Try to find referee team using string conversion for ID lookup
+            referee_key = str(game_data["referee_name"])
+            referee_obj = team_instances.get(game_data["level_name"], {}).get(referee_key)
             if not referee_obj:
                 referee_name = game_data["referee_name"]  # External referee
 

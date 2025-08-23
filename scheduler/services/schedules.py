@@ -47,12 +47,22 @@ def create_season_and_structure(season_name, setup_data, week_dates_data):
         level_obj = Level.objects.create(season=season, name=level_name)
         level_instances[level_name] = level_obj
         team_instances[level_name] = {}
-        for team_name in team_names:
-            # Get or create TeamOrganization
-            team_org, created = TeamOrganization.objects.get_or_create(name=team_name)
+        for team_data in team_names:
+            # team_data must be an object with 'id' and 'name' - no fallback to names
+            if not isinstance(team_data, dict) or 'id' not in team_data:
+                raise ValueError(f"Team data must be an object with 'id' and 'name' fields. Got: {team_data}")
+            
+            team_id = team_data['id']
+            team_name = team_data['name']
+            
+            # Use the ID to get the team - no ambiguity
+            team_org = TeamOrganization.objects.get(id=team_id)
+            
             # Create SeasonTeam assignment
             season_team = SeasonTeam.objects.create(season=season, team=team_org, level=level_obj)
+            # Key by team ID for lookups, but also by name for backwards compatibility
             team_instances[level_name][team_name] = season_team
+            team_instances[level_name][str(team_org.id)] = season_team
 
     # Create weeks from week_dates_data
     for week_info in week_dates_data:

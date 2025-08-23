@@ -49,8 +49,6 @@ const ScheduleCreate = () => {
           console.error('Error parsing setup data:', e);
           alert('Invalid setup data. Please go back and try again.');
         }
-      } else {
-        alert('No setup data found. Please go back and complete the team setup.');
       }
     }
   }, [location, dispatch]);
@@ -84,10 +82,21 @@ const ScheduleCreate = () => {
       });
       
       // Add teams for this level
-      const teamsInLevel = data.teams[levelName].map(teamName => ({
-        id: teamName, // In this context, we use the name as the ID
-        name: teamName
-      }));
+      const teamsInLevel = data.teams[levelName].map(teamData => {
+        // Handle both old format (strings) and new format (objects)
+        if (typeof teamData === 'string') {
+          return {
+            id: teamData, // In this context, we use the name as the ID
+            name: teamData
+          };
+        } else {
+          // New format: team object with id and name
+          return {
+            id: teamData.id,
+            name: teamData.name
+          };
+        }
+      });
       
       teamsByLevel[levelId] = teamsInLevel;
     }

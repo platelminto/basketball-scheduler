@@ -86,7 +86,18 @@ def get_config_from_schedule_creator(team_setup, week_data) -> dict:
 
     config["courts_per_slot"] = courts_per_slot
 
-    config["team_names_by_level"] = team_setup["teams"]
+    # Extract team names for schedule generation
+    # team_setup["teams"] now contains team objects with {id, name}, but schedule generation expects just names
+    team_names_by_level = {}
+    for level, teams in team_setup["teams"].items():
+        if teams and isinstance(teams[0], dict):
+            # New format: team objects with id and name
+            team_names_by_level[level] = [team["name"] for team in teams]
+        else:
+            # Old format: just team names as strings (fallback)
+            team_names_by_level[level] = teams
+    
+    config["team_names_by_level"] = team_names_by_level
 
     config["total_weeks"] = len(weeks)
 
