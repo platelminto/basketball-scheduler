@@ -74,12 +74,7 @@ def parse_schedule_simple(filename):
         # Date
         if re.match(r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), ', line):
             date_str = line.split(', ')[1]
-            if 'December' in date_str:
-                year = 2024
-            elif 'January' in date_str or 'February' in date_str:
-                year = 2025
-            else:
-                year = 2024
+            year = 2024  # All dates are 2024
             current_date = datetime.strptime(f"{date_str} {year}", "%B %d %Y").date()
             i += 1
             continue
@@ -94,13 +89,15 @@ def parse_schedule_simple(filename):
                 off_week_count += 1
                 print(f"Found off-week #{off_week_count} on {off_week_date}")
                 
-                # Check if there's another Off-Week following
-                if i + 1 < len(lines) and lines[i + 1].strip() == 'Off-Week':
-                    off_week_date2 = off_week_date + timedelta(days=7)
-                    off_weeks.append({'week': None, 'date': off_week_date2})
+                # Check for consecutive Off-Week lines
+                j = i + 1
+                while j < len(lines) and lines[j].strip() == 'Off-Week':
+                    off_week_date = off_week_date + timedelta(days=7)
+                    off_weeks.append({'week': None, 'date': off_week_date})
                     off_week_count += 1
-                    print(f"Found off-week #{off_week_count} on {off_week_date2}")
-                    i += 1  # Skip the next Off-Week line
+                    print(f"Found off-week #{off_week_count} on {off_week_date}")
+                    j += 1
+                i = j - 1  # Set i to the last Off-Week line processed
             i += 1
             continue
             
@@ -118,15 +115,22 @@ def parse_schedule_simple(filename):
                 team2 = lines[i + 4] if i + 4 < len(lines) else ""
                 skip_lines = 5
             else:
-                # Format: Time -> Level -> Referee -> Team1 -> Score -> Team2
-                if i + 5 >= len(lines):
+                # Format: Time -> Level -> Referee -> [Match menu] -> Team1 -> Score -> Team2
+                if i + 6 >= len(lines):
                     i += 1
                     continue
                 referee = lines[i + 2]
-                team1 = lines[i + 3]
-                score_line = lines[i + 4]
-                team2 = lines[i + 5]
-                skip_lines = 6
+                # Skip "Match menu" if present
+                if lines[i + 3] == "Match menu":
+                    team1 = lines[i + 4]
+                    score_line = lines[i + 5]
+                    team2 = lines[i + 6]
+                    skip_lines = 7
+                else:
+                    team1 = lines[i + 3]
+                    score_line = lines[i + 4]
+                    team2 = lines[i + 5]
+                    skip_lines = 6
             
             # Parse score
             score_match = re.search(r'(\d+)\s*:\s*(\d+)', score_line)
@@ -164,7 +168,7 @@ def import_data(filename):
     
     # Create season
     season, created = Season.objects.get_or_create(
-        name="USBF 2024-2025, Season 2",
+        name="USBF 2024-2025, Season 1",
         defaults={'is_active': False, 'slot_duration_minutes': 70}
     )
     
@@ -304,8 +308,4 @@ def import_data(filename):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print("Usage: python import_schedule_simple.py <file.txt>")
-        sys.exit(1)
-    
-    import_data(sys.argv[1])
+    import_data('lobster_migrate/2425/2425_01.txt')

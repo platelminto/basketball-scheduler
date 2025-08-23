@@ -168,7 +168,7 @@ def import_data(filename):
     
     # Create season
     season, created = Season.objects.get_or_create(
-        name="USBF '24-'25, Season 3",
+        name="USBF 2024-2025, Season 3",
         defaults={'is_active': False, 'slot_duration_minutes': 70}
     )
     
