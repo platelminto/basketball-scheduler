@@ -43,7 +43,7 @@ const OrganizationEdit = () => {
       return { levels: [], courts: [], originalCourts: [] };
     }
     
-    const levels = seasonData.levels.map(level => ({
+    const levels = seasonData.levels.sort((a, b) => a.id - b.id).map(level => ({
       id: level.id,
       name: level.name,
       teams: (seasonData.teams_by_level[level.id] || []).map(team => ({
@@ -145,6 +145,7 @@ const OrganizationEdit = () => {
       <OrganizationEditor
         initialLevels={getCurrentTeamsLevels().levels}
         initialCourts={getCurrentTeamsLevels().courts}
+        initialScheduleName={seasonData?.season?.name || ""}
         onSubmit={handleSubmit}
         onCancel={() => navigate(-1)}
         submitButtonText="Update Organization"

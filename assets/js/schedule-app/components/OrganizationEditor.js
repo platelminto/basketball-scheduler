@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 const OrganizationEditor = ({ 
   initialLevels = null, 
   initialCourts = null, 
+  initialScheduleName = "",
   onSubmit, 
   onCancel, 
   submitButtonText = "Continue", 
@@ -27,6 +28,7 @@ const OrganizationEditor = ({
   const [levels, setLevels] = useState(initialLevels || defaultLevels);
   const [courts, setCourts] = useState(initialCourts || defaultCourts);
   const [slotDuration, setSlotDuration] = useState(70);
+  const [scheduleName, setScheduleName] = useState(initialScheduleName);
   
   // Generate default teams for each level if not provided
   useEffect(() => {
@@ -197,6 +199,7 @@ const OrganizationEditor = ({
       levels: levelsData.map(level => ({ id: level.id, name: level.name })),
       courts: courtData,
       slot_duration_minutes: slotDuration,
+      schedule_name: scheduleName.trim(),
       // Old format for backward compatibility - only include teams if not in edit mode
       teams: editMode ? {} : levelsData.reduce((acc, level) => {
         acc[level.name] = level.teams.map(team => team.name);
@@ -292,6 +295,31 @@ const OrganizationEditor = ({
   return (
     <form id="teamSetupForm" className="mt-4" onSubmit={handleSubmit}>
       
+      {/* Schedule Name Section */}
+      <div className="schedule-name-section mb-4">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4>Schedule Name</h4>
+        </div>
+        <div className="form-section">
+          <label className="form-label" htmlFor="scheduleName">
+            Schedule Name
+            <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 'normal', marginLeft: '8px' }}>
+              Display name for this schedule
+            </span>
+          </label>
+          <input
+            id="scheduleName"
+            type="text"
+            className="form-control"
+            style={{ maxWidth: '400px' }}
+            value={scheduleName}
+            onChange={(e) => setScheduleName(e.target.value)}
+            placeholder="e.g., 24/25 Season 2"
+            required
+          />
+        </div>
+      </div>
+      
       {/* Team Levels Section */}
       <div className="mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3">
@@ -308,7 +336,7 @@ const OrganizationEditor = ({
         </div>
         
         <div id="teamLevelsContainer" className="team-levels-container">
-          {levels.map(renderLevelColumn)}
+          {levels.sort((a, b) => a.id - b.id).map(renderLevelColumn)}
         </div>
       </div>
       

@@ -63,7 +63,7 @@ def create_season_and_structure(season_name, setup_data, week_dates_data):
         if is_off_week:
             # Extract new off week fields with defaults
             title = week_info.get("title", "Off Week")
-            description = week_info.get("description", "No games scheduled")
+            description = week_info.get("description", "")
             has_basketball = week_info.get("has_basketball", False)
             
             OffWeek.objects.create(
@@ -107,7 +107,7 @@ def update_season_weeks(season, week_dates_data):
                 if is_off_week:
                     # Create new off week
                     title = week_date.get("title", "Off Week")
-                    description = week_date.get("description", "No games scheduled")
+                    description = week_date.get("description", "")
                     has_basketball = week_date.get("has_basketball", False)
                     
                     OffWeek.objects.create(
@@ -165,9 +165,30 @@ def process_game_assignments(game_assignments, is_create, lookups):
                 resolve_errors,
             ) = resolve_game_objects(game_data, is_create, lookups)
 
+            # Build game context for error messages
+            game_context = ""
+            if is_create:
+                team1_name = game_data.get("team1_name", "Unknown")
+                team2_name = game_data.get("team2_name", "Unknown")  
+                level_name = game_data.get("level_name", "Unknown")
+                week_num = game_data.get("week_number", "Unknown")
+                time_str = game_data.get("time_str", "Unknown")
+                game_context = f"\n  Level: {level_name}, Week {week_num}, {time_str}\n  Teams: {team1_name} vs {team2_name}"
+            else:
+                # For updates, try to get team names from objects if available
+                team1_name = team1_obj.team.name if team1_obj else "Unknown"
+                team2_name = team2_obj.team.name if team2_obj else "Unknown"
+                level_name = level_obj.name if level_obj else "Unknown"  
+                week_num = game_data.get("week_number", "Unknown")
+                time_str = game_data.get("time_str", "Unknown")
+                week_date = ""
+                if week_obj and hasattr(week_obj, 'monday_date'):
+                    week_date = f" ({week_obj.monday_date})"
+                game_context = f"\n  Level: {level_name}, Week {week_num}{week_date}, {time_str}\n  Teams: {team1_name} vs {team2_name}"
+
             if resolve_errors:
                 creation_errors.extend(
-                    [f"Game #{idx+1}: {err}" for err in resolve_errors]
+                    [f"Game #{idx+1} {game_context}: {err}" for err in resolve_errors]
                 )
                 continue
 
@@ -177,7 +198,7 @@ def process_game_assignments(game_assignments, is_create, lookups):
             )
             if parse_errors:
                 creation_errors.extend(
-                    [f"Game #{idx+1}: {err}" for err in parse_errors]
+                    [f"Game #{idx+1} {game_context}: {err}" for err in parse_errors]
                 )
                 continue
 
@@ -198,8 +219,21 @@ def process_game_assignments(game_assignments, is_create, lookups):
             created_games_count += 1
 
         except Exception as e:
+            # Build basic game context for unexpected errors
+            try:
+                game_data = normalize_game_data(assignment, is_create, lookups)
+                if is_create:
+                    team1_name = game_data.get("team1_name", "Unknown")
+                    team2_name = game_data.get("team2_name", "Unknown")
+                    level_name = game_data.get("level_name", "Unknown")
+                    game_context = f"({level_name}: {team1_name} vs {team2_name})"
+                else:
+                    game_context = f"(Assignment: {assignment})"
+            except:
+                game_context = "(Unable to parse game data)"
+                
             creation_errors.append(
-                f"Game #{idx+1}: Unexpected error during creation - {str(e)}"
+                f"Game #{idx+1} {game_context}: Unexpected error during creation - {str(e)}"
             )
 
     return created_games_count, creation_errors
@@ -218,10 +252,10 @@ def create_schedule(season_name, setup_data, game_assignments, week_dates_data):
     )
 
     if creation_errors:
-        error_details = ". ".join(creation_errors)
+        error_details = "\n\n".join(creation_errors)
         # The @transaction.atomic decorator will automatically rollback all changes
         # if an exception is raised, so the season/levels/teams will be cleaned up
-        raise ValueError(f"Schedule passed validation but had creation errors: {error_details}")
+        raise ValueError(f"Schedule passed validation but had creation errors:\n\n{error_details}")
 
     return season, created_games_count
 
@@ -249,10 +283,10 @@ def update_schedule(season_id, game_assignments, week_dates_data):
         )
 
         if creation_errors:
-            error_details = ". ".join(creation_errors)
+            error_details = "\n\n".join(creation_errors)
             # Rollback to savepoint to restore deleted games
             transaction.savepoint_rollback(savepoint)
-            raise ValueError(f"Schedule passed validation but had creation errors: {error_details}")
+            raise ValueError(f"Schedule passed validation but had creation errors:\n\n{error_details}")
 
         # Commit the savepoint - everything succeeded
         transaction.savepoint_commit(savepoint)

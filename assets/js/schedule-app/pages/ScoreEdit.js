@@ -79,6 +79,19 @@ const ScoreEdit = () => {
         
         console.log('Attempting to scroll to week:', mostRecentHappenedWeek?.week_number);
         
+        // Don't scroll if the most recent week was more than 2 weeks ago
+        if (mostRecentHappenedWeek) {
+          const weekDate = new Date(mostRecentHappenedWeek.monday_date);
+          weekDate.setHours(0, 0, 0, 0);
+          const twoWeeksAgo = new Date(today);
+          twoWeeksAgo.setDate(today.getDate() - 14);
+          
+          if (weekDate < twoWeeksAgo) {
+            console.log('Most recent week is more than 2 weeks old, skipping scroll');
+            return;
+          }
+        }
+        
         if (mostRecentHappenedWeek) {
           const weekElement = document.querySelector(`[data-week-id="${mostRecentHappenedWeek.week_number}"]`);
           console.log('Found week element:', weekElement);
@@ -111,11 +124,8 @@ const ScoreEdit = () => {
   }, [state.weeks, state.lockedWeeks, state.isLoading]); // Trigger when data is actually loaded
 
   const handleSaveChanges = async () => {
-    // If nothing has changed, show alert and return
-    if (state.changedGames.size === 0) {
-      alert('No changes detected. Form not submitted.');
-      return;
-    }
+    // Allow saves even if no changes detected - user might want to force rebuild
+    // Removed the annoying "No changes detected" check
 
     // Validate all games first
     const invalidGames = [];

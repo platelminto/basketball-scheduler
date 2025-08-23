@@ -88,21 +88,13 @@ const ScheduleEdit = () => {
 
 
   const handleSaveChanges = async (scheduleData = null) => {
-    // If nothing has changed, show alert and return
-    // Check if any games are marked as deleted
+    // Allow saves even if no changes detected - user might want to force rebuild
+    // Removed the annoying "No changes detected" check
+    
+    // Check if any games are marked as deleted (keep this for logic, not blocking)
     const hasDeletedGames = Object.values(state.weeks).some(week =>
       week.games.some(game => game.isDeleted)
     );
-
-    if (
-      state.changedGames.size === 0 &&
-      state.newGames.size === 0 &&
-      !hasDeletedGames &&
-      state.changedWeeks.size === 0
-    ) {
-      alert('No changes detected. Form not submitted.');
-      return;
-    }
     
     // For schedule changes, validate before saving if not already validated
     if (!validationPassed) {

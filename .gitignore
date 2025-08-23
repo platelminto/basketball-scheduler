@@ -64,3 +64,5 @@ coverage/
 tempCodeRunnerFile.py
 profile_output
 **/.claude/settings.local.json
+
+lobster_migrate/**/*.txt

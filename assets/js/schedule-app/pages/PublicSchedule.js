@@ -20,6 +20,7 @@ const PublicSchedule = () => {
   const [screenWidth, setScreenWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1400);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
 
   // Fetch public schedule data
   useEffect(() => {
@@ -48,12 +49,32 @@ const PublicSchedule = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Handle scroll to show/hide scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      const standingsSection = document.getElementById('standings-section');
+      if (standingsSection) {
+        const rect = standingsSection.getBoundingClientRect();
+        // Show scroll-to-top button when standings section is above viewport
+        setShowScrollToTop(rect.bottom < 0);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Auto-reset to 'both' when screen becomes wide enough
   useEffect(() => {
     if (screenWidth >= 1200 && (viewMode === 'standings' || viewMode === 'schedule')) {
       setViewMode('both');
     }
   }, [screenWidth, viewMode]);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Call hooks before any conditional returns
   const filterOptions = getFilterOptions(scheduleData);
@@ -154,7 +175,7 @@ const PublicSchedule = () => {
         alignItems: 'start'
       }}>
         {(showBoth || showStandingsOnly) && (
-          <div style={{ position: 'sticky', top: '20px', alignSelf: 'start' }}>
+          <div id="standings-section">
             <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '15px' }}>
               League Standings
             </h2>
@@ -318,6 +339,41 @@ const PublicSchedule = () => {
           scheduleData={scheduleData}
           onClose={() => setCalendarModalOpen(false)}
         />
+      )}
+
+      {/* Scroll to Top Button - positioned where league table would be */}
+      {showScrollToTop && showBoth && (
+        <button
+          onClick={scrollToTop}
+          style={{
+            position: 'fixed',
+            top: '20px',
+            left: 'calc(50% - 700px + 175px)', // Centered in the 500px left column (250px center - 75px half-width)
+            width: '150px',
+            height: '40px',
+            borderRadius: '8px',
+            border: 'none',
+            background: '#666',
+            color: 'white',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            fontWeight: '500',
+            gap: '6px',
+            transition: 'all 0.3s ease',
+            opacity: 0.8
+          }}
+          onMouseEnter={(e) => e.target.style.opacity = '1'}
+          onMouseLeave={(e) => e.target.style.opacity = '0.8'}
+          title="Back to Standings"
+        >
+          <span>↑</span>
+          Standings
+        </button>
       )}
     </div>
   );

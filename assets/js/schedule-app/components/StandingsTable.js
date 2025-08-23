@@ -31,7 +31,7 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
         flexWrap: 'wrap',
         justifyContent: isSummary ? 'space-evenly' : 'normal'
       }}>
-        {levels.sort((a, b) => b.id - a.id).map(level => {
+        {levels.sort((a, b) => a.id - b.id).map(level => {
         const levelStandings = standings.filter(team => team.level_id === level.id);
         if (levelStandings.length === 0) return null;
       

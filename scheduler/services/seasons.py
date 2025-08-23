@@ -7,7 +7,36 @@ listing, activation, and related data operations.
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.utils import timezone
 from scheduler.models import Season, Level, Game
+
+
+def is_season_complete(season):
+    """Check if a season is complete (all dates passed, all scores entered)."""
+    today = timezone.now().date()
+    
+    # Get all games for this season (GameManager automatically excludes deleted games)
+    games = Game.objects.filter(level__season=season)
+    
+    if not games.exists():
+        return False  # No games means not complete
+    
+    for game in games:
+        # Check if game has a valid date/time first
+        game_date = game.date_time
+        if not game_date:
+            continue  # Skip games without dates
+        
+        # Check if game date is today or in the future (not all dates passed)
+        if game_date.date() >= today:
+            return False
+        
+        # Check if any scores are missing
+        if (game.team1_score is None or game.team1_score == '' or 
+            game.team2_score is None or game.team2_score == ''):
+            return False
+    
+    return True
 
 
 def get_seasons_data():
@@ -43,6 +72,7 @@ def get_seasons_data():
                 "is_active": season.is_active,
                 "created_at": season.created_at.isoformat(),
                 "levels": levels_data,
+                "is_complete": is_season_complete(season),
             }
         )
 
@@ -112,6 +142,10 @@ def update_season_organization(season_id, data):
                         season=season, 
                         id=level_data['id']
                     ).update(name=level_data['name'])
+        
+        # Update season name
+        if 'schedule_name' in data and data['schedule_name'].strip():
+            season.name = data['schedule_name'].strip()
         
         season.save()
         

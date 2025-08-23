@@ -79,7 +79,7 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) =
     const offWeekData = {
       monday_date: offWeekDate,
       title: 'Off Week',
-      description: 'No games scheduled',
+      description: '',
       has_basketball: false
     };
     

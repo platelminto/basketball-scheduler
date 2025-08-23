@@ -43,7 +43,7 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
     // Set defaults based on selection
     switch(selectedTitle) {
       case 'Off Week':
-        newDescription = 'No games scheduled';
+        newDescription = '';
         hasBasketball = false;
         showTimes = false;
         break;
@@ -124,10 +124,10 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
         {/* Header with title, date, and delete button */}
         <div className="d-flex justify-content-between align-items-center mb-3">
           <div className="flex-grow-1 d-flex align-items-center justify-content-center gap-3">
-            <h4 className="mb-0">
+            <h5 className="mb-0">
               {getIcon()}
               <strong>Non-League Week</strong>
-            </h4>
+            </h5>
             {isEditable && (
               <input 
                 type="date"
@@ -138,7 +138,7 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
               />
             )}
             {!isEditable && (
-              <span className="text-muted">- {weekData.monday_date}</span>
+              <span className="fs-5 fw-bold text-dark">- {weekData.monday_date}</span>
             )}
           </div>
           
@@ -209,7 +209,7 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
                   onChange={(e) => handleFieldUpdate('has_basketball', e.target.checked)}
                 />
                 <label className="form-check-label" htmlFor={`basketball-${weekData.week_number}`}>
-                  Basketball events happening this week (affects color styling)
+                  Basketball events happening this week
                 </label>
               </div>
             </div>
@@ -251,7 +251,7 @@ const OffWeekDisplay = ({ weekData, mode = 'score-edit' }) => {
           </div>
         ) : (
           <div className="text-center">
-            <div className="h5 mb-1">{weekData.description || 'No description provided'}</div>
+            <div className="h6 mb-1">{weekData.description || 'No description provided'}</div>
             {(weekData.start_time || weekData.end_time) && (
               <div className="text-muted mt-2">
                 {weekData.start_time && weekData.end_time 

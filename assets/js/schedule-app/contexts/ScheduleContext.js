@@ -102,35 +102,69 @@ const scheduleReducer = (state, action) => {
           const today = new Date();
           today.setHours(0, 0, 0, 0); // Reset time to start of day
           
-          // Find the most recent week (today or in the past) that has incomplete scores
-          let mostRecentIncompleteWeek = null;
+          // Find the most recent week that has happened (today or past)
+          let mostRecentHappenedWeek = null;
           for (let i = sortedWeeks.length - 1; i >= 0; i--) {
             const week = sortedWeeks[i];
             const weekDate = new Date(week.monday_date);
             weekDate.setHours(0, 0, 0, 0);
             
             // Only consider weeks that have happened (today or past)
-            if (weekDate > today) continue;
-            
-            const gamesWithBothScores = week.games.filter(game => 
-              !game.isDeleted && 
-              (game.team1_score && game.team1_score !== '') && 
-              (game.team2_score && game.team2_score !== '')
-            ).length;
-            
-            const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
-            const hasIncompleteScores = totalActiveGames > 0 && gamesWithBothScores < totalActiveGames;
-            
-            if (hasIncompleteScores) {
-              mostRecentIncompleteWeek = week;
-              break; // Found the most recent one, stop searching
+            if (weekDate <= today) {
+              mostRecentHappenedWeek = week;
+              break;
             }
           }
           
-          // Lock all weeks except the most recent incomplete one
-          for (const week of sortedWeeks) {
-            if (!mostRecentIncompleteWeek || week.week_number !== mostRecentIncompleteWeek.week_number) {
+          // Check if most recent week is more than 2 weeks old
+          let lockAllWeeks = false;
+          if (mostRecentHappenedWeek) {
+            const weekDate = new Date(mostRecentHappenedWeek.monday_date);
+            weekDate.setHours(0, 0, 0, 0);
+            const twoWeeksAgo = new Date(today);
+            twoWeeksAgo.setDate(today.getDate() - 14);
+            
+            if (weekDate < twoWeeksAgo) {
+              lockAllWeeks = true;
+            }
+          }
+          
+          if (lockAllWeeks) {
+            // Lock all weeks if most recent is more than 2 weeks old
+            for (const week of sortedWeeks) {
               lockedWeeks.add(week.week_number);
+            }
+          } else {
+            // Find the most recent week (today or in the past) that has incomplete scores
+            let mostRecentIncompleteWeek = null;
+            for (let i = sortedWeeks.length - 1; i >= 0; i--) {
+              const week = sortedWeeks[i];
+              const weekDate = new Date(week.monday_date);
+              weekDate.setHours(0, 0, 0, 0);
+              
+              // Only consider weeks that have happened (today or past)
+              if (weekDate > today) continue;
+              
+              const gamesWithBothScores = week.games.filter(game => 
+                !game.isDeleted && 
+                (game.team1_score !== null && game.team1_score !== undefined && game.team1_score !== '') && 
+                (game.team2_score !== null && game.team2_score !== undefined && game.team2_score !== '')
+              ).length;
+              
+              const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
+              const hasIncompleteScores = totalActiveGames > 0 && gamesWithBothScores < totalActiveGames;
+              
+              if (hasIncompleteScores) {
+                mostRecentIncompleteWeek = week;
+                break; // Found the most recent one, stop searching
+              }
+            }
+            
+            // Lock all weeks except the most recent incomplete one
+            for (const week of sortedWeeks) {
+              if (!mostRecentIncompleteWeek || week.week_number !== mostRecentIncompleteWeek.week_number) {
+                lockedWeeks.add(week.week_number);
+              }
             }
           }
         }
@@ -461,7 +495,7 @@ const scheduleReducer = (state, action) => {
         monday_date: offWeekData.monday_date,
         isOffWeek: true,
         title: offWeekData.title || 'Off Week',
-        description: offWeekData.description || 'No games scheduled',
+        description: offWeekData.description,
         has_basketball: offWeekData.has_basketball || false,
         start_time: offWeekData.start_time || '',
         end_time: offWeekData.end_time || '',

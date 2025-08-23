@@ -88,7 +88,7 @@ const GameCard = ({ game, weekId, mode = 'score-edit' }) => {
         <input 
           type="text"
           className={`score-input ${score1Error ? 'is-invalid' : ''}`}
-          value={game.team1_score || ''}
+          value={game.team1_score !== null && game.team1_score !== undefined ? game.team1_score : ''}
           onChange={(e) => {
             const value = e.target.value;
             if (value === '' || /^\d+$/.test(value)) {
@@ -107,7 +107,7 @@ const GameCard = ({ game, weekId, mode = 'score-edit' }) => {
         <input 
           type="text"
           className={`score-input ${score2Error ? 'is-invalid' : ''}`}
-          value={game.team2_score || ''}
+          value={game.team2_score !== null && game.team2_score !== undefined ? game.team2_score : ''}
           onChange={(e) => {
             const value = e.target.value;
             if (value === '' || /^\d+$/.test(value)) {

@@ -38,8 +38,8 @@ const SeasonList = () => {
         // Count games with both scores
         const gamesWithBothScores = week.games.filter(game => 
           !game.isDeleted && 
-          (game.team1_score && game.team1_score !== '') && 
-          (game.team2_score && game.team2_score !== '')
+          (game.team1_score !== null && game.team1_score !== undefined && game.team1_score !== '') && 
+          (game.team2_score !== null && game.team2_score !== undefined && game.team2_score !== '')
         ).length;
         
         const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
@@ -305,6 +305,14 @@ const SeasonList = () => {
                         title={`${incompleteWeeksCount[season.id]} week(s) with incomplete scores`}
                       >
                         <i className="fas fa-exclamation-triangle"></i> Missing scores
+                      </span>
+                    )}
+                    {season.is_complete && (
+                      <span 
+                        className="badge badge-primary"
+                        title="All games completed with scores"
+                      >
+                        <i className="fas fa-check-double"></i> Complete
                       </span>
                     )}
                   </div>

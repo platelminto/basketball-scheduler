@@ -234,7 +234,7 @@ class OffWeek(models.Model):
         help_text="Title of this non-league week"
     )
     description = models.TextField(
-        default="No games scheduled",
+        default="",
         help_text="Description of what's happening this week (e.g., 'Charity Tournament', 'Holiday Break')"
     )
     has_basketball = models.BooleanField(

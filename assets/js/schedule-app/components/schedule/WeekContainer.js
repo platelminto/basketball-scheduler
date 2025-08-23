@@ -43,8 +43,8 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
       
       const gamesWithBothScores = week.games.filter(game => 
         !game.isDeleted && 
-        (game.team1_score && game.team1_score !== '') && 
-        (game.team2_score && game.team2_score !== '')
+        (game.team1_score !== null && game.team1_score !== undefined && game.team1_score !== '') && 
+        (game.team2_score !== null && game.team2_score !== undefined && game.team2_score !== '')
       ).length;
       
       const totalActiveGames = week.games.filter(game => !game.isDeleted).length;
@@ -111,8 +111,8 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
     
     const gamesWithBothScores = weekData.games.filter(game => 
       !game.isDeleted && 
-      (game.team1_score && game.team1_score !== '') && 
-      (game.team2_score && game.team2_score !== '')
+      (game.team1_score !== null && game.team1_score !== undefined && game.team1_score !== '') && 
+      (game.team2_score !== null && game.team2_score !== undefined && game.team2_score !== '')
     ).length;
     
     const totalActiveGames = weekData.games.filter(game => !game.isDeleted).length;

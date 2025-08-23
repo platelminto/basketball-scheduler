@@ -283,7 +283,7 @@ const GameRow = ({ game, weekId, mode = 'score-edit' }) => {
               type="text"
               name={`score1_${game.id}`}
               className={`form-control form-control-sm score-input schedule-input ${score1Error ? 'is-invalid' : ''}`}
-              value={game.team1_score || ''}
+              value={game.team1_score !== null && game.team1_score !== undefined ? game.team1_score : ''}
               onChange={(e) => {
                 // Ensure the value is a valid non-negative integer
                 const value = e.target.value;
@@ -302,7 +302,7 @@ const GameRow = ({ game, weekId, mode = 'score-edit' }) => {
               min="0"
               pattern="[0-9]*"
               inputMode="numeric"
-              placeholder="S1"
+              placeholder=""
               disabled={isWeekLocked} // Only disable if week is locked (not for schedule editing)
             />
             <span className="vs-separator">-</span>
@@ -310,7 +310,7 @@ const GameRow = ({ game, weekId, mode = 'score-edit' }) => {
               type="text"
               name={`score2_${game.id}`}
               className={`form-control form-control-sm score-input schedule-input ${score2Error ? 'is-invalid' : ''}`}
-              value={game.team2_score || ''}
+              value={game.team2_score !== null && game.team2_score !== undefined ? game.team2_score : ''}
               onChange={(e) => {
                 // Ensure the value is a valid non-negative integer
                 const value = e.target.value;
@@ -329,7 +329,7 @@ const GameRow = ({ game, weekId, mode = 'score-edit' }) => {
               min="0"
               pattern="[0-9]*"
               inputMode="numeric"
-              placeholder="S2"
+              placeholder=""
               disabled={isWeekLocked} // Only disable if week is locked (not for schedule editing)
             />
           </>

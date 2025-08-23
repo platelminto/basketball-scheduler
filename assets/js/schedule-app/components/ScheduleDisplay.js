@@ -7,7 +7,8 @@ import {
   getDayName, 
   isGameCompleted, 
   getWinnerInfo,
-  hasUnusualTimes 
+  hasUnusualTimes,
+  isGameInPast 
 } from '../utils/gameUtils';
 
 const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
@@ -43,7 +44,26 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
           <span>Showing upcoming games only (past games hidden)</span>
         </div>
       )}
-      {sortedWeeks.map(week => {
+      {sortedWeeks.filter(week => {
+        // If hidePastGames is enabled, filter out past weeks
+        if (filters.hidePastGames) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const weekDate = new Date(week.monday_date);
+          weekDate.setHours(0, 0, 0, 0);
+          
+          // For off weeks, check if the week date is in the future
+          if (week.isOffWeek) {
+            return weekDate >= today;
+          }
+          
+          // For regular weeks, check if any games are not in the past
+          return week.games.some(game => !isGameInPast(game, week.monday_date));
+        }
+        
+        return true; // Show all weeks when hidePastGames is false
+      }).map(week => {
         if (week.isOffWeek) {
           // Get display title - just use the title field directly
           const getDisplayTitle = () => {
@@ -203,19 +223,17 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                           )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {(game.referee_name || game.referee_team_id) && (
-                            <span style={{ 
-                              fontSize: '11px', 
-                              color: '#555'
-                            }}>
-                              Ref: {game.referee_name || 
-                                Object.values(scheduleData.teams_by_level)
-                                  .flat()
-                                  .find(team => team.id === game.referee_team_id)?.name || 
-                                'TBD'
-                              }
-                            </span>
-                          )}
+                          <span style={{ 
+                            fontSize: '11px', 
+                            color: '#555'
+                          }}>
+                            Ref: {game.referee_name || 
+                              (game.referee_team_id && Object.values(scheduleData.teams_by_level)
+                                .flat()
+                                .find(team => team.id === game.referee_team_id)?.name) || 
+                              ''
+                            }
+                          </span>
                           <span style={{ 
                             background: '#f0f0f0', 
                             padding: '3px 8px', 
@@ -357,16 +375,14 @@ const ScheduleDisplay = ({ scheduleData, filters, commonWeekTimes }) => {
                             vs
                           </div>
                         )}
-                        {(game.referee_name || game.referee_team_id) && (
-                          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
-                            Ref: {game.referee_name || 
-                              Object.values(scheduleData.teams_by_level)
-                                .flat()
-                                .find(team => team.id === game.referee_team_id)?.name || 
-                              'TBD'
-                            }
-                          </div>
-                        )}
+                        <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+                          Ref: {game.referee_name || 
+                            (game.referee_team_id && Object.values(scheduleData.teams_by_level)
+                              .flat()
+                              .find(team => team.id === game.referee_team_id)?.name) || 
+                            ''
+                          }
+                        </div>
                       </div>
                       
                       <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '25px' }}>
