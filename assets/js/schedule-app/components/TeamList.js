@@ -101,16 +101,29 @@ const TeamList = ({
       <div className="card-content">
         {teams && teams.map(team => (
           <div key={team.id}>
-            <div style={{ 
-              padding: '0.5rem 1rem', 
-              borderBottom: expandedTeam === team.id ? 'none' : '1px solid var(--border-primary)', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              cursor: editingTeam === team.id ? 'default' : 'pointer',
-              backgroundColor: expandedTeam === team.id ? 'var(--bg-muted)' : 'transparent'
-            }}
-            onClick={() => handleTeamClick(team)}
+            <div 
+              title={editingTeam === team.id ? undefined : (expandedTeam === team.id ? null : "Click to show historical standings")}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                borderBottom: expandedTeam === team.id ? 'none' : '1px solid var(--border-primary)', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                cursor: editingTeam === team.id ? 'default' : 'pointer',
+                backgroundColor: expandedTeam === team.id ? 'var(--bg-muted)' : 'transparent',
+                transition: 'background-color 0.2s ease'
+              }}
+              onClick={() => handleTeamClick(team)}
+              onMouseEnter={(e) => {
+                if (editingTeam !== team.id) {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-light)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (editingTeam !== team.id && expandedTeam !== team.id) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {editingTeam === team.id ? (
@@ -142,9 +155,19 @@ const TeamList = ({
                 ) : (
                   <>
                     <span style={{ fontWeight: '500' }}>{team.name}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      {expandedTeam === team.id ? '▼' : '▶'}
-                    </span>
+                    {team.seasons && team.seasons.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                        {team.seasons.map(season => (
+                          <span 
+                            key={season.id}
+                            className="badge badge-secondary"
+                            style={{ fontSize: '0.7rem' }}
+                          >
+                            {season.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
               </div>

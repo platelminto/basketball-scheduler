@@ -175,9 +175,13 @@ const TeamListPage = () => {
   };
 
 
-  const filteredTeams = teams.filter(team =>
-    team.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTeams = teams.filter(team => {
+    const nameMatch = team.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const seasonMatch = team.seasons && team.seasons.some(season => 
+      season.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    return nameMatch || seasonMatch;
+  });
 
   const activeTeams = filteredTeams.filter(team => !team.is_archived);
   const archivedTeams = filteredTeams.filter(team => team.is_archived);
@@ -209,7 +213,12 @@ const TeamListPage = () => {
 
   return (
     <div className="page-container">
-      <h2 style={{ marginBottom: '2rem' }}>Team Management</h2>
+      <h2 style={{ marginBottom: '1rem' }}>Team Management</h2>
+      
+      <p style={{ marginBottom: '2rem', color: 'var(--text-primary)', lineHeight: '1.5' }}>
+        Manage your organization's teams. Create new teams here, then assign them to specific seasons during schedule creation. 
+        When teams are no longer participating, archive them to maintain historical data without cluttering active lists.
+      </p>
 
       {/* Search */}
       <input

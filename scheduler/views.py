@@ -459,12 +459,17 @@ def teams_endpoint(request):
         
         teams_data = []
         for team in teams:
+            # Get seasons this team participated in
+            season_participations = team.season_participations.select_related('season').order_by('-season__name')
+            seasons = [{'name': sp.season.name, 'id': sp.season.id} for sp in season_participations]
+            
             teams_data.append({
                 'id': team.id,
                 'name': team.name,
                 'is_archived': team.is_archived,
                 'created_at': team.created_at.isoformat(),
                 'updated_at': team.updated_at.isoformat(),
+                'seasons': seasons,
             })
         
         return JsonResponse({'teams': teams_data})
@@ -485,12 +490,17 @@ def teams_endpoint(request):
             
             # Return the created team data
             team = result['team']
+            # Get seasons this team participated in (empty for new team)
+            season_participations = team.season_participations.select_related('season').order_by('-season__name')
+            seasons = [{'name': sp.season.name, 'id': sp.season.id} for sp in season_participations]
+            
             team_data = {
                 'id': team.id,
                 'name': team.name,
                 'is_archived': team.is_archived,
                 'created_at': team.created_at.isoformat(),
                 'updated_at': team.updated_at.isoformat(),
+                'seasons': seasons,
             }
             
             return JsonResponse({
@@ -525,12 +535,17 @@ def team_detail_endpoint(request, team_id):
             
             # Return updated team data
             team = result['team']
+            # Get seasons this team participated in
+            season_participations = team.season_participations.select_related('season').order_by('-season__name')
+            seasons = [{'name': sp.season.name, 'id': sp.season.id} for sp in season_participations]
+            
             team_data = {
                 'id': team.id,
                 'name': team.name,
                 'is_archived': team.is_archived,
                 'created_at': team.created_at.isoformat(),
                 'updated_at': team.updated_at.isoformat(),
+                'seasons': seasons,
             }
             
             return JsonResponse({
@@ -577,12 +592,17 @@ def team_archive_endpoint(request, team_id):
             
             # Return updated team data
             team = result['team']
+            # Get seasons this team participated in
+            season_participations = team.season_participations.select_related('season').order_by('-season__name')
+            seasons = [{'name': sp.season.name, 'id': sp.season.id} for sp in season_participations]
+            
             team_data = {
                 'id': team.id,
                 'name': team.name,
                 'is_archived': team.is_archived,
                 'created_at': team.created_at.isoformat(),
                 'updated_at': team.updated_at.isoformat(),
+                'seasons': seasons,
             }
             
             return JsonResponse({

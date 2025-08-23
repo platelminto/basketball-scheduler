@@ -192,7 +192,7 @@ const SeasonList = () => {
   
   const handleDeleteSeason = async (seasonId, seasonName) => {
     // Show confirmation dialog
-    if (!window.confirm(`Are you sure you want to delete the season "${seasonName}"? This action cannot be undone.`)) {
+    if (!window.confirm(`Are you sure you want to delete the season "${seasonName}"? This action cannot be undone. All associated data including schedules, games, and scores will be permanently removed.`)) {
       return;
     }
     
