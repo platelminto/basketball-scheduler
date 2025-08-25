@@ -11,7 +11,7 @@ module.exports = (env, argv) => {
     output: {
       path: path.resolve('./static/bundles/'),
       filename: "[name]-[hash].js",
-      publicPath: '/static/bundles/',
+      publicPath: '/scheduler/static/bundles/',
       clean: true,
     },
     devtool: isProduction ? false : 'eval-cheap-module-source-map',
