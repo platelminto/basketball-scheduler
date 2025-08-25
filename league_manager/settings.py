@@ -146,6 +146,18 @@ WEBPACK_LOADER = {
     }
 }
 
+# Session configuration for authentication
+SESSION_COOKIE_AGE = 1209600  # 2 weeks
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session on each request
+SESSION_COOKIE_HTTPONLY = True  # Prevent XSS attacks
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
+SESSION_COOKIE_SECURE = not DEBUG  # Use HTTPS in production
+
+# Login/logout URLs
+LOGIN_URL = '/scheduler/auth/login/'
+LOGIN_REDIRECT_URL = '/scheduler/app/'
+LOGOUT_REDIRECT_URL = '/scheduler/app/public'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 

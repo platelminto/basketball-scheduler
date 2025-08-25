@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import NavBar from './NavBar';
+import Login from './Login';
+import ProtectedRoute from './ProtectedRoute';
 import SeasonList from '../pages/SeasonList';
 import OrganizationCreate from '../pages/OrganizationCreate';
 import TeamListPage from '../pages/TeamListPage';
@@ -16,14 +18,48 @@ const App = () => {
       <NavBar />
       <div className="content-container">
         <Routes>
-          <Route path="/" element={<SeasonList />} />
-          <Route path="/teams" element={<TeamListPage />} />
-          <Route path="/seasons/create/setup" element={<OrganizationCreate />} />
-          <Route path="/seasons/create/schedule" element={<ScheduleCreate />} />
-          <Route path="/seasons/:seasonId/edit" element={<ScheduleEdit />} />
-          <Route path="/seasons/:seasonId/scores" element={<ScoreEdit />} />
-          <Route path="/seasons/:seasonId/structure" element={<OrganizationEdit />} />
-          <Route path="/public" element={<PublicSchedule />} />
+          {/* Public routes */}
+          <Route path="/scheduler-login" element={<Login />} />
+          <Route path="/" element={<PublicSchedule />} />
+          
+          {/* Protected routes */}
+          <Route path="/seasons" element={
+            <ProtectedRoute>
+              <SeasonList />
+            </ProtectedRoute>
+          } />
+          <Route path="/teams" element={
+            <ProtectedRoute>
+              <TeamListPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/seasons/create/setup" element={
+            <ProtectedRoute>
+              <OrganizationCreate />
+            </ProtectedRoute>
+          } />
+          <Route path="/seasons/create/schedule" element={
+            <ProtectedRoute>
+              <ScheduleCreate />
+            </ProtectedRoute>
+          } />
+          <Route path="/seasons/:seasonId/edit" element={
+            <ProtectedRoute>
+              <ScheduleEdit />
+            </ProtectedRoute>
+          } />
+          <Route path="/seasons/:seasonId/scores" element={
+            <ProtectedRoute>
+              <ScoreEdit />
+            </ProtectedRoute>
+          } />
+          <Route path="/seasons/:seasonId/structure" element={
+            <ProtectedRoute>
+              <OrganizationEdit />
+            </ProtectedRoute>
+          } />
+          
+          {/* Catch all redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

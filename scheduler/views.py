@@ -7,6 +7,7 @@ from django.views.decorators.http import require_POST
 from django.db import transaction, IntegrityError
 from django.contrib import messages
 from scheduler.models import Season
+from scheduler.decorators import api_login_required, schedule_app_login_required
 from scheduler.services import (
     # Season management
     get_seasons_data,
@@ -68,6 +69,11 @@ def schedule_app(request, path=None):
     return render(request, "scheduler/schedule_app_standalone.html")
 
 
+def redirect_to_public(request):
+    """Redirect /scheduler/ to the public schedule page."""
+    return redirect('/scheduler/app/public')
+
+
 def edit_scores_redirect(request):
     """Redirect to the edit scores page for the current active season."""
     active_season = Season.objects.filter(is_active=True).first()
@@ -80,6 +86,7 @@ def edit_scores_redirect(request):
     )
 
 
+@api_login_required
 def seasons_endpoint(request):
     """Unified seasons endpoint - GET for listing, POST for creating"""
     if request.method == "GET":
@@ -96,6 +103,7 @@ def get_seasons(request):
     return JsonResponse(seasons_data, safe=False)
 
 
+@api_login_required
 def activate_season(request, season_id):
     """API endpoint to activate a season."""
     if request.method != "POST":
@@ -108,6 +116,7 @@ def activate_season(request, season_id):
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
+@api_login_required
 @csrf_exempt
 def delete_season(request, season_id):
     """API endpoint to soft delete a season."""
@@ -155,6 +164,7 @@ def delete_season(request, season_id):
         }, status=500)
 
 
+@api_login_required
 @ensure_csrf_cookie
 def validate_schedule(request, season_id=None):
     if request.method == "POST":
@@ -176,6 +186,7 @@ def validate_schedule(request, season_id=None):
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 
+@api_login_required
 @ensure_csrf_cookie
 def auto_generate_schedule(request, season_id=None):
     """
@@ -206,6 +217,7 @@ def auto_generate_schedule(request, season_id=None):
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 
+@api_login_required
 @ensure_csrf_cookie
 def cancel_schedule_generation(request):
     """
@@ -249,6 +261,7 @@ def cancel_schedule_generation(request):
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 
+@api_login_required
 @ensure_csrf_cookie
 def generation_progress(request):
     """
@@ -298,6 +311,7 @@ def generation_progress(request):
     return JsonResponse({"error": "Invalid request method"}, status=405)
 
 
+@api_login_required
 @require_POST
 @transaction.atomic
 def save_or_update_schedule(request: HttpRequest, season_id=None):
@@ -393,6 +407,7 @@ def public_schedule_data(request):
         return JsonResponse({"error": str(e)}, status=404)
 
 
+@api_login_required
 @ensure_csrf_cookie
 def schedule_data(request, season_id):
     """API endpoint for schedule data used by React"""
@@ -449,6 +464,7 @@ def team_calendar_export(request, team_org_id):
 
 # Team Management API Endpoints
 
+@api_login_required
 @csrf_exempt
 def teams_endpoint(request):
     """API endpoint for team management operations."""
@@ -516,6 +532,7 @@ def teams_endpoint(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@api_login_required
 @csrf_exempt
 def team_detail_endpoint(request, team_id):
     """API endpoint for individual team operations."""
@@ -577,6 +594,7 @@ def team_detail_endpoint(request, team_id):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@api_login_required
 @csrf_exempt
 def team_archive_endpoint(request, team_id):
     """API endpoint for archiving/unarchiving teams."""
@@ -618,6 +636,7 @@ def team_archive_endpoint(request, team_id):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@api_login_required
 @csrf_exempt
 def team_history_endpoint(request, team_id):
     """API endpoint for getting team participation history."""
@@ -633,6 +652,7 @@ def team_history_endpoint(request, team_id):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@api_login_required
 def team_stats_endpoint(request, team_id):
     """API endpoint for getting team statistics with league tables across all seasons."""
     if request.method == "GET":
@@ -651,6 +671,7 @@ def team_stats_endpoint(request, team_id):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@api_login_required
 @csrf_exempt
 def season_available_teams_endpoint(request, season_id):
     """API endpoint for getting teams available for assignment to a season."""
@@ -675,6 +696,7 @@ def season_available_teams_endpoint(request, season_id):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@api_login_required
 @csrf_exempt
 def season_assign_teams_endpoint(request, season_id):
     """API endpoint for assigning teams to a season."""
@@ -693,6 +715,7 @@ def season_assign_teams_endpoint(request, season_id):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@api_login_required
 @csrf_exempt
 def season_update_team_levels_endpoint(request, season_id):
     """API endpoint for updating team level assignments in a season."""
@@ -711,6 +734,7 @@ def season_update_team_levels_endpoint(request, season_id):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@api_login_required
 @csrf_exempt
 def season_remove_teams_endpoint(request, season_id):
     """API endpoint for removing teams from a season."""

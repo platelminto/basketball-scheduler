@@ -1,9 +1,17 @@
 from django.urls import path
 from . import views
+from . import auth_views
 
 app_name = "scheduler"
 
 urlpatterns = [
+    # Authentication endpoints
+    path("auth/login/", auth_views.login_view, name="login"),
+    path("auth/logout/", auth_views.logout_view, name="logout"),
+    path("auth/status/", auth_views.auth_status, name="auth_status"),
+    path("auth/csrf-token/", auth_views.get_csrf_token, name="csrf_token"),
+    path("auth/test/", auth_views.protected_test, name="protected_test"),
+    
     # API endpoints - standardized resource-based URLs
     path("api/seasons/", views.seasons_endpoint, name="seasons_api"),
     path("api/seasons/<int:season_id>/", views.schedule_data, name="season_details_api"),
@@ -33,6 +41,9 @@ urlpatterns = [
     # Routes for the unified React SPA
     path("app/", views.schedule_app, name="schedule_app"),
     path("app/<path:path>", views.schedule_app, name="schedule_app_paths"),
+    
+    # Redirect root /scheduler/ to public schedule
+    path("", views.redirect_to_public, name="redirect_to_public"),
     
     # Redirect to edit scores for active season
     path("edit-scores/", views.edit_scores_redirect, name="edit_scores_redirect"),
