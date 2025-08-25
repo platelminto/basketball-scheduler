@@ -39,7 +39,7 @@ RUN uv sync --frozen
 COPY . .
 
 # Copy built frontend assets
-COPY --from=frontend-builder /app/assets/js/schedule-app/dist/ ./assets/js/schedule-app/dist/
+COPY --from=frontend-builder /app/static/bundles/ ./static/bundles/
 
 # Make build args available as env vars for Django commands
 ENV DEBUG=${DEBUG}
