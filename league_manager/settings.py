@@ -30,6 +30,8 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","
 if DEBUG:
     ALLOWED_HOSTS += ["*"]
 
+# CSRF trusted origins for production
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if os.environ.get("CSRF_TRUSTED_ORIGINS") else []
 
 # Application definition
 
