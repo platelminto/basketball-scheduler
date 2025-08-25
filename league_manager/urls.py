@@ -21,7 +21,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("scheduler/admin/", admin.site.urls),
     path("scheduler/", include("scheduler.urls")),
 ]
 
