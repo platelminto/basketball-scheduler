@@ -6,25 +6,33 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM python:3.11-slim
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+# Build-time arguments from Coolify
+ARG DEBUG
+ARG SECRET_KEY
+ARG DATABASE_URL
+ARG POSTGRES_DB
+ARG POSTGRES_USER
+ARG POSTGRES_PASSWORD
+ARG ALLOWED_HOSTS
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    pkg-config \
-    default-libmysqlclient-dev \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
-
-WORKDIR /app
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
 
 # Copy uv files
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies
+# Install dependencies (no dev group since we don't have one)
 RUN uv sync --frozen
 
 # Copy application code
@@ -33,10 +41,22 @@ COPY . .
 # Copy built frontend assets
 COPY --from=frontend-builder /app/assets/js/schedule-app/dist/ ./assets/js/schedule-app/dist/
 
+# Make build args available as env vars for Django commands
+ENV DEBUG=${DEBUG}
+ENV SECRET_KEY=${SECRET_KEY}
+ENV DATABASE_URL=${DATABASE_URL}
+ENV POSTGRES_DB=${POSTGRES_DB}
+ENV POSTGRES_USER=${POSTGRES_USER}
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+ENV ALLOWED_HOSTS=${ALLOWED_HOSTS}
+
 # Collect static files
-RUN uv run python manage.py collectstatic --noinput
+RUN uv run --no-sync python manage.py collectstatic --noinput
 
-EXPOSE 8001
+# Add gunicorn
+RUN uv add gunicorn
 
-# Run migrations and start server
-CMD ["sh", "-c", "uv run python manage.py migrate && uv run python manage.py runserver 0.0.0.0:8001"]
+EXPOSE 8000
+
+# Run with gunicorn
+CMD ["uv", "run", "--no-sync", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "league_manager.wsgi:application"]
