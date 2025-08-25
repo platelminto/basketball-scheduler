@@ -78,17 +78,13 @@ WSGI_APPLICATION = "league_manager.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-if os.environ.get("DATABASE_URL"):
-    # Production - PostgreSQL
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if DATABASE_URL:
+    # Production - use DATABASE_URL
+    import dj_database_url
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("POSTGRES_DB"),
-            "USER": os.environ.get("POSTGRES_USER"),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
-            "HOST": "db",
-            "PORT": "5432",
-        }
+        "default": dj_database_url.parse(DATABASE_URL)
     }
 else:
     # Development - SQLite
@@ -135,6 +131,7 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]

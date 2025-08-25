@@ -14,15 +14,13 @@ WORKDIR /app
 ARG DEBUG
 ARG SECRET_KEY
 ARG DATABASE_URL
-ARG POSTGRES_DB
-ARG POSTGRES_USER
-ARG POSTGRES_PASSWORD
 ARG ALLOWED_HOSTS
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
@@ -33,7 +31,7 @@ ENV PATH="/root/.local/bin:${PATH}"
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies (no dev group since we don't have one)
-RUN uv sync --frozen
+RUN rm -rf .venv && uv sync --frozen
 
 # Copy application code
 COPY . .
@@ -45,9 +43,6 @@ COPY --from=frontend-builder /app/static/bundles/ ./static/bundles/
 ENV DEBUG=${DEBUG}
 ENV SECRET_KEY=${SECRET_KEY}
 ENV DATABASE_URL=${DATABASE_URL}
-ENV POSTGRES_DB=${POSTGRES_DB}
-ENV POSTGRES_USER=${POSTGRES_USER}
-ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 ENV ALLOWED_HOSTS=${ALLOWED_HOSTS}
 
 # Collect static files
