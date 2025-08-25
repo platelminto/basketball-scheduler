@@ -10,12 +10,6 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Build-time arguments from Coolify
-ARG DEBUG
-ARG SECRET_KEY
-ARG DATABASE_URL
-ARG ALLOWED_HOSTS
-
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -38,20 +32,13 @@ COPY . .
 
 # Copy built frontend assets
 COPY --from=frontend-builder /app/static/bundles/ ./static/bundles/
-
-# Make build args available as env vars for Django commands
-ENV DEBUG=${DEBUG}
-ENV SECRET_KEY=${SECRET_KEY}
-ENV DATABASE_URL=${DATABASE_URL}
-ENV ALLOWED_HOSTS=${ALLOWED_HOSTS}
-
-# Collect static files
-RUN uv run --no-sync python manage.py collectstatic --noinput
+# Copy webpack stats file
+COPY --from=frontend-builder /app/webpack-stats.json ./webpack-stats.json
+# Environment variables will be provided at runtime by docker-compose
 
 # Add gunicorn
 RUN uv add gunicorn
 
-EXPOSE 8000
+EXPOSE 8001
 
-# Run with gunicorn
-CMD ["uv", "run", "--no-sync", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "league_manager.wsgi:application"]
+# Command will be specified in docker-compose.yml
