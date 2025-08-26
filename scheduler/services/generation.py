@@ -34,16 +34,24 @@ def generate_schedule_process(courts_per_slot, team_names_by_level, time_limit, 
 
         # Create simple progress callback that just stores data without formatting
         def update_progress(progress_data):
-            # Write to file for cross-process communication
+            # Write to file for cross-process communication using atomic write
             import tempfile
             import os
             import json
             progress_file = os.path.join(tempfile.gettempdir(), f"{progress_key}.json")
             try:
-                with open(progress_file, 'w') as f:
+                # Write to temporary file first, then rename (atomic operation)
+                temp_file = progress_file + ".tmp"
+                with open(temp_file, 'w') as f:
                     json.dump(progress_data, f)
+                os.rename(temp_file, progress_file)
             except Exception as e:
                 print(f"Error writing progress file: {e}")
+                # Clean up temp file if it exists
+                try:
+                    os.unlink(temp_file)
+                except:
+                    pass
             
             # Also store best data in shared dict (unformatted)
             if 'best_score' in progress_data and progress_data['best_score'] is not None:
@@ -294,7 +302,14 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     # Format the schedule
     scheduled_week_data = format_generated_schedule(schedule, week_data)
 
-    return {"schedule": scheduled_week_data}
+    # Get final progress data (including all blueprint_results) to include in response
+    final_progress = get_generation_progress(session_key)
+    blueprint_results = final_progress.get('blueprint_results', {}) if final_progress else {}
+
+    return {
+        "schedule": scheduled_week_data,
+        "blueprint_results": blueprint_results
+    }
 
 
 def handle_generation_cancellation(session_key):

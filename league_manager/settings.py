@@ -33,6 +33,13 @@ if DEBUG:
 # CSRF trusted origins for production
 CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if os.environ.get("CSRF_TRUSTED_ORIGINS") else []
 
+# Add localhost for development
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        "http://localhost:8001",
+        "http://127.0.0.1:8001",
+    ])
+
 # Application definition
 
 INSTALLED_APPS = [

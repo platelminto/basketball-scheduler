@@ -146,7 +146,12 @@ const ScheduleParametersModal = ({
           abortController: null,
           generationData: {
             ...prev.generationData,
-            schedule: result.schedule
+            schedule: result.schedule,
+            // Update progressData with final blueprint_results if provided
+            progressData: result.blueprint_results ? {
+              ...prev.generationData?.progressData,
+              blueprint_results: result.blueprint_results
+            } : prev.generationData?.progressData
           }
         }));
       }

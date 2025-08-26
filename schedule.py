@@ -584,6 +584,19 @@ def generate_schedule(courts_per_slot, team_names_by_level, time_limit=60.0, num
     else:
         print("No feasible solutions found!")
     
+    # Send final progress update with all blueprint results
+    if progress_callback:
+        progress_callback({
+            'phase': 'completed',
+            'current_blueprint': len(blueprints),
+            'total_blueprints': len(blueprints),
+            'best_score': best_score if best_score != float('inf') else None,
+            'last_score': None,
+            'best_possible_score': theoretical_best_score,
+            'best_schedule': best_schedule,
+            'blueprint_results': blueprint_results
+        })
+    
     # Phase 3: Post-process the single best schedule found
     final_schedule = flip_teams_by_round(best_schedule, team_names_by_level)
         
