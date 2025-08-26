@@ -42,8 +42,8 @@ urlpatterns = [
     path("app/", views.schedule_app, name="schedule_app"),
     path("app/<path:path>", views.schedule_app, name="schedule_app_paths"),
     
-    # Redirect root /scheduler/ to public schedule
-    path("", views.redirect_to_public, name="redirect_to_public"),
+    # Redirect root /scheduler/ to seasons list
+    path("", views.redirect_to_seasons, name="redirect_to_seasons"),
     
     # Embeddable schedule widget
     path("embed.js", views.embed_script, name="embed_script"),

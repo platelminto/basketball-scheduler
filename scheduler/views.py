@@ -69,9 +69,9 @@ def schedule_app(request, path=None):
     return render(request, "scheduler/schedule_app_standalone.html")
 
 
-def redirect_to_public(request):
-    """Redirect /scheduler/ to the public schedule page."""
-    return redirect('/scheduler/app/public')
+def redirect_to_seasons(request):
+    """Redirect /scheduler/ to the seasons list."""
+    return redirect('/scheduler/app/seasons')
 
 
 def embed_script(request):
