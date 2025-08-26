@@ -74,6 +74,18 @@ def redirect_to_public(request):
     return redirect('/scheduler/app/public')
 
 
+def embed_script(request):
+    """Serve the embed JavaScript file with proper content type."""
+    from webpack_loader.utils import get_files
+    from django.http import HttpResponseRedirect
+    
+    embed_files = get_files('scheduleEmbed')
+    embed_url = embed_files[0]['url']
+    
+    # Redirect to the actual bundle file
+    return HttpResponseRedirect(embed_url)
+
+
 def edit_scores_redirect(request):
     """Redirect to the edit scores page for the current active season."""
     active_season = Season.objects.filter(is_active=True).first()

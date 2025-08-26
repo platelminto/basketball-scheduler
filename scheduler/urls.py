@@ -45,6 +45,9 @@ urlpatterns = [
     # Redirect root /scheduler/ to public schedule
     path("", views.redirect_to_public, name="redirect_to_public"),
     
+    # Embeddable schedule widget
+    path("embed.js", views.embed_script, name="embed_script"),
+    
     # Redirect to edit scores for active season
     path("edit-scores/", views.edit_scores_redirect, name="edit_scores_redirect"),
 ]

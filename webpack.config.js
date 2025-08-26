@@ -7,6 +7,7 @@ module.exports = (env, argv) => {
   return {
     entry: {
       scheduleApp: './assets/js/schedule-app/index.js',
+      scheduleEmbed: './assets/js/schedule-embed.js',
     },
     output: {
       path: path.resolve('./static/bundles/'),
