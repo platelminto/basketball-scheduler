@@ -232,7 +232,7 @@ const ScheduleEditor = ({
           <div className="d-flex flex-wrap gap-2 justify-content-end align-items-center">
             {/* Right side - Auto-generate, then Validate/Save buttons */}
             <div className="d-flex gap-2">
-              {mode === 'create' && isDevelopment && onAutoGenerate && (
+              {mode === 'create' && onAutoGenerate && (
                 <button 
                   type="button" 
                   className="btn btn-info" 
