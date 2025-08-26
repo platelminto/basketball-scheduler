@@ -26,8 +26,8 @@ const NavBar = () => {
           <ul className="navbar-nav">
             <li className="nav-item">
               <Link
-                className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
-                to="/">
+                className={`nav-link ${location.pathname === '/public' ? 'active' : ''}`}
+                to="/public">
                 Public Schedule
               </Link>
             </li>

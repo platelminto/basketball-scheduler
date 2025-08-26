@@ -37,7 +37,10 @@ const ProtectedRoute = ({ children }) => {
         }}>
           <div className="alert alert-danger" style={{ maxWidth: '400px', textAlign: 'center' }}>
             <h4>Access Denied</h4>
-            <p>This page is not available.</p>
+            <p>This page requires authentication.</p>
+            <a href="/scheduler/app/scheduler-login" className="btn btn-primary">
+              Login
+            </a>
           </div>
         </div>
       </div>

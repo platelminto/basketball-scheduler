@@ -91,7 +91,7 @@ def edit_scores_redirect(request):
     active_season = Season.objects.filter(is_active=True).first()
     if not active_season:
         messages.error(request, "No active season found.")
-        return redirect("scheduler:schedule_app")
+        return redirect("scheduler:schedule_app_paths", path="seasons")
 
     return redirect(
         "scheduler:schedule_app_paths", path=f"seasons/{active_season.id}/scores"

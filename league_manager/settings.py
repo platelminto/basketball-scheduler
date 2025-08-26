@@ -164,7 +164,7 @@ SESSION_COOKIE_SECURE = not DEBUG  # Use HTTPS in production
 
 # Login/logout URLs
 LOGIN_URL = '/scheduler/auth/login/'
-LOGIN_REDIRECT_URL = '/scheduler/app/'
+LOGIN_REDIRECT_URL = '/scheduler/app/seasons'
 LOGOUT_REDIRECT_URL = '/scheduler/app/public'
 
 # Default primary key field type

@@ -20,7 +20,10 @@ const App = () => {
         <Routes>
           {/* Public routes */}
           <Route path="/scheduler-login" element={<Login />} />
-          <Route path="/" element={<PublicSchedule />} />
+          <Route path="/public" element={<PublicSchedule />} />
+          
+          {/* Default route redirects to seasons */}
+          <Route path="/" element={<Navigate to="/seasons" replace />} />
           
           {/* Protected routes */}
           <Route path="/seasons" element={
@@ -60,7 +63,7 @@ const App = () => {
           } />
           
           {/* Catch all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/seasons" replace />} />
         </Routes>
       </div>
     </div>
