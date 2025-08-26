@@ -1,211 +1,67 @@
 # USBF League Schedule Generator
 
-## Overview
+A web application for creating balanced basketball league schedules across multiple divisions. Automatically generates fair schedules, assigns referees, and tracks scores throughout the season.
 
-This project is a basketball league schedule generator designed to create balanced schedules for multi-level leagues. It uses advanced algorithms to generate schedules that satisfy various constraints and balance requirements. The application has evolved into a full-featured web application with a React frontend and Django backend.
+## What It Does
 
-## Key Features
+- **Creates Fair Schedules**: Every team plays every other team in their division equally
+- **Balances Game Times**: Ensures no team gets stuck with all the early or late games  
+- **Assigns Referees**: Automatically assigns referees from teams not playing, only in adjacent time slots
+- **Tracks Scores**: Record and view game results throughout the season
+- **Exports Calendars**: Download team schedules as calendar files
 
-- **Multi-Level Support**: Handles leagues with multiple divisions/levels (A, B, C)
-- **Round-Robin Scheduling**: Ensures each team plays against every other team in their level
-- **Referee Assignments**: Automatically assigns referees for each game
-- **Balanced Scheduling**:
-  - Controls how many times teams play in each time slot
-  - Ensures fair referee assignments
-  - Maintains balanced court usage across time slots
-- **Constraint Satisfaction**:
-  - Teams don't play and referee simultaneously
-  - Referees are scheduled in adjacent time slots to their games
-  - Configurable limits on how many times teams play in specific slots
-- **Optimization**: Uses simulated annealing to improve schedule balance
-- **Mirrored Scheduling**: Creates schedules where the second half mirrors the first half's matchups
-- **Validation**: Comprehensive validation of generated schedules
-- **Modern Web Interface**: React-based Single Page Application for schedule management
-- **Season Management**: Create and manage multiple seasons with different team rosters
-- **Score Tracking**: Record and view game scores throughout the season
+## Quick Start
 
-## Architecture
-
-### Backend
-
-- **Django**: Provides the web framework, models, views, and API endpoints
-- **Python Schedule Generator**: Core algorithm for creating balanced schedules
-- **RESTful API**: JSON endpoints for communication with the frontend
-
-### Frontend
-
-- **React**: Single Page Application for responsive UI
-- **React Router**: Client-side routing for seamless navigation
-- **Context API**: Global state management with reducers
-- **Webpack**: Asset bundling and optimization
-
-## Project Structure
-
-- `/scheduler/`: Django app containing models, views, and templates
-- `/assets/js/schedule-app/`: React application
-  - `/components/`: Reusable UI components
-  - `/pages/`: Page-level components mapped to routes
-  - `/contexts/`: React Context providers
-  - `/hooks/`: Custom React hooks
-  - `/styles/`: CSS files
-- `/schedule.py`: Core schedule generation algorithm
-
-## Schedule Configuration
-
-The schedule generator is highly configurable through the `config` dictionary: 
-```python
-config = {
-    # League structure
-    "total_weeks": 10,
-    "levels": ["A", "B", "C"], # Names of the levels/divisions
-    "teams_per_level": { # Number of teams in each level
-        "A": 6,
-        "B": 6,
-        "C": 6,
-    },
-    # Schedule structure
-    "courts_per_slot": {
-        1: 2,
-        2: 2,
-        3: 2,
-        4: 3,
-    }, # Number of courts available in each slot (1-indexed)
-}
-```
-
-## Schedule Generation Algorithm
-
-The schedule generation uses a **two-phase optimization approach**:
-
-### Phase 1: Matchup Generation
-- Creates multiple unique round-robin matchup blueprints
-- Ensures each team plays every other team in their level equally
-- Generates different valid matchup combinations to explore
-
-### Phase 2: Slot & Referee Optimization  
-- Takes each matchup blueprint and optimizes slot/referee assignments
-- Uses **soft constraints** with penalty-based objective function
-- Automatically balances without requiring manual limits
-
-## Automatic Balancing System
-
-The algorithm uses **weighted soft constraints** instead of hard limits:
-
-### **Slot Distribution Balancing**
-- **Target-based**: Calculates expected games per slot based on court availability
-- **Weighted penalties**: 15x higher weight for first/last slots vs middle slots
-- **Automatic fairness**: No team consistently stuck with early/late times
-
-### **Referee Balancing** 
-- **Soft hard limits**: Teams should referee target ±1 games (1000pt penalty for violations)
-- **Adjacent-slot rule**: Referees must play in adjacent time slots (prevents conflicts)
-- **Level-based**: Only teams from same level can referee each other
-
-### **First/Last Slot Protection**
-- **Special constraints**: 500pt penalties for teams getting too many first/last slot games
-- **Fair distribution**: Ensures inconvenient times are shared equally
-
-### **No Manual Configuration Required**
-- Algorithm automatically determines optimal balance based on league structure
-- Penalty-based system finds best possible solution within constraints
-
-## Installation
-
-1. Clone the repository:
+1. **Clone and Install**
    ```bash
-   git clone https://github.com/platelminto/basketball-scheduler.git
+   git clone https://github.com/platelminto/usbf-schedule.git
    cd usbf-schedule
+   uv sync && npm install
    ```
 
-2. Create a virtual environment and install dependencies:
+2. **Set Up Database**
    ```bash
-   # Option 1: Using traditional venv
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   npm install
-
-   
-   # Option 2: Using uv (recommended)
-   uv sync
-   npm install
+   uv run python manage.py migrate
+   uv run python manage.py createsuperuser
    ```
 
-3. Set up the database:
-   ```bash
-   python manage.py migrate
-   ```
-
-4. Create a superuser:
-   ```bash
-   python manage.py createsuperuser
-   ```
-
-5. Build frontend assets:
+3. **Build and Run**
    ```bash
    npm run build
+   uv run python manage.py runserver
    ```
 
-## Development Workflow
+4. **Access the App**
+   - Go to `http://localhost:8001/scheduler/app/`
+   - Log in with your superuser account
+   - Create a season and start scheduling!
 
-1. Run the Django development server:
-   ```bash
-   python manage.py runserver
-   ```
+## Development
 
-2. Watch frontend assets for development:
-   ```bash
-   npm run dev
-   ```
+- **Start Development Server**: `uv run python manage.py runserver`
+- **Watch Frontend Changes**: `npm run dev` (in separate terminal)
+- **Run Tests**: `uv run python manage.py test`
 
-## Usage
+## Features
 
-### Web Interface
+### Schedule Generation
+- **Smart Algorithm**: Uses linear programming to create optimal schedules
+- **Multi-Division Support**: Handle multiple divisions with different team counts
+- **Referee Management**: Teams referee games when they're not playing, and only in adjacent slots to when they played
+- **Flexible Court Setup**: Configure different court availability per time slot
 
-1. Access the application at `http://localhost:8000/scheduler/app/`
-2. Create a new season and set up teams
-3. Generate a schedule or manually create games
-4. Edit the schedule as needed
-5. Record scores as games are played
+### Web Interface  
+- **Season Management**: Create and manage multiple seasons
+- **Team Organization**: Add, edit, and archive teams
+- **Score Tracking**: Record game results and view standings
+- **Calendar Export**: Download schedules for team calendars
 
-### Programmatic Usage
-
-```python
-from schedule import find_schedule
-# Generate a new schedule
-final_schedule, total_attempts = find_schedule(use_saved_schedule=False)
-
-# Print the schedule
-from utils import print_schedule
-print_schedule(final_schedule)
-
-# Save the schedule to a file
-from utils import save_schedule_to_file
-save_schedule_to_file(final_schedule, "my_schedule.json")
-```
-
-## API Endpoints
-
-- Season data: `/scheduler/api/seasons/`
-- Schedule data: `/scheduler/api/schedule/:seasonId/`
-- Update schedule: `/scheduler/schedule/:seasonId/update/`
-
-## Testing
-
-- Run Django tests: `python manage.py test scheduler`
-- Run schedule tests: `python schedule_tests.py`
-- Run all tests: `python manage.py test && python schedule_tests.py`
-
-## Advanced Features
-
-- **Parallel Processing**: Uses multiprocessing to try multiple schedule attempts in parallel
-- **Statistics**: Provides detailed statistics about the generated schedules
-- **Testing**: Includes comprehensive tests to validate schedule properties
+### Validation & Balance
+- **Comprehensive Testing**: Built-in validation ensures schedule quality
+- **Balance Metrics**: View statistics on game time distribution
+- **Conflict Detection**: Prevents teams from playing and refereeing simultaneously
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.10+
 - Node.js 16+
-- Django 4.x
-- React 18.x
-- Additional packages as listed in requirements.txt and package.json

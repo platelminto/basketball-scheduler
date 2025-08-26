@@ -42,16 +42,113 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - SPA base route: `/scheduler/app/`
 - All React routes under `/scheduler/app/` are handled by the React Router
 
+## Detailed Project Structure
+- `/scheduler/`: Django app containing models, views, and templates
+  - `/services/`: Business logic layer for schedule operations
+  - `/auth_views.py`: Authentication endpoints and decorators
+  - `/tests/`: Comprehensive Django test suite
+- `/assets/js/schedule-app/`: React application
+  - `/components/`: Reusable UI components
+  - `/pages/`: Page-level components mapped to routes
+  - `/contexts/`: React Context providers (AuthContext, ScheduleContext)
+  - `/hooks/`: Custom React hooks
+  - `/styles/`: CSS files
+  - `/utils/`: Utility functions for data transformation and API calls
+- `/schedule.py`: Core schedule generation algorithm
+- `/lobster_migrate/`: Data migration tools for importing historical data
+
 ## API Endpoints
-- Seasons: `/scheduler/api/seasons/`
+
+### Authentication Endpoints
+- Login: `/scheduler/auth/login/`
+- Logout: `/scheduler/auth/logout/`
+- Authentication status: `/scheduler/auth/status/`
+- CSRF token: `/scheduler/auth/csrf-token/`
+
+### Season Management
+- Seasons list: `/scheduler/api/seasons/`
 - Season details: `/scheduler/api/seasons/{season_id}/`
 - Activate season: `/scheduler/api/seasons/{season_id}/activate/`
-- Validate schedule: `/scheduler/api/seasons/{season_id}/validate/`
+- Delete season: `/scheduler/api/seasons/{season_id}/delete/`
+- Season standings: `/scheduler/api/seasons/{season_id}/standings/`
 - Generate schedule: `/scheduler/api/seasons/{season_id}/generate/`
-- Update teams/levels: `/scheduler/api/seasons/{season_id}/teams/`
+- Cancel generation: `/scheduler/api/seasons/cancel-generation/`
+- Generation progress: `/scheduler/api/seasons/generation-progress/`
 - Save/update schedule: `/scheduler/api/seasons/{season_id}/schedule/`
+
+### Team Management
+- Teams list: `/scheduler/api/teams/`
+- Team details: `/scheduler/api/teams/{team_id}/`
+- Archive team: `/scheduler/api/teams/{team_id}/archive/`
+- Team statistics: `/scheduler/api/teams/{team_id}/stats/`
+- Team history: `/scheduler/api/teams/{team_id}/history/`
+- Season available teams: `/scheduler/api/seasons/{season_id}/available-teams/`
+- Assign teams to season: `/scheduler/api/seasons/{season_id}/assign-teams/`
+- Update team levels: `/scheduler/api/seasons/{season_id}/team-levels/`
+- Remove teams from season: `/scheduler/api/seasons/{season_id}/remove-teams/`
+
+### Public & Export
 - Public schedule: `/scheduler/api/public/schedule/`
-- Edit scores redirect: `/scheduler/edit-scores/`
+- Team calendar export: `/scheduler/api/team-orgs/{team_org_id}/calendar.ics`
+
+## Schedule Generation Algorithm
+
+The schedule generation uses a **two-phase optimization approach** with linear programming:
+
+### Phase 1: Matchup Blueprint Generation
+- Uses **PuLP** (linear programming) to generate multiple unique round-robin matchup blueprints
+- Ensures each team plays every other team in their level equally across the season
+- Implements **mirrored scheduling** where second half mirrors first half matchups
+- Creates multiple valid matchup combinations for Phase 2 to optimize
+- Uses constraint satisfaction to find diverse blueprint options
+
+### Phase 2: Slot & Referee Assignment Optimization
+- Takes each matchup blueprint and optimizes time slot and referee assignments
+- Uses **weighted penalty system** with sophisticated objective function:
+  - **Slot balance**: Teams distributed fairly across time slots based on court availability
+  - **First/last slot protection**: Higher penalties (500pt) for too many inconvenient times
+  - **Referee balance**: Soft limits (±1 from target) with 1000pt penalties for violations
+  - **Adjacent slot rule**: Referees must play in time slots adjacent to when they referee
+- Evaluates all blueprints and selects the one with lowest imbalance score
+- Supports **cancellation** and **early termination** during optimization
+
+### Automatic Balancing System
+The algorithm uses **weighted soft constraints** instead of hard limits:
+- **Slot Distribution Balancing**: Target-based calculations with weighted penalties (15x higher for first/last slots)
+- **Referee Balancing**: Soft hard limits with teams refereeing target ±1 games
+- **First/Last Slot Protection**: Special constraints with 500pt penalties for too many inconvenient times
+- **No Manual Configuration Required**: Algorithm automatically determines optimal balance
+
+## Schedule Configuration
+
+The schedule generator requires minimal configuration - just team names and court availability:
+
+```python
+# Define teams by level/division
+team_names_by_level = {
+    "A": ["TeamA1", "TeamA2", "TeamA3", "TeamA4", "TeamA5", "TeamA6"],
+    "B": ["TeamB1", "TeamB2", "TeamB3", "TeamB4", "TeamB5", "TeamB6"], 
+    "C": ["TeamC1", "TeamC2", "TeamC3", "TeamC4", "TeamC5", "TeamC6"],
+}
+
+# Define court availability per time slot per week
+courts_per_slot = {
+    1: [1, 1, 2, 2, 2, 2, 2, 2, 2, 2],  # Slot 1: courts available each week
+    2: [3, 3, 2, 2, 2, 2, 2, 2, 2, 2],  # Slot 2: courts available each week
+    3: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],  # Slot 3: courts available each week
+    4: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],  # Slot 4: courts available each week
+}
+
+# Generate schedule with optimization
+schedule = generate_schedule(
+    courts_per_slot=courts_per_slot,
+    team_names_by_level=team_names_by_level,
+    time_limit=60.0,           # Total optimization time in seconds
+    num_blueprints_to_generate=6,  # Number of matchup blueprints to try
+    gapRel=0.25               # Solver optimality gap tolerance
+)
+```
+
 
 ## Code Style Guidelines
 - **Python**: 4-space indentation, max line length ~88 chars
