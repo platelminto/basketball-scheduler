@@ -41,6 +41,7 @@ if DEBUG:
         "http://localhost:1891",
     ])
 
+
 # Application definition
 
 INSTALLED_APPS = [
