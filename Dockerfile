@@ -30,9 +30,8 @@ RUN rm -rf .venv && uv sync --frozen
 # Copy application code
 COPY . .
 
-# Copy built frontend assets
-COPY --from=frontend-builder /app/static/bundles/ ./static/bundles/
-# Copy webpack stats file
+# Copy built frontend assets and webpack stats
+COPY --from=frontend-builder /app/static/ ./static/
 COPY --from=frontend-builder /app/webpack-stats.json ./webpack-stats.json
 # Environment variables will be provided at runtime by docker-compose
 

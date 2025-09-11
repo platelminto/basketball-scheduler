@@ -146,6 +146,13 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
+# Static file serving for development when DEBUG=False
+if not DEBUG:
+    # Use whitenoise or similar in production
+    # For local testing with DEBUG=False, you can temporarily add this:
+    # STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+    pass
+
 # Webpack loader configuration
 WEBPACK_LOADER = {
     'DEFAULT': {
