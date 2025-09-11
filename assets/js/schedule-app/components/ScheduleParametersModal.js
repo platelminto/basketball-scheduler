@@ -12,7 +12,7 @@ const ScheduleParametersModal = ({
   const [state, setState] = useState({
     mode: 'configure',  // 'configure' | 'generating' | 'results'
     parameters: {
-      time_limit: 600,
+      time_limit: 180,
       num_blueprints_to_generate: '',
       gapRel: 0.07
     },
@@ -27,7 +27,7 @@ const ScheduleParametersModal = ({
       setState({
         mode: 'configure',
         parameters: {
-          time_limit: 600,
+          time_limit: 180,
           num_blueprints_to_generate: '',
           gapRel: 0.07
         },
