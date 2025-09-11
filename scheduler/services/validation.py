@@ -10,6 +10,7 @@ from tests import (
     cycle_pairing_test,
     referee_player_test,
     adjacent_slot_test,
+    one_ref_per_week_test,
 )
 from .stats import compute_schedule_statistics
 
@@ -51,6 +52,14 @@ def run_all_validation_tests(schedule_data, teams_per_level):
         "passed": ast_passed,
         "message": "Teams only referee in slots directly adjacent to when they play.",
         "errors": ast_errors,
+    }
+
+    # Run One Ref Per Week Test
+    orpw_passed, orpw_errors = one_ref_per_week_test(schedule_data)
+    validation_results["One Ref Per Week"] = {
+        "passed": orpw_passed,
+        "message": "Teams can only referee once per week (game day).",
+        "errors": orpw_errors,
     }
 
     return validation_results

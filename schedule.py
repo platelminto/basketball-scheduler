@@ -146,6 +146,13 @@ def phase_2_assign_slots_and_refs(total_weeks, courts_per_slot, team_names_by_le
                 if s > 1: adjacent_play += is_playing[(t_ref, w, s - 1)]
                 if s < num_slots: adjacent_play += is_playing[(t_ref, w, s + 1)]
                 prob += is_reffing[(t_ref, w, s)] <= adjacent_play
+    
+    # Constraint: Teams can only referee once per week (day)
+    for t_ref in all_teams:
+        for w in weeks_range:
+            # Sum of all referee assignments for this team in this week across all slots
+            prob += pulp.lpSum(is_reffing[(t_ref, w, s)] for s in slots_range) <= 1
+    
     # --- Objective Function: Weighted deviation from expected slot distribution ---
     # Calculate target slot distribution based on court availability
     total_courts_per_slot = {s: sum(courts_per_slot[s]) for s in slots_range}

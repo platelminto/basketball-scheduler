@@ -358,3 +358,44 @@ def cycle_pairing_test(schedule, teams_per_level):
 
     return passed, errors
 
+
+def one_ref_per_week_test(schedule):
+    """
+    Tests that no team referees more than once per week.
+    Since each week represents a single day of games, this ensures
+    teams only referee once per day.
+
+    Args:
+        schedule: The formatted schedule data
+
+    Returns:
+        tuple[bool, list[str]]: A tuple containing a boolean indicating if the test passed
+                                and a list of error messages.
+    """
+    passed = True
+    errors = []
+    
+    for week_data in schedule:
+        week_num = week_data["week"]
+        team_ref_counts = {}
+        
+        # Count referee assignments per team for this week
+        for slot_key, games in week_data["slots"].items():
+            for game in games:
+                referee = game["ref"]
+                if referee != "N/A":
+                    team_ref_counts[referee] = team_ref_counts.get(referee, 0) + 1
+        
+        # Check if any team referees more than once
+        for team, count in team_ref_counts.items():
+            if count > 1:
+                message = f"Week {week_num}: Team {team} referees {count} times (max 1 allowed per week)"
+                print(message)
+                errors.append(message)
+                passed = False
+    
+    if passed:
+        print("All teams referee at most once per week.")
+    
+    return passed, errors
+

@@ -23,6 +23,7 @@ const ValidationResults = ({
     'Cycle Pairings': 'Matchups must repeat in proper round-robin cycles throughout the season.',
     'Referee-Player': 'A team cannot referee any game in which they are playing.',
     'Adjacent Slots': 'Teams can only referee games in time slots that are directly before or after their own game.',
+    'One Ref Per Week': 'Teams can only referee once per week, ensuring fairness in referee assignments.',
     'sequential_week_dates': 'Schedule must have a week (game week or off week) at every Monday from first to last week with no gaps.'
   };
 
