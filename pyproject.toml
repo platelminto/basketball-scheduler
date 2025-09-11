@@ -13,6 +13,7 @@ dependencies = [
     "psutil>=7.0.0",
     "psycopg>=3.2.9",
     "pulp>=3.2.2",
+    "whitenoise>=6.10.0",
 ]
 
 [dependency-groups]
