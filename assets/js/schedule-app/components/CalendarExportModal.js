@@ -39,7 +39,7 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
   };
 
   const copySubscriptionUrl = (team) => {
-    const url = window.location.origin + generateCalendarUrl(team);
+    const url = generateCalendarUrl(team);
     navigator.clipboard.writeText(url).then(() => {
       setCopyStatus('copied');
       setTimeout(() => setCopyStatus(''), 2000);
