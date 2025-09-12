@@ -10,7 +10,7 @@ export const useStandings = (scheduleData) => {
     const fetchStandings = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/scheduler/api/seasons/${scheduleData.season.id}/standings/`);
+        const response = await fetch(`https://usbf-scheduler.duckdns.org/scheduler/api/seasons/${scheduleData.season.id}/standings/`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

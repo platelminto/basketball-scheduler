@@ -41,6 +41,18 @@ if DEBUG:
         "http://localhost:1891",
     ])
 
+# CORS settings for embed
+cors_origins_raw = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+print(f"DEBUG: CORS_ALLOWED_ORIGINS raw: '{cors_origins_raw}'")
+
+# Temporary hardcoded origins for testing
+if not cors_origins_raw:
+    CORS_ALLOWED_ORIGINS = ["https://usbf.nl", "https://usbf-scheduler.duckdns.org"]
+    print("DEBUG: Using hardcoded CORS_ALLOWED_ORIGINS")
+else:
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_raw.split(",")]
+print(f"DEBUG: CORS_ALLOWED_ORIGINS parsed: {CORS_ALLOWED_ORIGINS}")
+CORS_ALLOW_CREDENTIALS = False
 
 # Application definition
 
@@ -51,11 +63,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "scheduler",
     "webpack_loader",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

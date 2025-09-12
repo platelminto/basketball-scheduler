@@ -22,7 +22,7 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
   console.log('teamsByLevel:', teamsByLevel);
 
   const generateCalendarUrl = (team) => {
-    const baseUrl = `/scheduler/api/team-orgs/${team.team_org_id}/calendar.ics`;
+    const baseUrl = `https://usbf-scheduler.duckdns.org/scheduler/api/team-orgs/${team.team_org_id}/calendar.ics`;
     const params = new URLSearchParams();
     
     if (includeReffing) params.append('include_reffing', 'true');
