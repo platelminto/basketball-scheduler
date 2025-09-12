@@ -173,6 +173,10 @@ def generate_team_calendar(team_org_id, include_reffing, include_scores, include
     cal.add("method", "PUBLISH")
     cal.add("x-wr-calname", f"{team_org.name}")
     cal.add("x-wr-caldesc", f"USBF schedule for {team_org.name}")
+    cal.add("name", f"{team_org.name}")
+    cal.add("x-wr-timezone", "Europe/Amsterdam")
+    cal.add("displayname", f"{team_org.name}")
+    cal.add("x-apple-calendar-color", "#3b82f6")
 
     # Query for games across all seasons for this team organization
     games_query = Q(season_team1__team=team_org) | Q(season_team2__team=team_org)
