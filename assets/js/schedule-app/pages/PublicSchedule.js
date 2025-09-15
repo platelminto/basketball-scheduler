@@ -26,7 +26,7 @@ const PublicSchedule = () => {
   useEffect(() => {
     const fetchScheduleData = async () => {
       try {
-        const response = await fetch('https://usbf-scheduler.duckdns.org/scheduler/api/public/schedule/');
+        const response = await fetch('/scheduler/api/public/schedule/');
         if (!response.ok) {
           if (response.status === 404) {
             setError('no_active_season');
