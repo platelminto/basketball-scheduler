@@ -41,7 +41,7 @@ def format_games_by_week(all_week_data):
             games = (
                 Game.objects.filter(week=week)
                 .select_related("level", "season_team1__team", "season_team2__team", "referee_season_team__team")
-                .order_by("day_of_week", "time")
+                .order_by("day_of_week", "time", "court")
             )
 
             games_list = []
