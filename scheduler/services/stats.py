@@ -76,22 +76,139 @@ def calculate_team_stats_in_season(season_team):
     return stats
 
 
+def get_head_to_head_winner(season_team1_id, season_team2_id):
+    """
+    Compare head-to-head record between two season teams.
+    Returns: 1 if team1 wins more H2H, -1 if team2 wins more, 0 if tied.
+    """
+    # Get all completed games between these two teams
+    games_team1_home = Game.objects.filter(
+        season_team1_id=season_team1_id,
+        season_team2_id=season_team2_id,
+        team1_score__isnull=False,
+        team2_score__isnull=False
+    )
+
+    games_team1_away = Game.objects.filter(
+        season_team1_id=season_team2_id,
+        season_team2_id=season_team1_id,
+        team1_score__isnull=False,
+        team2_score__isnull=False
+    )
+
+    team1_wins = 0
+    team2_wins = 0
+
+    # Count wins when team1 is home
+    for game in games_team1_home:
+        if game.team1_score > game.team2_score:
+            team1_wins += 1
+        elif game.team2_score > game.team1_score:
+            team2_wins += 1
+
+    # Count wins when team1 is away
+    for game in games_team1_away:
+        if game.team2_score > game.team1_score:
+            team1_wins += 1
+        elif game.team1_score > game.team2_score:
+            team2_wins += 1
+
+    if team1_wins > team2_wins:
+        return 1
+    elif team2_wins > team1_wins:
+        return -1
+    else:
+        return 0
+
+
+def _apply_head_to_head_tiebreaker(teams):
+    """
+    Apply head-to-head tiebreaker to a list of teams from the same level.
+    Teams should already be sorted by PCT, PD, PA.
+    """
+    if len(teams) <= 1:
+        return teams
+
+    # Group teams by their current standing (PCT, PD, PA)
+    tie_groups = []
+    current_group = [teams[0]]
+
+    for i in range(1, len(teams)):
+        prev_team = teams[i-1]
+        curr_team = teams[i]
+
+        # Check if teams are tied on PCT, PD, and PA
+        if (prev_team['win_pct'] == curr_team['win_pct'] and
+            prev_team['point_diff'] == curr_team['point_diff'] and
+            prev_team['points_against'] == curr_team['points_against']):
+            current_group.append(curr_team)
+        else:
+            tie_groups.append(current_group)
+            current_group = [curr_team]
+
+    tie_groups.append(current_group)
+
+    # Apply H2H tiebreaker within each tied group
+    result = []
+    for group in tie_groups:
+        if len(group) == 2:
+            # For exactly 2 teams, use H2H directly
+            team1, team2 = group
+            h2h_result = get_head_to_head_winner(team1['season_team_id'], team2['season_team_id'])
+            if h2h_result == 1:
+                result.extend([team1, team2])
+            elif h2h_result == -1:
+                result.extend([team2, team1])
+            else:
+                # H2H is tied, keep original order
+                result.extend(group)
+        else:
+            # For 3+ teams or single teams, keep original order
+            # (Could implement round-robin H2H comparison here if needed)
+            result.extend(group)
+
+    return result
+
+
 def calculate_season_standings(season):
     """Calculate standings for all teams in a season."""
     season_teams = SeasonTeam.objects.filter(season=season).select_related('team', 'level')
-    
+
     standings = []
     for season_team in season_teams:
         team_stats = calculate_team_stats_in_season(season_team)
         standings.append(team_stats)
-    
-    # Sort standings by level, then by win percentage, then by point differential
+
+    # Sort standings by level, then by win percentage, then by point differential, then by points against
     standings.sort(key=lambda x: (
         x['level_id'],
         -x['win_pct'],  # Higher win percentage first
         -x['point_diff'],  # Better point differential first
-        x['points_against']  # Lower points against as tiebreaker
+        x['points_against']  # Lower points against first
     ))
+
+    # Apply head-to-head tiebreaker as final step
+    # Group teams by level and apply H2H within each level
+    final_standings = []
+    current_level = None
+    level_teams = []
+
+    for team in standings:
+        if team['level_id'] != current_level:
+            # Process previous level's teams with H2H tiebreaker
+            if level_teams:
+                final_standings.extend(_apply_head_to_head_tiebreaker(level_teams))
+            # Start new level
+            current_level = team['level_id']
+            level_teams = [team]
+        else:
+            level_teams.append(team)
+
+    # Process final level
+    if level_teams:
+        final_standings.extend(_apply_head_to_head_tiebreaker(level_teams))
+
+    standings = final_standings
     
     # Calculate final positions within each level
     current_level = None

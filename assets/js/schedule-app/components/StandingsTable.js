@@ -128,6 +128,17 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
         );
         })}
       </div>
+
+      {/* Ordering explanation */}
+      <div style={{
+        fontSize: '11px',
+        color: '#777',
+        textAlign: 'center',
+        marginTop: '4px',
+        fontStyle: 'italic'
+      }}>
+        Ordered by: Win Percentage → Point Differential → Points Against → Head-to-Head
+      </div>
     </div>
   );
 };
