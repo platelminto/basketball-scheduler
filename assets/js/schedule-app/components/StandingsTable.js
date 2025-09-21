@@ -94,13 +94,16 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full", showOrderi
                   <div style={{ textAlign: 'center', fontWeight: '600', color: '#666' }}>
                     {index + 1}
                   </div>
-                  <div style={{ 
-                    fontSize: '13px', 
-                    fontWeight: '400',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: '400',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title={team.name}
+                  >
                     {team.name}
                   </div>
                   <div style={{ textAlign: 'center' }}>{team.gamesPlayed}</div>
