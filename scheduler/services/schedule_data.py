@@ -11,8 +11,8 @@ from scheduler.models import Season, Week, OffWeek, Game, Level, SeasonTeam
 def get_teams_and_levels_data(season):
     """Get all levels and teams data for a season."""
     # Get all levels
-    levels = Level.objects.filter(season=season).order_by("name")
-    levels_data = [{"id": level.id, "name": level.name} for level in levels]
+    levels = Level.objects.filter(season=season).order_by("display_order", "id")
+    levels_data = [{"id": level.id, "name": level.name, "display_order": level.display_order} for level in levels]
 
     # Get all teams by level using SeasonTeam
     teams_by_level = {}

@@ -1,6 +1,6 @@
 import React from 'react';
 
-const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
+const StandingsTable = ({ standings, levels, showBoth, mode = "full", showOrderingText = false }) => {
   const isSummary = mode === "summary";
   
   if (!standings || standings.length === 0) {
@@ -31,7 +31,7 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
         flexWrap: 'wrap',
         justifyContent: isSummary ? 'space-evenly' : 'normal'
       }}>
-        {levels.sort((a, b) => a.id - b.id).map(level => {
+        {levels.sort((a, b) => a.display_order - b.display_order).map(level => {
         const levelStandings = standings.filter(team => team.level_id === level.id);
         if (levelStandings.length === 0) return null;
       
@@ -129,16 +129,18 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
         })}
       </div>
 
-      {/* Ordering explanation */}
-      <div style={{
-        fontSize: '11px',
-        color: '#777',
-        textAlign: 'center',
-        marginTop: '4px',
-        fontStyle: 'italic'
-      }}>
-        Ordered by: Win Percentage → Point Differential → Points Against → Head-to-Head
-      </div>
+      {/* Ordering explanation - only show if requested */}
+      {showOrderingText && (
+        <div style={{
+          fontSize: '11px',
+          color: '#777',
+          textAlign: 'center',
+          marginTop: '4px',
+          fontStyle: 'italic'
+        }}>
+          Ordered by: Win Percentage → Point Differential → Points Against → Head-to-Head
+        </div>
+      )}
     </div>
   );
 };

@@ -43,8 +43,12 @@ def create_season_and_structure(season_name, setup_data, week_dates_data):
     # Create levels and teams
     level_instances = {}
     team_instances = {}
-    for level_name, team_names in teams_by_level_name.items():
-        level_obj = Level.objects.create(season=season, name=level_name)
+    for level_index, (level_name, team_names) in enumerate(teams_by_level_name.items()):
+        level_obj = Level.objects.create(
+            season=season,
+            name=level_name,
+            display_order=level_index
+        )
         level_instances[level_name] = level_obj
         team_instances[level_name] = {}
         for team_data in team_names:
