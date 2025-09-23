@@ -36,6 +36,14 @@ A web application for creating balanced basketball league schedules across multi
    - Log in with your superuser account
    - Create a season and start scheduling!
 
+5. **Deploy Embedded Public Schedule**
+   - Host on same domain as your site (or otherwise, allow various CORS/Allowed Origins/etc. stuff, and possibly hardcode some stuff e.g. in the calendar exports for the other domain)
+   - Embed with:
+```
+<div id="schedule-embed"></div>
+  <script src="https://example.com/scheduler/embed.js"></script>
+```
+
 ## Development
 
 - **Start Development Server**: `uv run python manage.py runserver`
