@@ -7,12 +7,14 @@ requires-python = ">=3.10"
 dependencies = [
     "dj-database-url>=3.0.1",
     "django>=5.2.3",
+    "django-cors-headers>=4.8.0",
     "django-webpack-loader>=3.2.1",
     "icalendar>=6.3.1",
     "orloge>=0.18.3",
     "psutil>=7.0.0",
     "psycopg>=3.2.9",
     "pulp>=3.2.2",
+    "whitenoise>=6.10.0",
 ]
 
 [dependency-groups]

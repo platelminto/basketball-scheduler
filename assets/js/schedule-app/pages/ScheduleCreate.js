@@ -121,18 +121,22 @@ const ScheduleCreate = () => {
           // Process each time slot
           day.times.forEach(timeSlot => {
             // Create empty games for each court in this time slot
+            // Assign courts from highest to lowest (use last court first)
             for (let i = 0; i < timeSlot.courts; i++) {
               const gameId = `new_${Date.now()}_${Math.random()}`;
-              
+
               // Create date from week start date + day offset
               const gameDate = new Date(week.weekStartDate);
               gameDate.setDate(gameDate.getDate() + parseInt(day.dayOfWeek));
-              
+
+              // Use courts from last to first: if 3 courts available, use Court 3, then Court 2, then Court 1
+              const courtNumber = timeSlot.courts - i;
+
               weekData.games.push({
                 id: gameId,
                 day_of_week: day.dayOfWeek,
                 time: timeSlot.time,
-                court: `Court ${i+1}`,
+                court: `Court ${courtNumber}`,
                 date: gameDate.toISOString().split('T')[0], // Store the date in YYYY-MM-DD format
                 level_id: '',
                 level_name: '',

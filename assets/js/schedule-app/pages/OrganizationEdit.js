@@ -43,7 +43,7 @@ const OrganizationEdit = () => {
       return { levels: [], courts: [], originalCourts: [] };
     }
     
-    const levels = seasonData.levels.sort((a, b) => a.id - b.id).map(level => ({
+    const levels = seasonData.levels.sort((a, b) => a.display_order - b.display_order).map(level => ({
       id: level.id,
       name: level.name,
       teams: (seasonData.teams_by_level[level.id] || []).map(team => ({

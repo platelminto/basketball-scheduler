@@ -22,7 +22,7 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
   console.log('teamsByLevel:', teamsByLevel);
 
   const generateCalendarUrl = (team) => {
-    const baseUrl = `/scheduler/api/team-orgs/${team.team_org_id}/calendar.ics`;
+    const baseUrl = `${window.location.origin}/scheduler/api/team-orgs/${team.team_org_id}/calendar.ics`;
     const params = new URLSearchParams();
     
     if (includeReffing) params.append('include_reffing', 'true');
@@ -39,7 +39,7 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
   };
 
   const copySubscriptionUrl = (team) => {
-    const url = window.location.origin + generateCalendarUrl(team);
+    const url = generateCalendarUrl(team);
     navigator.clipboard.writeText(url).then(() => {
       setCopyStatus('copied');
       setTimeout(() => setCopyStatus(''), 2000);
@@ -59,20 +59,29 @@ const CalendarExportModal = ({ scheduleData, onClose }) => {
     setSelectedTeam(null);
   };
 
+  const handleBackdropClick = (e) => {
+    // Only close if clicking the backdrop, not the modal content
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      zIndex: 1000,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
+    <div
+      onClick={handleBackdropClick}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
       <div style={{
         backgroundColor: 'white',
         borderRadius: '8px',

@@ -41,6 +41,10 @@ if DEBUG:
         "http://localhost:1891",
     ])
 
+# CORS settings for embed
+CORS_ALLOWED_ORIGINS = ["https://usbf.nl", "https://usbf-scheduler.duckdns.org"]
+CORS_ALLOW_CREDENTIALS = False
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -50,12 +54,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "scheduler",
     "webpack_loader",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -145,6 +152,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
 
 # Webpack loader configuration
 WEBPACK_LOADER = {

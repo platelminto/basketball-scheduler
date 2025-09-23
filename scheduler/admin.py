@@ -45,7 +45,14 @@ class SeasonAdmin(admin.ModelAdmin):
         
         for season in queryset.filter(is_deleted=True):
             if season.name.startswith("DELETED_"):
-                original_name = season.name[8:]  # Remove "DELETED_" prefix
+                # Remove "DELETED_" prefix and random suffix
+                name_parts = season.name[8:]  # Remove "DELETED_" prefix
+                if '_' in name_parts and len(name_parts.split('_')[-1]) == 5:
+                    # Remove the last part if it looks like a 5-character suffix
+                    original_name = '_'.join(name_parts.split('_')[:-1])
+                else:
+                    # Fallback for old format without suffix
+                    original_name = name_parts
                 season.name = original_name
                 season.is_deleted = False
                 season.save()
@@ -56,7 +63,14 @@ class SeasonAdmin(admin.ModelAdmin):
                 for season_team in season_teams:
                     team = season_team.team
                     if team.is_deleted and team.name.startswith("DELETED_"):
-                        team_original_name = team.name[8:]  # Remove "DELETED_" prefix
+                        # Remove "DELETED_" prefix and random suffix for teams
+                        team_name_parts = team.name[8:]  # Remove "DELETED_" prefix
+                        if '_' in team_name_parts and len(team_name_parts.split('_')[-1]) == 5:
+                            # Remove the last part if it looks like a 5-character suffix
+                            team_original_name = '_'.join(team_name_parts.split('_')[:-1])
+                        else:
+                            # Fallback for old format without suffix
+                            team_original_name = team_name_parts
                         team.name = team_original_name
                         team.is_deleted = False
                         team.save()
@@ -76,11 +90,15 @@ class SeasonAdmin(admin.ModelAdmin):
     @admin.action(description="Soft delete selected seasons")
     def soft_delete_seasons(self, request, queryset):
         """Soft delete seasons by adding DELETED_ prefix and setting is_deleted=True"""
+        import random
+        import string
+        
         deleted_count = 0
         for season in queryset.filter(is_deleted=False):
             original_name = season.name
+            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             season.is_deleted = True
-            season.name = f"DELETED_{original_name}"
+            season.name = f"DELETED_{original_name}_{random_suffix}"
             season.is_active = False  # Deactivate when deleting
             season.save()
             deleted_count += 1
@@ -281,7 +299,14 @@ class TeamOrganizationAdmin(admin.ModelAdmin):
         restored_count = 0
         for team in queryset.filter(is_deleted=True):
             if team.name.startswith("DELETED_"):
-                original_name = team.name[8:]  # Remove "DELETED_" prefix
+                # Remove "DELETED_" prefix and random suffix
+                name_parts = team.name[8:]  # Remove "DELETED_" prefix
+                if '_' in name_parts and len(name_parts.split('_')[-1]) == 5:
+                    # Remove the last part if it looks like a 5-character suffix
+                    original_name = '_'.join(name_parts.split('_')[:-1])
+                else:
+                    # Fallback for old format without suffix
+                    original_name = name_parts
                 team.name = original_name
                 team.is_deleted = False
                 team.save()
@@ -295,6 +320,9 @@ class TeamOrganizationAdmin(admin.ModelAdmin):
     @admin.action(description="Soft delete selected teams")
     def soft_delete_teams(self, request, queryset):
         """Soft delete teams by adding DELETED_ prefix and setting is_deleted=True"""
+        import random
+        import string
+        
         deleted_count = 0
         skipped_teams = []
         
@@ -307,8 +335,9 @@ class TeamOrganizationAdmin(admin.ModelAdmin):
                 continue
             
             original_name = team.name
+            random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
             team.is_deleted = True
-            team.name = f"DELETED_{original_name}"
+            team.name = f"DELETED_{original_name}_{random_suffix}"
             team.save()
             deleted_count += 1
         

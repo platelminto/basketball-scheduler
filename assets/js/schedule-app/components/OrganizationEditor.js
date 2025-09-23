@@ -336,7 +336,7 @@ const OrganizationEditor = ({
         </div>
         
         <div id="teamLevelsContainer" className="team-levels-container">
-          {levels.sort((a, b) => a.id - b.id).map(renderLevelColumn)}
+          {levels.sort((a, b) => a.display_order - b.display_order).map(renderLevelColumn)}
         </div>
       </div>
       

@@ -154,9 +154,13 @@ def delete_season(request, season_id):
             }, status=400)
         
         # Soft delete the season and rename it
+        import random
+        import string
+        
         original_name = season.name
+        random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
         season.is_deleted = True
-        season.name = f"DELETED_{original_name}"
+        season.name = f"DELETED_{original_name}_{random_suffix}"
         season.save()
         
         return JsonResponse({

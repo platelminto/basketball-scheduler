@@ -74,9 +74,13 @@ def delete_team(team_id):
         return {"status": "error", "message": f"Cannot delete team '{team.name}' - it is still assigned to non-deleted seasons: {season_names}"}
     
     # Soft delete the team and rename it to avoid name conflicts
+    import random
+    import string
+    
     original_name = team.name
+    random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
     team.is_deleted = True
-    team.name = f"DELETED_{original_name}"
+    team.name = f"DELETED_{original_name}_{random_suffix}"
     team.save()
     
     return {"status": "success", "message": f"Team '{original_name}' has been deleted"}

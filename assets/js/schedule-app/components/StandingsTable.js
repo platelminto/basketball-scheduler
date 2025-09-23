@@ -1,6 +1,6 @@
 import React from 'react';
 
-const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
+const StandingsTable = ({ standings, levels, showBoth, mode = "full", showOrderingText = false }) => {
   const isSummary = mode === "summary";
   
   if (!standings || standings.length === 0) {
@@ -31,7 +31,7 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
         flexWrap: 'wrap',
         justifyContent: isSummary ? 'space-evenly' : 'normal'
       }}>
-        {levels.sort((a, b) => a.id - b.id).map(level => {
+        {levels.sort((a, b) => a.display_order - b.display_order).map(level => {
         const levelStandings = standings.filter(team => team.level_id === level.id);
         if (levelStandings.length === 0) return null;
       
@@ -94,13 +94,16 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
                   <div style={{ textAlign: 'center', fontWeight: '600', color: '#666' }}>
                     {index + 1}
                   </div>
-                  <div style={{ 
-                    fontSize: '13px', 
-                    fontWeight: '400',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: '400',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title={team.name}
+                  >
                     {team.name}
                   </div>
                   <div style={{ textAlign: 'center' }}>{team.gamesPlayed}</div>
@@ -128,6 +131,19 @@ const StandingsTable = ({ standings, levels, showBoth, mode = "full" }) => {
         );
         })}
       </div>
+
+      {/* Ordering explanation - only show if requested */}
+      {showOrderingText && (
+        <div style={{
+          fontSize: '11px',
+          color: '#777',
+          textAlign: 'center',
+          marginTop: '4px',
+          fontStyle: 'italic'
+        }}>
+          Ordered by: Win Percentage → Point Differential → Points Against → Head-to-Head
+        </div>
+      )}
     </div>
   );
 };

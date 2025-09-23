@@ -74,8 +74,12 @@ class Level(models.Model):
 
     season = models.ForeignKey(Season, related_name="levels", on_delete=models.CASCADE)
     name = models.CharField(max_length=50, help_text="e.g., Mid, High, Top, etc.")
+    display_order = models.PositiveIntegerField(
+        default=0,
+        help_text="Order for displaying levels (lower numbers shown first)"
+    )
     slot_duration_minutes = models.PositiveIntegerField(
-        null=True, 
+        null=True,
         blank=True,
         help_text="Duration override for this level (falls back to season default if not set)"
     )
@@ -89,6 +93,7 @@ class Level(models.Model):
             "season",
             "name",
         )  # Level names must be unique within a season
+        ordering = ["display_order", "id"]
 
     def __str__(self):
         return f"{self.name}"
