@@ -50,6 +50,24 @@ A web application for creating balanced basketball league schedules across multi
 - **Watch Frontend Changes**: `npm run dev` (in separate terminal)
 - **Run Tests**: `uv run python manage.py test`
 
+## Production Deployment
+
+```bash
+# 1. Setup environment
+cp .env.example .env  # Edit with your values
+
+# 2. Deploy with Docker
+docker network create shared-network
+docker-compose up -d
+docker-compose exec web uv run python manage.py createsuperuser
+
+# 3. Caddy reverse proxy (optional)
+# Caddyfile: your-domain.com { reverse_proxy web:8001 }
+```
+
+**Required .env variables:**
+- `SECRET_KEY`, `POSTGRES_PASSWORD`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`
+
 ## Features
 
 ### Schedule Generation
@@ -73,3 +91,25 @@ A web application for creating balanced basketball league schedules across multi
 
 - Python 3.10+
 - Node.js 16+
+
+## Screenshots
+
+### Season Management
+![Season List](screenshots/season_list.png)
+*Season overview showing multiple seasons with team counts and status*
+
+### Schedule Setup
+![Setup Interface](screenshots/setup.png)
+*Configuration interface for team assignment and court setup*
+
+### Auto-Generation Process
+![Auto Generation](screenshots/auto-generation.png)
+*Real-time schedule generation with progress tracking and optimization metrics*
+
+### Score Tracking
+![Score Editing](screenshots/score_edit.png)
+*Game score entry interface with team standings integration*
+
+### Public Schedule View
+![Public Schedule](screenshots/public.png)
+*Clean, public-facing schedule display for teams and spectators*
