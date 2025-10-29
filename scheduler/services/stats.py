@@ -179,12 +179,13 @@ def calculate_season_standings(season):
         team_stats = calculate_team_stats_in_season(season_team)
         standings.append(team_stats)
 
-    # Sort standings by level, then by win percentage, then by point differential, then by points against
+    # Sort standings by level, then by wins, then by draws, then by point differential, then by points against
     standings.sort(key=lambda x: (
         x['level_id'],
-        -x['win_pct'],  # Higher win percentage first
-        -x['point_diff'],  # Better point differential first
-        x['points_against']  # Lower points against first
+        -x['wins'],  # More wins first
+        -x['draws'],  # More draws second (fewer losses)
+        -x['point_diff'],  # Better point differential third
+        x['points_against']  # Lower points against fourth
     ))
 
     # Apply head-to-head tiebreaker as final step
