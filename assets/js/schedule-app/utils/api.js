@@ -27,16 +27,20 @@ async function getCSRFToken() {
 }
 
 /**
- * Handle authentication errors
+ * Handle authentication and CSRF errors
  */
 function handleAuthError(response) {
   if (response.status === 401) {
     // Clear CSRF token cache on auth error
     csrfToken = null;
-    
+
     // Redirect to login page
     window.location.href = '/scheduler/auth/login/';
     return true;
+  }
+  if (response.status === 403) {
+    // Clear CSRF token on 403 - likely stale token
+    csrfToken = null;
   }
   return false;
 }
@@ -44,7 +48,7 @@ function handleAuthError(response) {
 /**
  * Make authenticated API request
  */
-async function apiRequest(url, options = {}) {
+async function apiRequest(url, options = {}, retryOnCsrf = true) {
   const config = {
     credentials: 'same-origin',
     headers: {
@@ -71,6 +75,13 @@ async function apiRequest(url, options = {}) {
     // Handle authentication errors
     if (handleAuthError(response)) {
       throw new Error('Authentication required');
+    }
+
+    // Handle CSRF errors with automatic retry
+    if (response.status === 403 && retryOnCsrf) {
+      console.log('CSRF token rejected, refreshing and retrying...');
+      csrfToken = null;  // Clear cached token
+      return apiRequest(url, options, false);  // Retry once without retry flag
     }
 
     // Handle other HTTP errors
