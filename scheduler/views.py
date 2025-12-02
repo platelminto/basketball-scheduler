@@ -1,4 +1,4 @@
-import traceback
+import logging
 import json
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpRequest, HttpResponse
@@ -7,6 +7,8 @@ from django.views.decorators.http import require_POST
 from django.db import transaction, IntegrityError
 from django.contrib import messages
 from scheduler.models import Season
+
+logger = logging.getLogger(__name__)
 from scheduler.decorators import api_login_required, schedule_app_login_required
 from scheduler.services import (
     # Season management
@@ -125,6 +127,7 @@ def activate_season(request, season_id):
         result = activate_season_logic(season_id)
         return JsonResponse(result)
     except Exception as e:
+        logger.exception(f"Error activating season {season_id}")
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
@@ -174,6 +177,7 @@ def delete_season(request, season_id):
             "error": "Season not found"
         }, status=404)
     except Exception as e:
+        logger.exception(f"Error deleting season {season_id}")
         return JsonResponse({
             "success": False,
             "error": str(e)
@@ -191,9 +195,7 @@ def validate_schedule(request, season_id=None):
         except ValueError as e:
             return JsonResponse({"error": str(e)}, status=400)
         except Exception as e:
-            # Log the exception for debugging
-            print(f"Error during validation: {e}")  # Consider using proper logging
-            traceback.print_exc()
+            logger.exception("Error during schedule validation")
             return JsonResponse(
                 {"error": f"An internal error occurred during validation: {e}"},
                 status=500,
@@ -226,8 +228,7 @@ def auto_generate_schedule(request, season_id=None):
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON data"}, status=400)
         except Exception as e:
-            print(f"Error during auto-generation: {e}")
-            print(traceback.format_exc())
+            logger.exception("Error during auto-generation")
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -264,14 +265,10 @@ def cancel_schedule_generation(request):
             result = handle_generation_cancellation(session_key)
             return JsonResponse(result, status=200)
         except ValueError as e:
-            import traceback
-            print(f"ValueError in cancel_schedule_generation: {e}")
-            traceback.print_exc()
+            logger.exception("ValueError in cancel_schedule_generation")
             return JsonResponse({"error": str(e)}, status=400)
         except Exception as e:
-            import traceback
-            print(f"Exception in cancel_schedule_generation: {e}")
-            traceback.print_exc()
+            logger.exception("Error in cancel_schedule_generation")
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=405)
@@ -310,9 +307,7 @@ def generation_progress(request):
                             formatted_schedule = format_generated_schedule(progress['best_schedule'], week_data)
                             progress['best_schedule'] = formatted_schedule
                     except Exception as e:
-                        print(f"Error formatting best_schedule in progress: {e}")
-                        import traceback
-                        traceback.print_exc()
+                        logger.exception("Error formatting best_schedule in progress")
                         # Keep unformatted version as fallback
                         pass
                 
@@ -397,6 +392,7 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
             {"status": "error", "message": "Invalid JSON data"}, status=400
         )
     except IntegrityError as e:
+        logger.exception("Database integrity error in save_or_update_schedule")
         return JsonResponse(
             {"status": "error", "message": f"Database integrity error: {e}"}, status=400
         )
@@ -405,8 +401,7 @@ def save_or_update_schedule(request: HttpRequest, season_id=None):
             {"status": "error", "message": f"Validation error: {e}"}, status=400
         )
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        print(traceback.format_exc())
+        logger.exception("Unexpected error in save_or_update_schedule")
         return JsonResponse(
             {"status": "error", "message": f"An unexpected error occurred: {e}"},
             status=500,
@@ -776,20 +771,14 @@ def season_standings_endpoint(request, season_id):
         try:
             from django.shortcuts import get_object_or_404
             from scheduler.models import Season, SeasonTeam
-            
+
             season = get_object_or_404(Season, pk=season_id)
-            
-            # Debug: Check if season teams exist
-            season_teams_count = SeasonTeam.objects.filter(season=season).count()
-            print(f"DEBUG: Season {season_id} has {season_teams_count} teams")
-            
             standings = calculate_season_standings(season)
-            print(f"DEBUG: Calculated {len(standings)} standings")
-            
+
             return JsonResponse({'standings': standings})
-            
+
         except Exception as e:
-            print(f"DEBUG: Error in standings endpoint: {str(e)}")
+            logger.exception(f"Error in standings endpoint for season {season_id}")
             return JsonResponse({'error': str(e)}, status=400)
     
     else:

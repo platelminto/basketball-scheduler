@@ -1,16 +1,25 @@
 import json
+import logging
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.views.decorators.http import require_http_methods
 from django.middleware.csrf import get_token
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 @ensure_csrf_cookie
 def get_csrf_token(request):
     """Get CSRF token for frontend"""
-    return JsonResponse({'csrfToken': get_token(request)})
+    token = get_token(request)
+    logger.info(f"CSRF token requested - Origin: {request.headers.get('Origin', 'none')}, "
+                f"Referer: {request.headers.get('Referer', 'none')}, "
+                f"Host: {request.headers.get('Host', 'none')}")
+    logger.info(f"CSRF_TRUSTED_ORIGINS: {settings.CSRF_TRUSTED_ORIGINS}")
+    return JsonResponse({'csrfToken': token})
 
 
 @csrf_protect
@@ -53,6 +62,7 @@ def login_view(request):
             'error': 'Invalid JSON data'
         }, status=400)
     except Exception as e:
+        logger.exception("Error during login")
         return JsonResponse({
             'success': False,
             'error': 'An error occurred during login'

@@ -65,7 +65,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    "scheduler.middleware.CSRFDebugMiddleware",  # Custom CSRF middleware with logging
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -171,6 +171,10 @@ SESSION_COOKIE_HTTPONLY = True  # Prevent XSS attacks
 SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
 SESSION_COOKIE_SECURE = not DEBUG  # Use HTTPS in production
 
+# CSRF cookie configuration for production
+CSRF_COOKIE_SECURE = not DEBUG  # Use HTTPS in production
+CSRF_COOKIE_SAMESITE = 'Lax'  # Match session cookie
+
 # Login/logout URLs
 LOGIN_URL = '/scheduler/auth/login/'
 LOGIN_REDIRECT_URL = '/scheduler/app/seasons'
@@ -180,3 +184,28 @@ LOGOUT_REDIRECT_URL = '/scheduler/app/public'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'scheduler': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}

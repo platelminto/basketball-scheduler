@@ -6,10 +6,13 @@ threading, cancellation handling, and generation validation.
 """
 
 import copy
+import logging
 import multiprocessing
 import random
 
 from django.core.cache import cache
+
+logger = logging.getLogger(__name__)
 from utils import get_config_from_schedule_creator
 
 
@@ -46,7 +49,8 @@ def generate_schedule_process(courts_per_slot, team_names_by_level, time_limit, 
                     json.dump(progress_data, f)
                 os.rename(temp_file, progress_file)
             except Exception as e:
-                print(f"Error writing progress file: {e}")
+                # Can't use logger in subprocess - it's not Django-aware
+                pass
                 # Clean up temp file if it exists
                 try:
                     os.unlink(temp_file)
@@ -195,7 +199,7 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
         if os.path.exists(cancel_file):
             os.remove(cancel_file)
     except Exception as e:
-        print(f"Error cleaning up cancel file: {e}")
+        logger.warning(f"Error cleaning up cancel file: {e}")
     
     # Clean up any leftover progress files from previous generations
     import tempfile
@@ -206,7 +210,7 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
         if os.path.exists(progress_file):
             os.remove(progress_file)
     except Exception as e:
-        print(f"Error cleaning up progress file {progress_file}: {e}")
+        logger.warning(f"Error cleaning up progress file {progress_file}: {e}")
 
     # Create multiprocessing manager for shared state
     manager = multiprocessing.Manager()
@@ -273,7 +277,7 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
             if os.path.exists(cancel_file):
                 os.remove(cancel_file)
         except Exception as e:
-            print(f"Error cleaning up files on cancellation: {e}")
+            logger.warning(f"Error cleaning up files on cancellation: {e}")
         return {"message": "Schedule generation was cancelled"}
     
     # Normal completion case - check for error and schedule
@@ -333,7 +337,7 @@ def handle_generation_cancellation(session_key):
             with open(cancel_file, 'w') as f:
                 f.write('1')
         except Exception as e:
-            print(f"Error creating cancel file: {e}")
+            logger.exception("Error creating cancel file")
         
         # Get the process ID if it exists
         process_pid = cache.get(process_key)
@@ -348,9 +352,9 @@ def handle_generation_cancellation(session_key):
                 except psutil.TimeoutExpired:
                     process.kill()  # Send SIGKILL if it doesn't respond
             except (psutil.NoSuchProcess, psutil.AccessDenied, OSError, ProcessLookupError):
-                print(f"Process {process_pid} already terminated")
+                logger.debug(f"Process {process_pid} already terminated")
             except Exception as e:
-                print(f"Error killing process {process_pid}: {e}")
+                logger.exception(f"Error killing process {process_pid}")
         
         # The main generation function will detect the process death and treat it as cancellation
         message = "Generation cancelled"
@@ -381,7 +385,7 @@ def get_generation_progress(session_key):
                     progress_data = json.load(f)
                 return progress_data
         except Exception as e:
-            print(f"Error reading progress file: {e}")
+            logger.warning(f"Error reading progress file: {e}")
         
         # Fallback to cache (shouldn't work with multiprocessing but keeping it)
         progress_data = cache.get(progress_key)
