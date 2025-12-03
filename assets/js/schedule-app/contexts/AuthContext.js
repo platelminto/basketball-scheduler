@@ -140,10 +140,6 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear CSRF token cache from API utility
-      const { clearCSRFToken } = await import('../utils/api');
-      clearCSRFToken();
-      
       // Always clear auth state, even if API call failed
       dispatch({ type: AUTH_ACTIONS.LOGOUT });
     }

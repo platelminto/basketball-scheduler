@@ -2,45 +2,24 @@
  * Centralized API utility with authentication handling
  */
 
-// Cache for CSRF token
-let csrfToken = null;
-
 /**
- * Get CSRF token from server
+ * Get CSRF token from cookie (always fresh, no caching issues)
  */
-async function getCSRFToken() {
-  if (csrfToken) {
-    return csrfToken;
-  }
-
-  try {
-    const response = await fetch('/scheduler/auth/csrf-token/', {
-      credentials: 'same-origin'
-    });
-    const data = await response.json();
-    csrfToken = data.csrfToken;
-    return csrfToken;
-  } catch (error) {
-    console.error('Failed to get CSRF token:', error);
-    throw error;
-  }
+function getCSRFToken() {
+  const value = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('csrftoken='))
+    ?.split('=')[1];
+  return value || null;
 }
 
 /**
- * Handle authentication and CSRF errors
+ * Handle authentication errors
  */
 function handleAuthError(response) {
   if (response.status === 401) {
-    // Clear CSRF token cache on auth error
-    csrfToken = null;
-
-    // Redirect to login page
     window.location.href = '/scheduler/auth/login/';
     return true;
-  }
-  if (response.status === 403) {
-    // Clear CSRF token on 403 - likely stale token
-    csrfToken = null;
   }
   return false;
 }
@@ -48,7 +27,7 @@ function handleAuthError(response) {
 /**
  * Make authenticated API request
  */
-async function apiRequest(url, options = {}, retryOnCsrf = true) {
+async function apiRequest(url, options = {}) {
   const config = {
     credentials: 'same-origin',
     headers: {
@@ -60,12 +39,9 @@ async function apiRequest(url, options = {}, retryOnCsrf = true) {
 
   // Add CSRF token for non-GET requests
   if (config.method && config.method !== 'GET') {
-    try {
-      const token = await getCSRFToken();
+    const token = getCSRFToken();
+    if (token) {
       config.headers['X-CSRFToken'] = token;
-    } catch (error) {
-      console.error('Failed to add CSRF token:', error);
-      // Continue with request without CSRF token - server will handle it
     }
   }
 
@@ -77,14 +53,7 @@ async function apiRequest(url, options = {}, retryOnCsrf = true) {
       throw new Error('Authentication required');
     }
 
-    // Handle CSRF errors with automatic retry
-    if (response.status === 403 && retryOnCsrf) {
-      console.log('CSRF token rejected, refreshing and retrying...');
-      csrfToken = null;  // Clear cached token
-      return apiRequest(url, options, false);  // Retry once without retry flag
-    }
-
-    // Handle other HTTP errors
+    // Handle HTTP errors
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -141,19 +110,12 @@ export async function apiDelete(url, data = null) {
 }
 
 /**
- * Clear CSRF token cache (useful for testing or after logout)
- */
-export function clearCSRFToken() {
-  csrfToken = null;
-}
-
-/**
  * Upload file with authentication
  */
 export async function apiUpload(url, formData) {
   try {
-    const token = await getCSRFToken();
-    
+    const token = getCSRFToken();
+
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
@@ -186,8 +148,7 @@ const api = {
   post: apiPost,
   put: apiPut,
   delete: apiDelete,
-  upload: apiUpload,
-  clearCSRFToken
+  upload: apiUpload
 };
 
 export default api;
