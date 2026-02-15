@@ -87,6 +87,11 @@ docker-compose exec web uv run python manage.py createsuperuser
 - **Balance Metrics**: View statistics on game time distribution
 - **Conflict Detection**: Prevents teams from playing and refereeing simultaneously
 
+### Backups
+- **Automated Backups**: Weekly backups every Tuesday with 1-year retention
+- **Easy Restore**: Restore from any backup with a single command
+- **See [BACKUPS.md](BACKUPS.md) for setup and usage**
+
 ## Requirements
 
 - Python 3.10+
