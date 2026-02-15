@@ -17,6 +17,7 @@ services:
     restart: unless-stopped
     volumes:
       - static_volume:/app/staticfiles
+      - ./backups:/app/backups
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/scheduler/"]
       interval: 30s

@@ -1,63 +1,53 @@
-# Schedule Backups
+# Database Backups
 
-This directory contains automated backups of all basketball schedules.
+Simple raw database dumps — no custom serialization, just copy the database.
+
+## How It Works
+
+- **Dev (SQLite)**: Copies `db.sqlite3` into a timestamped backup directory
+- **Prod (Postgres)**: Runs `pg_dump` to create a `.sql` dump file
 
 ## Automatic Backups
 
-Backups are created automatically every Tuesday at 2:00 AM via cron.
-
-### Setting up Automated Backups
-
-Add this line to your crontab:
+Set up a cron job to run backups weekly:
 
 ```bash
+# Add to crontab (crontab -e)
 0 2 * * 2 cd /path/to/basketball-scheduler && uv run python manage.py backup_schedules
 ```
 
-To edit crontab:
+### Docker
+
+The `web` container has `./backups:/app/backups` mounted, so backups persist on the host. Use a cron container or host cron:
+
 ```bash
-crontab -e
+# Host cron example
+0 2 * * 2 docker compose exec web uv run python manage.py backup_schedules
 ```
 
-### Docker Setup
-
-For Docker deployments, add to docker-compose.yml or use a cron container:
-
-```yaml
-services:
-  backup:
-    image: your-app-image
-    volumes:
-      - ./backups:/app/backups
-    command: >
-      sh -c "echo '0 2 * * 2 cd /app && uv run python manage.py backup_schedules' | crontab - && crond -f"
-```
-
-## Manual Backups
-
-Run a backup manually anytime:
+## Manual Backup
 
 ```bash
 python manage.py backup_schedules
 ```
 
 Options:
-- `--retention-days N`: Keep backups for N days (default: 365)
-- `--backup-dir PATH`: Custom backup directory location
+- `--retention-days N` — Keep backups for N days (default: 365)
+- `--backup-dir PATH` — Custom backup directory (default: `backups/`)
 
-## Restore from Backup
+## Restore
 
-To restore a schedule from a backup:
+**WARNING**: Restore replaces the **entire database**, including user accounts, sessions, and admin data.
 
 ```bash
-# Restore as a new season
-python manage.py restore_schedule backups/2026-02-15_02-00-00/season-1_24-25-Season-1.json
+# SQLite (dev)
+python manage.py restore_schedule backups/2026-02-15_02-00-00/db.sqlite3
 
-# Restore with a new name
-python manage.py restore_schedule backups/2026-02-15_02-00-00/season-1_24-25-Season-1.json --rename "24/25 Season 1 (Restored)"
+# Postgres (prod)
+python manage.py restore_schedule backups/2026-02-15_02-00-00/db_dump.sql
 
-# Overwrite existing season (destructive!)
-python manage.py restore_schedule backups/2026-02-15_02-00-00/season-1_24-25-Season-1.json --overwrite
+# Skip confirmation prompt
+python manage.py restore_schedule backups/2026-02-15_02-00-00/db.sqlite3 --yes
 ```
 
 ## Backup Structure
@@ -65,22 +55,12 @@ python manage.py restore_schedule backups/2026-02-15_02-00-00/season-1_24-25-Sea
 ```
 backups/
 ├── 2026-02-11_02-00-00/
-│   ├── season-1_24-25-Season-1.json
-│   └── season-2_24-25-Season-2.json
+│   └── db.sqlite3          # or db_dump.sql for Postgres
 ├── 2026-02-18_02-00-00/
-│   ├── season-1_24-25-Season-1.json
-│   └── season-3_24-25-Season-3.json
-└── README.md
+│   └── db.sqlite3
+└── ...
 ```
-
-Each backup includes:
-- Complete season metadata (name, slot duration, teams, levels)
-- All games with scores, referees, and scheduling
-- Week dates and off-week information
-- Timestamp and season identifiers
 
 ## Retention Policy
 
-By default, backups older than 365 days are automatically deleted during each backup run. This keeps the backup directory from growing indefinitely while maintaining a full year of history.
-
-Backup files are small (typically a few KB per season), so storage requirements are minimal.
+Backups older than 365 days (configurable via `--retention-days`) are automatically deleted during each backup run.
