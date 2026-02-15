@@ -144,9 +144,20 @@ class Command(BaseCommand):
                 team_name = team_data["name"]
                 
                 # Get or create TeamOrganization
-                team_org, created = TeamOrganization.objects.get_or_create(
-                    name=team_name
-                )
+                # First, try to find an existing non-deleted team
+                existing_teams = TeamOrganization.objects.filter(name=team_name)
+                
+                if existing_teams.exists():
+                    # If multiple teams exist, prefer non-archived ones
+                    team_org = existing_teams.filter(is_archived=False).first()
+                    if not team_org:
+                        # All are archived, just use the first one
+                        team_org = existing_teams.first()
+                    created = False
+                else:
+                    # Create new team
+                    team_org = TeamOrganization.objects.create(name=team_name)
+                    created = True
                 
                 # Create SeasonTeam
                 season_team = SeasonTeam.objects.create(
