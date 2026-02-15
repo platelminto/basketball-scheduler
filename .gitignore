@@ -32,6 +32,7 @@ db.sqlite3-journal
 *.log
 local_settings.py
 media/
+backups/
 
 # Frontend
 node_modules/
