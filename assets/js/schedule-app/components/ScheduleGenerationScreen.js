@@ -8,6 +8,7 @@ const ScheduleGenerationScreen = ({
   onCancel,
   onStopAndUseBest,
   generatedSchedule,
+  isRaw = false,
   onApply,
   onClose
 }) => {
@@ -263,7 +264,7 @@ const ScheduleGenerationScreen = ({
           <button type="button" className="btn btn-success" onClick={() => {
             // Apply the generated schedule by calling the parent's apply function
             if (onApply && generatedSchedule) {
-              onApply({ schedule: generatedSchedule });
+              onApply({ schedule: generatedSchedule, isRaw });
             }
             onClose();
           }}>

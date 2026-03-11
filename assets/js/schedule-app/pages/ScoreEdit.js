@@ -252,7 +252,11 @@ const ScoreEdit = () => {
 
   // Get CSRF token for form submissions
   const getCsrfToken = () => {
-    return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+    const value = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('csrftoken='))
+      ?.split('=')[1];
+    return value || '';
   };
 
   return (

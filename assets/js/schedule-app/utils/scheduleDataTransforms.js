@@ -204,9 +204,13 @@ export const prepareTeamsPerLevel = (state) => {
 };
 
 /**
- * Gets CSRF token from the DOM
+ * Gets CSRF token from the cookie (always fresh, survives token rotation)
  * @returns {string} CSRF token value
  */
 export const getCsrfToken = () => {
-  return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+  const value = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('csrftoken='))
+    ?.split('=')[1];
+  return value || '';
 };

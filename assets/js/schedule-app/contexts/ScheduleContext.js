@@ -24,6 +24,7 @@ export const COPY_WEEK = 'COPY_WEEK';
 export const MARK_CHANGED = 'MARK_CHANGED';
 export const RESET_CHANGE_TRACKING = 'RESET_CHANGE_TRACKING';
 export const TOGGLE_WEEK_LOCK = 'TOGGLE_WEEK_LOCK';
+export const APPLY_GENERATED_SCHEDULE = 'APPLY_GENERATED_SCHEDULE';
 
 // Initial state
 const initialState = {
@@ -427,14 +428,14 @@ const scheduleReducer = (state, action) => {
         if (week.week_number > deletedWeek.week_number) {
           const originalDate = new Date(week.monday_date);
           const shiftedDate = new Date(originalDate);
-          shiftedDate.setDate(originalDate.getDate() - 7); // Shift back by 7 days
+          shiftedDate.setUTCDate(originalDate.getUTCDate() - 7); // Shift back by 7 days
           adjustedDate = shiftedDate.toISOString().split('T')[0];
-          
+
           // Update individual game dates for shifted weeks
           updatedGames = week.games.map(game => {
             if (game.day_of_week !== undefined && game.day_of_week !== null) {
               const gameDate = new Date(shiftedDate);
-              gameDate.setDate(shiftedDate.getDate() + parseInt(game.day_of_week));
+              gameDate.setUTCDate(shiftedDate.getUTCDate() + parseInt(game.day_of_week));
               return {
                 ...game,
                 date: gameDate.toISOString().split('T')[0]
@@ -519,14 +520,14 @@ const scheduleReducer = (state, action) => {
         if (index > insertionIndex) {
           const originalDate = new Date(week.monday_date);
           const shiftedDate = new Date(originalDate);
-          shiftedDate.setDate(originalDate.getDate() + 7);
+          shiftedDate.setUTCDate(originalDate.getUTCDate() + 7);
           adjustedDate = shiftedDate.toISOString().split('T')[0];
-          
+
           // Update individual game dates for shifted weeks
           updatedGames = week.games.map(game => {
             if (game.day_of_week !== undefined && game.day_of_week !== null) {
               const gameDate = new Date(shiftedDate);
-              gameDate.setDate(shiftedDate.getDate() + parseInt(game.day_of_week));
+              gameDate.setUTCDate(shiftedDate.getUTCDate() + parseInt(game.day_of_week));
               return {
                 ...game,
                 date: gameDate.toISOString().split('T')[0]
@@ -559,11 +560,11 @@ const scheduleReducer = (state, action) => {
     case ADD_NEW_WEEK: {
       const { afterWeekId, newWeekData } = action.payload;
       const updatedWeeks = { ...state.weeks };
-      
+
       // Get all weeks sorted by week number
       const sortedWeeks = Object.values(updatedWeeks)
         .sort((a, b) => a.week_number - b.week_number);
-      
+
       // Find insertion position
       let insertionIndex;
       if (afterWeekId === null) {
@@ -574,7 +575,7 @@ const scheduleReducer = (state, action) => {
         const afterWeekIndex = sortedWeeks.findIndex(w => w.week_number === afterWeekId);
         insertionIndex = afterWeekIndex !== -1 ? afterWeekIndex + 1 : sortedWeeks.length;
       }
-      
+
       // Create new week with temporary ID
       const newWeek = {
         id: `new_week_${Date.now()}`,
@@ -583,17 +584,17 @@ const scheduleReducer = (state, action) => {
         games: newWeekData.games || [],
         isOffWeek: false
       };
-      
+
       // Insert the new week into the sorted array
       sortedWeeks.splice(insertionIndex, 0, newWeek);
-      
+
       // Renumber all weeks sequentially and adjust dates
       const renumberedWeeks = {};
       const changedWeeks = new Set(state.changedWeeks);
-      
+
       sortedWeeks.forEach((week, index) => {
         const newWeekNumber = index + 1;
-        
+
         // Calculate the appropriate Monday date for this week position
         let mondayDate;
         if (index === 0) {
@@ -603,15 +604,15 @@ const scheduleReducer = (state, action) => {
           // Subsequent weeks - calculate based on previous week
           const prevWeekDate = new Date(sortedWeeks[index - 1].monday_date);
           const nextWeekDate = new Date(prevWeekDate);
-          nextWeekDate.setDate(prevWeekDate.getDate() + 7);
+          nextWeekDate.setUTCDate(prevWeekDate.getUTCDate() + 7);
           mondayDate = nextWeekDate.toISOString().split('T')[0];
         }
-        
+
         // Update games' dates to match the new week date
         const updatedGames = week.games.map(game => {
           if (game.day_of_week !== undefined && game.day_of_week !== null) {
             const gameDate = new Date(mondayDate);
-            gameDate.setDate(gameDate.getDate() + parseInt(game.day_of_week));
+            gameDate.setUTCDate(gameDate.getUTCDate() + parseInt(game.day_of_week));
             return {
               ...game,
               date: gameDate.toISOString().split('T')[0]
@@ -619,20 +620,20 @@ const scheduleReducer = (state, action) => {
           }
           return game;
         });
-        
+
         const updatedWeek = {
           ...week,
           week_number: newWeekNumber,
           monday_date: mondayDate,
           games: updatedGames
         };
-        
+
         renumberedWeeks[newWeekNumber] = updatedWeek;
-        
+
         // Mark all affected weeks as changed
         changedWeeks.add(newWeekNumber);
       });
-      
+
       return {
         ...state,
         weeks: renumberedWeeks,
@@ -643,11 +644,11 @@ const scheduleReducer = (state, action) => {
     case COPY_WEEK: {
       const { afterWeekId, templateWeek } = action.payload;
       const updatedWeeks = { ...state.weeks };
-      
+
       // Get all weeks sorted by week number
       const sortedWeeks = Object.values(updatedWeeks)
         .sort((a, b) => a.week_number - b.week_number);
-      
+
       // Find insertion position
       let insertionIndex;
       if (afterWeekId === null) {
@@ -658,7 +659,7 @@ const scheduleReducer = (state, action) => {
         const afterWeekIndex = sortedWeeks.findIndex(w => w.week_number === afterWeekId);
         insertionIndex = afterWeekIndex !== -1 ? afterWeekIndex + 1 : sortedWeeks.length;
       }
-      
+
       // Calculate the appropriate date for the new week
       let newWeekDate;
       if (insertionIndex === 0) {
@@ -666,7 +667,7 @@ const scheduleReducer = (state, action) => {
         if (sortedWeeks.length > 0) {
           const firstWeekDate = new Date(sortedWeeks[0].monday_date);
           const prevWeekDate = new Date(firstWeekDate);
-          prevWeekDate.setDate(firstWeekDate.getDate() - 7);
+          prevWeekDate.setUTCDate(firstWeekDate.getUTCDate() - 7);
           newWeekDate = prevWeekDate.toISOString().split('T')[0];
         } else {
           // No existing weeks, use current Monday
@@ -680,13 +681,13 @@ const scheduleReducer = (state, action) => {
         // Inserting at the end - use one week after the last week
         const lastWeekDate = new Date(sortedWeeks[sortedWeeks.length - 1].monday_date);
         const nextWeekDate = new Date(lastWeekDate);
-        nextWeekDate.setDate(lastWeekDate.getDate() + 7);
+        nextWeekDate.setUTCDate(lastWeekDate.getUTCDate() + 7);
         newWeekDate = nextWeekDate.toISOString().split('T')[0];
       } else {
         // Inserting between weeks - use the date where we're inserting
         newWeekDate = sortedWeeks[insertionIndex].monday_date;
       }
-      
+
       // Create new week by copying template
       const newWeek = {
         id: `copied_week_${Date.now()}`,
@@ -695,21 +696,21 @@ const scheduleReducer = (state, action) => {
         games: templateWeek.games.map(game => ({
           ...game,
           id: `new_${Date.now()}_${Math.random()}`,
-          date: new Date(newWeekDate).toISOString().split('T')[0] // Will be updated with proper day offset below
+          date: newWeekDate // Will be updated with proper day offset below
         })),
         isOffWeek: false
       };
-      
+
       // Insert the new week into the sorted array
       sortedWeeks.splice(insertionIndex, 0, newWeek);
-      
+
       // Renumber all weeks sequentially and adjust dates
       const renumberedWeeks = {};
       const changedWeeks = new Set(state.changedWeeks);
-      
+
       sortedWeeks.forEach((week, index) => {
         const newWeekNumber = index + 1;
-        
+
         // Calculate the appropriate Monday date for this week position
         let mondayDate;
         if (index === 0) {
@@ -719,15 +720,15 @@ const scheduleReducer = (state, action) => {
           // Subsequent weeks - calculate based on previous week
           const prevWeekDate = new Date(sortedWeeks[index - 1].monday_date);
           const nextWeekDate = new Date(prevWeekDate);
-          nextWeekDate.setDate(prevWeekDate.getDate() + 7);
+          nextWeekDate.setUTCDate(prevWeekDate.getUTCDate() + 7);
           mondayDate = nextWeekDate.toISOString().split('T')[0];
         }
-        
+
         // Update games' dates to match the new week date
         const updatedGames = week.games.map(game => {
           if (game.day_of_week !== undefined && game.day_of_week !== null) {
             const gameDate = new Date(mondayDate);
-            gameDate.setDate(gameDate.getDate() + parseInt(game.day_of_week));
+            gameDate.setUTCDate(gameDate.getUTCDate() + parseInt(game.day_of_week));
             return {
               ...game,
               date: gameDate.toISOString().split('T')[0]
@@ -735,20 +736,20 @@ const scheduleReducer = (state, action) => {
           }
           return game;
         });
-        
+
         const updatedWeek = {
           ...week,
           week_number: newWeekNumber,
           monday_date: mondayDate,
           games: updatedGames
         };
-        
+
         renumberedWeeks[newWeekNumber] = updatedWeek;
-        
+
         // Mark all affected weeks as changed
         changedWeeks.add(newWeekNumber);
       });
-      
+
       return {
         ...state,
         weeks: renumberedWeeks,
@@ -768,19 +769,46 @@ const scheduleReducer = (state, action) => {
     case TOGGLE_WEEK_LOCK: {
       const { weekNumber } = action.payload;
       const lockedWeeks = new Set(state.lockedWeeks);
-      
+
       if (lockedWeeks.has(weekNumber)) {
         lockedWeeks.delete(weekNumber);
       } else {
         lockedWeeks.add(weekNumber);
       }
-      
+
       return {
         ...state,
         lockedWeeks
       };
     }
-      
+
+    case APPLY_GENERATED_SCHEDULE: {
+      const { assignments } = action.payload;
+      const updatedWeeks = {};
+
+      for (const weekNum in state.weeks) {
+        const weekData = state.weeks[weekNum];
+        const updatedGames = weekData.games.map(game => {
+          const assignment = assignments[game.id];
+          if (assignment) {
+            return { ...game, ...assignment };
+          }
+          return game;
+        });
+
+        updatedWeeks[weekNum] = {
+          ...weekData,
+          games: updatedGames
+        };
+      }
+
+      return {
+        ...state,
+        weeks: updatedWeeks,
+        validationCleared: true
+      };
+    }
+
     default:
       return state;
   }

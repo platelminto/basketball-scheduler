@@ -156,7 +156,7 @@ const WeekContainer = ({ weekData, mode = 'score-edit', useSimpleView = false })
     weekData.games.forEach(game => {
       if (game.day_of_week !== undefined && game.day_of_week !== null) {
         const gameDate = new Date(mondayDate);
-        gameDate.setDate(mondayDate.getDate() + parseInt(game.day_of_week));
+        gameDate.setUTCDate(mondayDate.getUTCDate() + parseInt(game.day_of_week));
         
         // Dispatch update for each game's date
         dispatch({

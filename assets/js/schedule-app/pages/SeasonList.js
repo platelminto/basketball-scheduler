@@ -146,7 +146,7 @@ const SeasonList = () => {
   
   const handleActivateSeason = async (seasonId) => {
     try {
-      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const csrfToken = (document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '');
 
       const response = await fetch(`/scheduler/api/seasons/${seasonId}/activate/`, {
         method: 'POST',
@@ -199,7 +199,7 @@ const SeasonList = () => {
     }
     
     try {
-      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const csrfToken = (document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '');
 
       const response = await fetch(`/scheduler/api/seasons/${seasonId}/delete/`, {
         method: 'POST',
