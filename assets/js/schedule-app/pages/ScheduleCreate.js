@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSchedule } from '../hooks/useSchedule';
-import { SET_SCHEDULE_DATA, RESET_CHANGE_TRACKING, UPDATE_GAME } from '../contexts/ScheduleContext';
+import { SET_SCHEDULE_DATA, RESET_CHANGE_TRACKING, APPLY_GENERATED_SCHEDULE } from '../contexts/ScheduleContext';
 import ScheduleEditor from '../components/schedule/ScheduleEditor';
 import ScheduleParametersModal from '../components/ScheduleParametersModal';
 
@@ -125,9 +125,9 @@ const ScheduleCreate = () => {
             for (let i = 0; i < timeSlot.courts; i++) {
               const gameId = `new_${Date.now()}_${Math.random()}`;
 
-              // Create date from week start date + day offset
+              // Create date from week start date + day offset (use UTC to avoid DST issues)
               const gameDate = new Date(week.weekStartDate);
-              gameDate.setDate(gameDate.getDate() + parseInt(day.dayOfWeek));
+              gameDate.setUTCDate(gameDate.getUTCDate() + parseInt(day.dayOfWeek));
 
               // Use courts from last to first: if 3 courts available, use Court 3, then Court 2, then Court 1
               const courtNumber = timeSlot.courts - i;
@@ -227,140 +227,136 @@ const ScheduleCreate = () => {
     setShowParametersModal(true);
   };
 
+  // Convert raw algorithm output (with slots keys) to flat array format
+  const formatRawSchedule = (rawSchedule) => {
+    const formatted = [];
+    let seen_off_weeks = 0;
+
+    // Get state weeks sorted by week_number
+    const sortedWeeks = Object.values(state.weeks)
+      .sort((a, b) => a.week_number - b.week_number);
+
+    for (const stateWeek of sortedWeeks) {
+      if (stateWeek.isOffWeek) {
+        seen_off_weeks++;
+        continue;
+      }
+
+      const scheduleIdx = stateWeek.week_number - 1 - seen_off_weeks;
+      if (scheduleIdx < 0 || scheduleIdx >= rawSchedule.length) {
+        console.warn(`No raw schedule entry for week ${stateWeek.week_number}`);
+        continue;
+      }
+
+      const scheduleWeek = rawSchedule[scheduleIdx];
+      const scheduleGames = [];
+      for (const slotKey of Object.keys(scheduleWeek.slots)) {
+        for (const game of scheduleWeek.slots[slotKey]) {
+          scheduleGames.push(game);
+        }
+      }
+
+      const weekGames = [];
+      stateWeek.games.forEach((game, i) => {
+        if (i < scheduleGames.length) {
+          const sg = scheduleGames[i];
+          weekGames.push({
+            id: game.id,
+            level_name: sg.level,
+            team1_name: sg.teams[0],
+            team2_name: sg.teams[1],
+            referee_name: sg.ref
+          });
+        }
+      });
+
+      formatted.push(weekGames);
+    }
+
+    return formatted;
+  };
+
   // Fill schedule with auto-generated data
-  const fillScheduleWithGeneratedData = (generatedSchedule) => {
+  const fillScheduleWithGeneratedData = (generatedSchedule, isRaw = false) => {
     try {
-      let lastUsedWeekNumber = 0; // Track the last week we used
-      
-      // Process each week in the generated schedule
-      generatedSchedule.forEach((weekGames, weekIndex) => {
-        // Find the next available non-off week starting from where we left off
+      // If raw format (from "Stop & Use Best"), convert to flat array first
+      const schedule = isRaw ? formatRawSchedule(generatedSchedule) : generatedSchedule;
+
+      const assignments = {};
+      let lastUsedWeekNumber = 0;
+
+      schedule.forEach((weekGames) => {
+        // Find the next available non-off week
         let weekNumber = lastUsedWeekNumber + 1;
         let weekData = state.weeks[weekNumber];
-        
-        // Keep incrementing until we find a non-off week
+
         while (weekData && weekData.isOffWeek) {
           weekNumber++;
           weekData = state.weeks[weekNumber];
         }
-        
-        if (!weekData) {
-          console.warn(`No more weeks available for generated schedule entry ${weekIndex}`);
-          return;
-        }
-        
-        // Update our tracking variable
+
+        if (!weekData) return;
         lastUsedWeekNumber = weekNumber;
-        
-        // Create a map of existing games by their ID for quick lookup
-        const existingGamesMap = {};
-        weekData.games.forEach((game, gameIndex) => {
-          if (!game.isDeleted) {
-            existingGamesMap[game.id] = { game, index: gameIndex };
-          }
-        });
-        
-        // Process each generated game
+
         weekGames.forEach(generatedGame => {
-          // Find the corresponding existing game by ID
-          const gameInfo = existingGamesMap[generatedGame.id];
-          
-          if (gameInfo) {
-            const existingGame = gameInfo.game;
-            let levelId = null;
-            
-            // First, handle level assignment and get the levelId for team lookups
-            if (generatedGame.level_name) {
-              const levelObj = state.levels.find(l => l.name === generatedGame.level_name);
-              if (levelObj) {
-                levelId = levelObj.id;
-                dispatch({
-                  type: UPDATE_GAME,
-                  payload: { gameId: existingGame.id, field: 'level_id', value: levelObj.id }
-                });
-                dispatch({
-                  type: UPDATE_GAME,
-                  payload: { gameId: existingGame.id, field: 'level_name', value: levelObj.name }
-                });
-              }
+          const existingGame = weekData.games.find(g => g.id === generatedGame.id && !g.isDeleted);
+          if (!existingGame) return;
+
+          const assignment = {};
+
+          // Resolve level
+          if (generatedGame.level_name) {
+            const levelObj = state.levels.find(l => l.name === generatedGame.level_name);
+            if (levelObj) {
+              assignment.level_id = levelObj.id;
+              assignment.level_name = levelObj.name;
             }
-            
-            // Use the levelId we just determined or fall back to existing level_id
-            const finalLevelId = levelId || existingGame.level_id;
-            
-            // Update team1 data
-            if (generatedGame.team1_name && finalLevelId && state.teamsByLevel[finalLevelId]) {
-              const team1Obj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.team1_name);
-              if (team1Obj) {
-                dispatch({
-                  type: UPDATE_GAME,
-                  payload: { gameId: existingGame.id, field: 'team1_id', value: team1Obj.id }
-                });
-                dispatch({
-                  type: UPDATE_GAME,
-                  payload: { gameId: existingGame.id, field: 'team1_name', value: team1Obj.name }
-                });
-              }
-            }
-            
-            // Update team2 data
-            if (generatedGame.team2_name && finalLevelId && state.teamsByLevel[finalLevelId]) {
-              const team2Obj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.team2_name);
-              if (team2Obj) {
-                dispatch({
-                  type: UPDATE_GAME,
-                  payload: { gameId: existingGame.id, field: 'team2_id', value: team2Obj.id }
-                });
-                dispatch({
-                  type: UPDATE_GAME,
-                  payload: { gameId: existingGame.id, field: 'team2_name', value: team2Obj.name }
-                });
-              }
-            }
-            
-            // Update referee data
-            if (generatedGame.referee_name) {
-              if (finalLevelId && state.teamsByLevel[finalLevelId]) {
-                const refTeamObj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.referee_name);
-                if (refTeamObj) {
-                  dispatch({
-                    type: UPDATE_GAME,
-                    payload: { gameId: existingGame.id, field: 'referee_team_id', value: refTeamObj.id }
-                  });
-                  dispatch({
-                    type: UPDATE_GAME,
-                    payload: { gameId: existingGame.id, field: 'referee_name', value: '' }
-                  });
-                } else {
-                  // If not found as a team, treat as a name
-                  dispatch({
-                    type: UPDATE_GAME,
-                    payload: { gameId: existingGame.id, field: 'referee_team_id', value: '' }
-                  });
-                  dispatch({
-                    type: UPDATE_GAME,
-                    payload: { gameId: existingGame.id, field: 'referee_name', value: generatedGame.referee_name }
-                  });
-                }
-              } else {
-                // If no level or teamsByLevel, treat as a name
-                dispatch({
-                  type: UPDATE_GAME,
-                  payload: { gameId: existingGame.id, field: 'referee_team_id', value: '' }
-                });
-                dispatch({
-                  type: UPDATE_GAME,
-                  payload: { gameId: existingGame.id, field: 'referee_name', value: generatedGame.referee_name }
-                });
-              }
-            }
-          } else {
-            console.warn(`Game with ID ${generatedGame.id} not found in week ${weekNumber}`);
           }
+
+          const finalLevelId = assignment.level_id || existingGame.level_id;
+
+          // Resolve teams
+          if (generatedGame.team1_name && finalLevelId && state.teamsByLevel[finalLevelId]) {
+            const team1Obj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.team1_name);
+            if (team1Obj) {
+              assignment.team1_id = team1Obj.id;
+              assignment.team1_name = team1Obj.name;
+            }
+          }
+
+          if (generatedGame.team2_name && finalLevelId && state.teamsByLevel[finalLevelId]) {
+            const team2Obj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.team2_name);
+            if (team2Obj) {
+              assignment.team2_id = team2Obj.id;
+              assignment.team2_name = team2Obj.name;
+            }
+          }
+
+          // Resolve referee
+          if (generatedGame.referee_name) {
+            if (finalLevelId && state.teamsByLevel[finalLevelId]) {
+              const refTeamObj = state.teamsByLevel[finalLevelId].find(t => t.name === generatedGame.referee_name);
+              if (refTeamObj) {
+                assignment.referee_team_id = refTeamObj.id;
+                assignment.referee_name = '';
+              } else {
+                assignment.referee_team_id = '';
+                assignment.referee_name = generatedGame.referee_name;
+              }
+            } else {
+              assignment.referee_team_id = '';
+              assignment.referee_name = generatedGame.referee_name;
+            }
+          }
+
+          assignments[existingGame.id] = assignment;
         });
       });
-      
-      // Schedule applied successfully (no alert needed)
+
+      dispatch({
+        type: APPLY_GENERATED_SCHEDULE,
+        payload: { assignments }
+      });
     } catch (error) {
       console.error('Error filling schedule with generated data:', error);
       alert('Error filling schedule: ' + error.message);
@@ -425,7 +421,11 @@ const ScheduleCreate = () => {
 
   // Get CSRF token for form submissions
   const getCsrfToken = () => {
-    return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+    const value = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('csrftoken='))
+      ?.split('=')[1];
+    return value || '';
   };
 
   // If setup data is not available, show a message
@@ -495,7 +495,7 @@ const ScheduleCreate = () => {
         onClose={() => setShowParametersModal(false)}
         onGenerate={autoGenerateSchedule}
         onApply={(data) => {
-          fillScheduleWithGeneratedData(data.schedule);
+          fillScheduleWithGeneratedData(data.schedule, data.isRaw || false);
         }}
         setupData={setupData}
       />

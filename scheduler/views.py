@@ -294,23 +294,8 @@ def generation_progress(request):
                 
             progress = get_generation_progress(session_key)
             if progress:
-                # Format best_schedule if present (exactly like full auto-generation does)
-                if 'best_schedule' in progress and progress['best_schedule'] is not None:
-                    from .services.generation import format_generated_schedule
-                    from django.core.cache import cache
-                    
-                    try:
-                        # Get week_data from cache (stored when generation started)
-                        week_data_key = f"schedule_generation_week_data_{session_key}"
-                        week_data = cache.get(week_data_key)
-                        if week_data:
-                            formatted_schedule = format_generated_schedule(progress['best_schedule'], week_data)
-                            progress['best_schedule'] = formatted_schedule
-                    except Exception as e:
-                        logger.exception("Error formatting best_schedule in progress")
-                        # Keep unformatted version as fallback
-                        pass
-                
+                # No longer format best_schedule here — the raw schedule is passed
+                # through as-is and formatted client-side when "Stop & Use Best" is used.
                 return JsonResponse({"progress": progress}, status=200)
             else:
                 return JsonResponse({"progress": None}, status=200)

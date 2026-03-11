@@ -51,7 +51,7 @@ const GameRow = ({ game, weekId, mode = 'score-edit' }) => {
         const mondayDate = new Date(weekData.monday_date);
         // Calculate the new date based on day of week (value)
         const newDate = new Date(mondayDate);
-        newDate.setDate(mondayDate.getDate() + parseInt(value));
+        newDate.setUTCDate(mondayDate.getUTCDate() + parseInt(value));
         
         // Update the date along with day_of_week
         dispatch({

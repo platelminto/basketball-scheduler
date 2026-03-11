@@ -6,9 +6,13 @@ threading, cancellation handling, and generation validation.
 """
 
 import copy
+import json
 import logging
 import multiprocessing
+import os
 import random
+import tempfile
+import time
 
 from django.core.cache import cache
 
@@ -29,7 +33,6 @@ def generate_schedule_process(courts_per_slot, team_names_by_level, time_limit, 
         
         # Create cancellation checker function using persistent files
         def is_cancelled():
-            import os
             from django.conf import settings
             cancel_file = os.path.join(settings.BASE_DIR, "tmp", f"schedule_cancel_{session_key}")
             return os.path.exists(cancel_file)
@@ -38,9 +41,6 @@ def generate_schedule_process(courts_per_slot, team_names_by_level, time_limit, 
         # Create simple progress callback that just stores data without formatting
         def update_progress(progress_data):
             # Write to file for cross-process communication using atomic write
-            import tempfile
-            import os
-            import json
             progress_file = os.path.join(tempfile.gettempdir(), f"{progress_key}.json")
             try:
                 # Write to temporary file first, then rename (atomic operation)
@@ -103,7 +103,7 @@ def generate_schedule_process(courts_per_slot, team_names_by_level, time_limit, 
 def validate_generation_constraints(schedule, week_data):
     """Validate that generated schedule matches court capacity constraints."""
     seen_off_weeks = 0
-    for data_week in week_data.values():
+    for data_week in sorted(week_data.values(), key=lambda w: w["week_number"]):
         if data_week.get("isOffWeek", False):
             seen_off_weeks += 1
             continue
@@ -129,8 +129,8 @@ def format_generated_schedule(schedule, week_data):
     """Format the generated schedule to match frontend expectations."""
     scheduled_week_data = []
     seen_off_weeks = 0
-    
-    for data_week in week_data.values():
+
+    for data_week in sorted(week_data.values(), key=lambda w: w["week_number"]):
         if data_week.get("isOffWeek", False):
             seen_off_weeks += 1
             continue
@@ -143,11 +143,12 @@ def format_generated_schedule(schedule, week_data):
 
         for i, data_game in enumerate(data_week["games"]):
             schedule_game = schedule_games[i]
-            data_game["level_name"] = schedule_game["level"]
-            data_game["team1_name"] = schedule_game["teams"][0]
-            data_game["team2_name"] = schedule_game["teams"][1]
-            data_game["referee_name"] = schedule_game["ref"]
-            week.append(data_game)
+            game_copy = {**data_game}
+            game_copy["level_name"] = schedule_game["level"]
+            game_copy["team1_name"] = schedule_game["teams"][0]
+            game_copy["team2_name"] = schedule_game["teams"][1]
+            game_copy["referee_name"] = schedule_game["ref"]
+            week.append(game_copy)
 
         scheduled_week_data.append(week)
 
@@ -159,10 +160,9 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     
     # Store week_data in cache so progress endpoint can access it for formatting
     week_data_key = f"schedule_generation_week_data_{session_key}"
-    cache.set(week_data_key, week_data, timeout=300)
+    cache.set(week_data_key, week_data, timeout=900)
     
     # Extract needed data directly instead of using config
-    from utils import get_config_from_schedule_creator
     temp_config = get_config_from_schedule_creator(setup_data, week_data)
     
     courts_per_slot = temp_config["courts_per_slot"]
@@ -189,7 +189,6 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     cache.delete(progress_key)
     
     # Clean up any leftover cancel files from previous generations
-    import os
     from django.conf import settings
     tmp_dir = os.path.join(settings.BASE_DIR, "tmp")
     os.makedirs(tmp_dir, exist_ok=True)
@@ -202,8 +201,6 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
         logger.warning(f"Error cleaning up cancel file: {e}")
     
     # Clean up any leftover progress files from previous generations
-    import tempfile
-    import os
     progress_file = os.path.join(tempfile.gettempdir(), f"{progress_key}.json")
     
     try:
@@ -236,22 +233,17 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     # Wait for completion (no timeout - let it finish naturally or be cancelled by user)
     generation_process.join()
 
-    # Clean up process cache entry and week_data
+    # Clean up process cache entry (week_data expires naturally via timeout)
     cache.delete(process_key)
-    week_data_key = f"schedule_generation_week_data_{session_key}"
-    cache.delete(week_data_key)
     
     # Small delay to allow any pending cancellation requests to be processed
     # (race condition: user clicks cancel right as process finishes)
-    import time
     time.sleep(0.1)
     
     # Check if process was killed/terminated (indicating cancellation)
     process_was_killed = generation_process.exitcode is not None and generation_process.exitcode != 0
     
     # Check cancellation status from files
-    import os
-    from django.conf import settings
     cancel_file = os.path.join(settings.BASE_DIR, "tmp", f"schedule_cancel_{session_key}")
     was_cancelled = os.path.exists(cancel_file)
     
@@ -269,7 +261,6 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     # Check if cancelled (complete cancellation should return a specific response, not error)
     if was_cancelled:
         # Clean up progress file and cancel file on cancellation
-        import tempfile
         progress_file = os.path.join(tempfile.gettempdir(), f"{progress_key}.json")
         try:
             if os.path.exists(progress_file):
@@ -327,7 +318,6 @@ def handle_generation_cancellation(session_key):
         process_key = f"schedule_generation_process_{session_key}"
         
         # Create cancellation flag file
-        import os
         from django.conf import settings
         tmp_dir = os.path.join(settings.BASE_DIR, "tmp")
         os.makedirs(tmp_dir, exist_ok=True)
@@ -344,7 +334,7 @@ def handle_generation_cancellation(session_key):
         
         if process_pid:
             try:
-                import psutil
+                import psutil  # optional dependency for process management
                 process = psutil.Process(process_pid)
                 process.terminate()  # Send SIGTERM
                 try:
@@ -374,9 +364,6 @@ def get_generation_progress(session_key):
         progress_key = f"schedule_generation_progress_{session_key}"
         
         # Try to read from file first (for cross-process communication)
-        import tempfile
-        import os
-        import json
         progress_file = os.path.join(tempfile.gettempdir(), f"{progress_key}.json")
         
         try:

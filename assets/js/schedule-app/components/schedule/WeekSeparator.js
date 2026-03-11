@@ -45,7 +45,7 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) =
       if (beforeWeekNumber && state.weeks[beforeWeekNumber]) {
         const beforeWeekDate = new Date(state.weeks[beforeWeekNumber].monday_date);
         const prevWeekDate = new Date(beforeWeekDate);
-        prevWeekDate.setDate(beforeWeekDate.getDate() - 7);
+        prevWeekDate.setUTCDate(beforeWeekDate.getUTCDate() - 7);
         offWeekDate = prevWeekDate.toISOString().split('T')[0];
       } else {
         // Fallback: use current date
@@ -61,7 +61,7 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) =
       if (afterWeekNumber && state.weeks[afterWeekNumber]) {
         const afterWeekDate = new Date(state.weeks[afterWeekNumber].monday_date);
         const nextWeekDate = new Date(afterWeekDate);
-        nextWeekDate.setDate(afterWeekDate.getDate() + 7);
+        nextWeekDate.setUTCDate(afterWeekDate.getUTCDate() + 7);
         offWeekDate = nextWeekDate.toISOString().split('T')[0];
       } else {
         // Fallback: use current date + 7 days
@@ -117,7 +117,7 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) =
       if (beforeWeekNumber && state.weeks[beforeWeekNumber]) {
         const beforeWeekDate = new Date(state.weeks[beforeWeekNumber].monday_date);
         const prevWeekDate = new Date(beforeWeekDate);
-        prevWeekDate.setDate(beforeWeekDate.getDate() - 7);
+        prevWeekDate.setUTCDate(beforeWeekDate.getUTCDate() - 7);
         newWeekDate = prevWeekDate.toISOString().split('T')[0];
       } else {
         // Fallback: use current date
@@ -132,7 +132,7 @@ const WeekSeparator = ({ afterWeekNumber, beforeWeekNumber, mode = 'create' }) =
       if (afterWeekNumber && state.weeks[afterWeekNumber]) {
         const afterWeekDate = new Date(state.weeks[afterWeekNumber].monday_date);
         const nextWeekDate = new Date(afterWeekDate);
-        nextWeekDate.setDate(afterWeekDate.getDate() + 7);
+        nextWeekDate.setUTCDate(afterWeekDate.getUTCDate() + 7);
         newWeekDate = nextWeekDate.toISOString().split('T')[0];
       } else {
         // Fallback: use current date + 7 days

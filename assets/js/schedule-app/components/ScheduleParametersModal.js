@@ -95,7 +95,11 @@ const ScheduleParametersModal = ({
 
   // Helper function to get CSRF token
   const getCsrfToken = () => {
-    return document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '';
+    const value = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('csrftoken='))
+      ?.split('=')[1];
+    return value || '';
   };
 
   const handleParameterChange = (key, value) => {
@@ -260,6 +264,7 @@ const ScheduleParametersModal = ({
       generationData: {
         ...prev.generationData,
         schedule: bestSchedule,
+        isRaw: true,
         progressData: latestProgressData
       }
     }));
@@ -385,6 +390,7 @@ const ScheduleParametersModal = ({
                 onCancel={handleCancel}
                 onStopAndUseBest={handleStopAndUseBest}
                 generatedSchedule={state.generationData?.schedule}
+                isRaw={state.generationData?.isRaw || false}
                 onApply={onApply}
                 onClose={onClose}
               />
