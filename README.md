@@ -71,7 +71,7 @@ docker-compose exec web uv run python manage.py createsuperuser
 ## Features
 
 ### Schedule Generation
-- **Smart Algorithm**: Uses linear programming to create optimal schedules
+- **Smart Algorithm**: Uses linear programming optimisation to create optimal schedules
 - **Multi-Division Support**: Handle multiple divisions with different team counts
 - **Referee Management**: Teams referee games when they're not playing, and only in adjacent slots to when they played
 - **Flexible Court Setup**: Configure different court availability per time slot
@@ -86,6 +86,11 @@ docker-compose exec web uv run python manage.py createsuperuser
 - **Comprehensive Testing**: Built-in validation ensures schedule quality
 - **Balance Metrics**: View statistics on game time distribution
 - **Conflict Detection**: Prevents teams from playing and refereeing simultaneously
+
+### Backups
+- **Automated Backups**: Weekly backups every Tuesday with 1-year retention
+- **Easy Restore**: Restore from any backup with a single command
+- **See [BACKUPS.md](BACKUPS.md) for setup and usage**
 
 ## Requirements
 
