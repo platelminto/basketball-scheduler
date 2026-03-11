@@ -15,7 +15,11 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     libpq-dev \
-    postgresql-client \
+    gnupg \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg \
+    && apt-get update \
+    && apt-get install -y postgresql-client-17 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
