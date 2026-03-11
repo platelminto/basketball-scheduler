@@ -228,7 +228,7 @@ def generate_schedule_async(setup_data, week_data, parameters, session_key):
     
     # Store process info in cache for cancellation
     process_key = f"schedule_generation_process_{session_key}"
-    cache.set(process_key, generation_process.pid, timeout=300)
+    cache.set(process_key, generation_process.pid, timeout=900)
 
     # Wait for completion (no timeout - let it finish naturally or be cancelled by user)
     generation_process.join()
